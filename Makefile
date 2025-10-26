@@ -8,7 +8,7 @@ test:
 build:
 	npm run build
 
-# Create PR after tests pass with auto-generated description
+# Create PR after tests pass
 pr: test
 	@echo "All tests passed. Creating PR..."
 	@echo ""
@@ -23,7 +23,7 @@ pr: test
 	echo "  feat(game): add shared type definitions and constants"; \
 	echo "  fix(player): correct fuel consumption calculation"; \
 	echo ""; \
-	@read -p "Enter PR title (conventional commit format): " title; \
+	read -p "Enter PR title (conventional commit format): " title; \
 	echo ""; \
 	echo "Creating branch: $$branch"; \
 	git checkout -b $$branch 2>/dev/null || git checkout $$branch; \
@@ -35,10 +35,8 @@ pr: test
 	fi; \
 	git push -u origin $$branch; \
 	echo ""; \
-	echo "Generating PR description..."; \
-	CHANGES=$$(git diff main...$$branch --stat | head -20); \
-	COMMITS=$$(git log main..$$branch --oneline); \
-	gh pr create --title "$$title" --body "$$(cat <<-EOF\n## Summary\n$$title\n\n## Changes\n\`\`\`\n$$CHANGES\n\`\`\`\n\n## Commits\n$$COMMITS\n\n## Testing\n- [x] All tests pass\n- [x] Type check passes\n- [x] Lint passes\n- [x] Build succeeds\nEOF\n)" --base main
+	echo "Creating pull request..."; \
+	gh pr create --title "$$title" --body "## Summary\n$$title\n\n## Testing\n- [x] All tests pass\n- [x] Type check passes\n- [x] Build succeeds" --base main
 
 # Deploy to Devvit (runs tests first)
 deploy: test

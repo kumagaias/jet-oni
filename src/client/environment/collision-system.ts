@@ -1,383 +1,385 @@
 import { Vector3 } from '../../shared/types/game';
-import * as THREE from 'three';
+import { BuildingData } from '../player/player-physics';
 
 /**
- * Collision shape types
+ * Dynamic object data for collision detection
  */
-export type CollisionShape = 'box' | 'cylinder' | 'sphere';
-
-/**
- * Collision object definition
- */
-export interface CollisionObject {
-  shape: CollisionShape;
+export interface DynamicObject {
   position: Vector3;
-  dimensions: {
-    width?: number;
-    height?: number;
-    depth?: number;
-    radius?: number;
-  };
-  type: 'building' | 'vehicle' | 'pedestrian' | 'obstacle';
+  radius: number;
+  type: 'car' | 'pedestrian';
 }
 
 /**
- * Collision result
+ * Collision result containing adjusted position and whether collision occurred
  */
 export interface CollisionResult {
-  hasCollision: boolean;
-  normal: Vector3;
-  penetrationDepth: number;
-  collisionPoint: Vector3;
+  position: Vector3;
+  collided: boolean;
+  normal?: Vector3; // Surface normal at collision point
 }
 
 /**
- * CollisionSystem handles collision detection between player and environment
+ * CollisionSystem handles collision detection with buildings, cars, and pedestrians
  */
 export class CollisionSystem {
-  private collisionObjects: CollisionObject[] = [];
-  private playerRadius = 0.5; // Player collision radius
+  private buildings: BuildingData[] = [];
+  private dynamicObjects: DynamicObject[] = [];
 
   /**
-   * Add a collision object to the system
+   * Register buildings for collision detection
    */
-  public addCollisionObject(object: CollisionObject): void {
-    this.collisionObjects.push(object);
+  public registerBuildings(buildings: BuildingData[]): void {
+    this.buildings = buildings;
   }
 
   /**
-   * Remove all collision objects
+   * Register dynamic objects (cars, pedestrians) for collision detection
    */
-  public clearCollisionObjects(): void {
-    this.collisionObjects = [];
+  public registerDynamicObjects(objects: DynamicObject[]): void {
+    this.dynamicObjects = objects;
   }
 
   /**
-   * Build collision objects from Three.js scene
+   * Update dynamic objects list
    */
-  public buildFromScene(buildingsGroup: THREE.Group): void {
-    this.clearCollisionObjects();
-
-    buildingsGroup.traverse((object) => {
-      if (object instanceof THREE.Mesh) {
-        const geometry = object.geometry;
-        const position = new THREE.Vector3();
-        object.getWorldPosition(position);
-
-        // Determine shape and dimensions based on geometry
-        if (geometry instanceof THREE.BoxGeometry) {
-          const params = geometry.parameters;
-          this.addCollisionObject({
-            shape: 'box',
-            position: { x: position.x, y: position.y, z: position.z },
-            dimensions: {
-              width: params.width,
-              height: params.height,
-              depth: params.depth,
-            },
-            type: 'building',
-          });
-        } else if (geometry instanceof THREE.CylinderGeometry) {
-          const params = geometry.parameters;
-          this.addCollisionObject({
-            shape: 'cylinder',
-            position: { x: position.x, y: position.y, z: position.z },
-            dimensions: {
-              radius: params.radiusTop,
-              height: params.height,
-            },
-            type: 'building',
-          });
-        }
-      }
-    });
+  public updateDynamicObjects(objects: DynamicObject[]): void {
+    this.dynamicObjects = objects;
   }
 
   /**
-   * Check collision with all objects and resolve
+   * Check collision and resolve position
    */
-  public checkAndResolveCollision(
-    playerPosition: Vector3,
-    playerVelocity: Vector3
-  ): { position: Vector3; velocity: Vector3 } {
-    let resolvedPosition = { ...playerPosition };
-    let resolvedVelocity = { ...playerVelocity };
+  public checkCollision(
+    currentPosition: Vector3,
+    targetPosition: Vector3,
+    playerRadius = 0.5
+  ): CollisionResult {
+    let finalPosition = { ...targetPosition };
+    let collided = false;
+    let collisionNormal: Vector3 | undefined;
 
-    for (const object of this.collisionObjects) {
-      const collision = this.checkCollision(resolvedPosition, object);
+    // Check building collisions
+    for (const building of this.buildings) {
+      const buildingCollision = this.checkBuildingCollision(
+        finalPosition,
+        playerRadius,
+        building
+      );
 
-      if (collision.hasCollision) {
-        // Resolve collision by sliding along the surface
-        const resolved = this.resolveCollision(
-          resolvedPosition,
-          resolvedVelocity,
-          collision
-        );
-        resolvedPosition = resolved.position;
-        resolvedVelocity = resolved.velocity;
+      if (buildingCollision.collided) {
+        finalPosition = buildingCollision.position;
+        collided = true;
+        collisionNormal = buildingCollision.normal;
       }
     }
 
-    return { position: resolvedPosition, velocity: resolvedVelocity };
-  }
+    // Check dynamic object collisions
+    for (const obj of this.dynamicObjects) {
+      const objCollision = this.checkDynamicObjectCollision(
+        finalPosition,
+        playerRadius,
+        obj
+      );
 
-  /**
-   * Check collision between player and a single object
-   */
-  private checkCollision(playerPosition: Vector3, object: CollisionObject): CollisionResult {
-    switch (object.shape) {
-      case 'box':
-        return this.checkBoxCollision(playerPosition, object);
-      case 'cylinder':
-        return this.checkCylinderCollision(playerPosition, object);
-      case 'sphere':
-        return this.checkSphereCollision(playerPosition, object);
-      default:
-        return {
-          hasCollision: false,
-          normal: { x: 0, y: 0, z: 0 },
-          penetrationDepth: 0,
-          collisionPoint: { x: 0, y: 0, z: 0 },
-        };
+      if (objCollision.collided) {
+        finalPosition = objCollision.position;
+        collided = true;
+        collisionNormal = objCollision.normal;
+      }
     }
+
+    return {
+      position: finalPosition,
+      collided,
+      normal: collisionNormal,
+    };
   }
 
   /**
-   * Check collision with box-shaped object
+   * Check collision with a building
    */
-  private checkBoxCollision(playerPosition: Vector3, object: CollisionObject): CollisionResult {
-    const { width = 0, height = 0, depth = 0 } = object.dimensions;
-    const halfWidth = width / 2;
-    const halfHeight = height / 2;
-    const halfDepth = depth / 2;
+  private checkBuildingCollision(
+    position: Vector3,
+    playerRadius: number,
+    building: BuildingData
+  ): CollisionResult {
+    if (building.shape === 'box') {
+      return this.checkBoxCollision(position, playerRadius, building);
+    } else if (building.shape === 'cylinder') {
+      return this.checkCylinderCollision(position, playerRadius, building);
+    }
 
-    // Calculate closest point on box to player
-    const closestX = Math.max(
-      object.position.x - halfWidth,
-      Math.min(playerPosition.x, object.position.x + halfWidth)
-    );
-    const closestY = Math.max(
-      object.position.y - halfHeight,
-      Math.min(playerPosition.y, object.position.y + halfHeight)
-    );
-    const closestZ = Math.max(
-      object.position.z - halfDepth,
-      Math.min(playerPosition.z, object.position.z + halfDepth)
-    );
+    return { position, collided: false };
+  }
+
+  /**
+   * Check collision with a box-shaped building
+   */
+  private checkBoxCollision(
+    position: Vector3,
+    playerRadius: number,
+    building: BuildingData
+  ): CollisionResult {
+    // Calculate building bounds
+    const minX = building.position.x - building.width / 2;
+    const maxX = building.position.x + building.width / 2;
+    const minZ = building.position.z - building.depth / 2;
+    const maxZ = building.position.z + building.depth / 2;
+    const minY = building.position.y - building.height / 2;
+    const maxY = building.position.y + building.height / 2;
+
+    // Check if player is within building height range
+    if (position.y < minY || position.y > maxY) {
+      return { position, collided: false };
+    }
+
+    // Find closest point on box to player
+    const closestX = Math.max(minX, Math.min(maxX, position.x));
+    const closestZ = Math.max(minZ, Math.min(maxZ, position.z));
 
     // Calculate distance from player to closest point
-    const dx = playerPosition.x - closestX;
-    const dy = playerPosition.y - closestY;
-    const dz = playerPosition.z - closestZ;
-    const distanceSquared = dx * dx + dy * dy + dz * dz;
+    const dx = position.x - closestX;
+    const dz = position.z - closestZ;
+    const distanceSquared = dx * dx + dz * dz;
 
-    // Check if collision occurs
-    if (distanceSquared < this.playerRadius * this.playerRadius) {
+    // Check if collision occurred
+    if (distanceSquared < playerRadius * playerRadius) {
+      // Calculate collision normal
       const distance = Math.sqrt(distanceSquared);
-      const penetrationDepth = this.playerRadius - distance;
+      const normal: Vector3 = {
+        x: distance > 0 ? dx / distance : 0,
+        y: 0,
+        z: distance > 0 ? dz / distance : 0,
+      };
 
-      // Calculate collision normal
-      let normal = { x: dx, y: dy, z: dz };
-      if (distance > 0) {
-        normal = {
-          x: dx / distance,
-          y: dy / distance,
-          z: dz / distance,
-        };
-      } else {
-        // Player is inside the box, push out in closest direction
-        const distToMinX = Math.abs(playerPosition.x - (object.position.x - halfWidth));
-        const distToMaxX = Math.abs(playerPosition.x - (object.position.x + halfWidth));
-        const distToMinZ = Math.abs(playerPosition.z - (object.position.z - halfDepth));
-        const distToMaxZ = Math.abs(playerPosition.z - (object.position.z + halfDepth));
-
-        const minDist = Math.min(distToMinX, distToMaxX, distToMinZ, distToMaxZ);
-
-        if (minDist === distToMinX) normal = { x: -1, y: 0, z: 0 };
-        else if (minDist === distToMaxX) normal = { x: 1, y: 0, z: 0 };
-        else if (minDist === distToMinZ) normal = { x: 0, y: 0, z: -1 };
-        else normal = { x: 0, y: 0, z: 1 };
-      }
+      // Push player out of building
+      const penetrationDepth = playerRadius - distance;
+      const adjustedPosition: Vector3 = {
+        x: position.x + normal.x * penetrationDepth,
+        y: position.y,
+        z: position.z + normal.z * penetrationDepth,
+      };
 
       return {
-        hasCollision: true,
+        position: adjustedPosition,
+        collided: true,
         normal,
-        penetrationDepth,
-        collisionPoint: { x: closestX, y: closestY, z: closestZ },
       };
     }
 
-    return {
-      hasCollision: false,
-      normal: { x: 0, y: 0, z: 0 },
-      penetrationDepth: 0,
-      collisionPoint: { x: 0, y: 0, z: 0 },
-    };
+    return { position, collided: false };
   }
 
   /**
-   * Check collision with cylinder-shaped object
+   * Check collision with a cylinder-shaped building
    */
-  private checkCylinderCollision(playerPosition: Vector3, object: CollisionObject): CollisionResult {
-    const { radius = 0, height = 0 } = object.dimensions;
-    const halfHeight = height / 2;
-
-    // Check if player is within cylinder height
-    const minY = object.position.y - halfHeight;
-    const maxY = object.position.y + halfHeight;
-
-    if (playerPosition.y < minY || playerPosition.y > maxY) {
-      return {
-        hasCollision: false,
-        normal: { x: 0, y: 0, z: 0 },
-        penetrationDepth: 0,
-        collisionPoint: { x: 0, y: 0, z: 0 },
-      };
-    }
-
-    // Check horizontal distance from cylinder axis
-    const dx = playerPosition.x - object.position.x;
-    const dz = playerPosition.z - object.position.z;
-    const horizontalDistance = Math.sqrt(dx * dx + dz * dz);
-
-    const totalRadius = radius + this.playerRadius;
-
-    if (horizontalDistance < totalRadius) {
-      const penetrationDepth = totalRadius - horizontalDistance;
-
-      // Calculate collision normal (horizontal only)
-      let normal = { x: 0, y: 0, z: 0 };
-      if (horizontalDistance > 0) {
-        normal = {
-          x: dx / horizontalDistance,
-          y: 0,
-          z: dz / horizontalDistance,
-        };
-      } else {
-        // Player is at cylinder center, push in arbitrary direction
-        normal = { x: 1, y: 0, z: 0 };
-      }
-
-      return {
-        hasCollision: true,
-        normal,
-        penetrationDepth,
-        collisionPoint: {
-          x: object.position.x + normal.x * radius,
-          y: playerPosition.y,
-          z: object.position.z + normal.z * radius,
-        },
-      };
-    }
-
-    return {
-      hasCollision: false,
-      normal: { x: 0, y: 0, z: 0 },
-      penetrationDepth: 0,
-      collisionPoint: { x: 0, y: 0, z: 0 },
-    };
-  }
-
-  /**
-   * Check collision with sphere-shaped object
-   */
-  private checkSphereCollision(playerPosition: Vector3, object: CollisionObject): CollisionResult {
-    const { radius = 0 } = object.dimensions;
-
-    const dx = playerPosition.x - object.position.x;
-    const dy = playerPosition.y - object.position.y;
-    const dz = playerPosition.z - object.position.z;
-    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
-
-    const totalRadius = radius + this.playerRadius;
-
-    if (distance < totalRadius) {
-      const penetrationDepth = totalRadius - distance;
-
-      // Calculate collision normal
-      let normal = { x: 0, y: 0, z: 0 };
-      if (distance > 0) {
-        normal = {
-          x: dx / distance,
-          y: dy / distance,
-          z: dz / distance,
-        };
-      } else {
-        // Player is at sphere center, push in arbitrary direction
-        normal = { x: 0, y: 1, z: 0 };
-      }
-
-      return {
-        hasCollision: true,
-        normal,
-        penetrationDepth,
-        collisionPoint: {
-          x: object.position.x + normal.x * radius,
-          y: object.position.y + normal.y * radius,
-          z: object.position.z + normal.z * radius,
-        },
-      };
-    }
-
-    return {
-      hasCollision: false,
-      normal: { x: 0, y: 0, z: 0 },
-      penetrationDepth: 0,
-      collisionPoint: { x: 0, y: 0, z: 0 },
-    };
-  }
-
-  /**
-   * Resolve collision by sliding along surface
-   */
-  private resolveCollision(
+  private checkCylinderCollision(
     position: Vector3,
+    playerRadius: number,
+    building: BuildingData
+  ): CollisionResult {
+    const minY = building.position.y - building.height / 2;
+    const maxY = building.position.y + building.height / 2;
+
+    // Check if player is within building height range
+    if (position.y < minY || position.y > maxY) {
+      return { position, collided: false };
+    }
+
+    // Calculate distance from player to cylinder center (2D)
+    const dx = position.x - building.position.x;
+    const dz = position.z - building.position.z;
+    const distanceFromCenter = Math.sqrt(dx * dx + dz * dz);
+
+    const cylinderRadius = building.width / 2;
+    const totalRadius = cylinderRadius + playerRadius;
+
+    // Check if collision occurred
+    if (distanceFromCenter < totalRadius) {
+      // Calculate collision normal
+      const normal: Vector3 = {
+        x: distanceFromCenter > 0 ? dx / distanceFromCenter : 1,
+        y: 0,
+        z: distanceFromCenter > 0 ? dz / distanceFromCenter : 0,
+      };
+
+      // Push player out of cylinder
+      const penetrationDepth = totalRadius - distanceFromCenter;
+      const adjustedPosition: Vector3 = {
+        x: position.x + normal.x * penetrationDepth,
+        y: position.y,
+        z: position.z + normal.z * penetrationDepth,
+      };
+
+      return {
+        position: adjustedPosition,
+        collided: true,
+        normal,
+      };
+    }
+
+    return { position, collided: false };
+  }
+
+  /**
+   * Check collision with a dynamic object (car or pedestrian)
+   */
+  private checkDynamicObjectCollision(
+    position: Vector3,
+    playerRadius: number,
+    obj: DynamicObject
+  ): CollisionResult {
+    // Only check collision if player is at similar height
+    const heightDiff = Math.abs(position.y - obj.position.y);
+    if (heightDiff > 2) {
+      return { position, collided: false };
+    }
+
+    // Calculate distance between player and object (2D)
+    const dx = position.x - obj.position.x;
+    const dz = position.z - obj.position.z;
+    const distance = Math.sqrt(dx * dx + dz * dz);
+
+    const totalRadius = playerRadius + obj.radius;
+
+    // Check if collision occurred
+    if (distance < totalRadius) {
+      // Calculate collision normal
+      const normal: Vector3 = {
+        x: distance > 0 ? dx / distance : 1,
+        y: 0,
+        z: distance > 0 ? dz / distance : 0,
+      };
+
+      // Push player away from object
+      const penetrationDepth = totalRadius - distance;
+      const adjustedPosition: Vector3 = {
+        x: position.x + normal.x * penetrationDepth,
+        y: position.y,
+        z: position.z + normal.z * penetrationDepth,
+      };
+
+      return {
+        position: adjustedPosition,
+        collided: true,
+        normal,
+      };
+    }
+
+    return { position, collided: false };
+  }
+
+  /**
+   * Apply sliding along collision surface
+   */
+  public applySlidingMovement(
     velocity: Vector3,
-    collision: CollisionResult
-  ): { position: Vector3; velocity: Vector3 } {
-    // Push player out of collision
-    const resolvedPosition = {
-      x: position.x + collision.normal.x * collision.penetrationDepth,
-      y: position.y + collision.normal.y * collision.penetrationDepth,
-      z: position.z + collision.normal.z * collision.penetrationDepth,
-    };
-
-    // Project velocity onto surface (sliding)
-    const dotProduct =
-      velocity.x * collision.normal.x +
-      velocity.y * collision.normal.y +
-      velocity.z * collision.normal.z;
-
-    const resolvedVelocity = {
-      x: velocity.x - collision.normal.x * dotProduct,
-      y: velocity.y - collision.normal.y * dotProduct,
-      z: velocity.z - collision.normal.z * dotProduct,
-    };
+    collisionNormal: Vector3
+  ): Vector3 {
+    // Project velocity onto collision surface (remove component along normal)
+    const dotProduct = velocity.x * collisionNormal.x + velocity.z * collisionNormal.z;
 
     return {
-      position: resolvedPosition,
-      velocity: resolvedVelocity,
+      x: velocity.x - collisionNormal.x * dotProduct,
+      y: velocity.y,
+      z: velocity.z - collisionNormal.z * dotProduct,
     };
   }
 
   /**
-   * Set player collision radius
+   * Check if a position is inside any building
    */
-  public setPlayerRadius(radius: number): void {
-    this.playerRadius = radius;
+  public isInsideBuilding(position: Vector3, playerRadius = 0.5): boolean {
+    for (const building of this.buildings) {
+      const minY = building.position.y - building.height / 2;
+      const maxY = building.position.y + building.height / 2;
+
+      // Check height range
+      if (position.y < minY || position.y > maxY) {
+        continue;
+      }
+
+      if (building.shape === 'box') {
+        const minX = building.position.x - building.width / 2 + playerRadius;
+        const maxX = building.position.x + building.width / 2 - playerRadius;
+        const minZ = building.position.z - building.depth / 2 + playerRadius;
+        const maxZ = building.position.z + building.depth / 2 - playerRadius;
+
+        if (
+          position.x >= minX &&
+          position.x <= maxX &&
+          position.z >= minZ &&
+          position.z <= maxZ
+        ) {
+          return true;
+        }
+      } else if (building.shape === 'cylinder') {
+        const dx = position.x - building.position.x;
+        const dz = position.z - building.position.z;
+        const distance = Math.sqrt(dx * dx + dz * dz);
+        const cylinderRadius = building.width / 2 - playerRadius;
+
+        if (distance <= cylinderRadius) {
+          return true;
+        }
+      }
+    }
+
+    return false;
   }
 
   /**
-   * Get player collision radius
+   * Get nearest safe position outside buildings
    */
-  public getPlayerRadius(): number {
-    return this.playerRadius;
+  public getNearestSafePosition(position: Vector3, playerRadius = 0.5): Vector3 {
+    let safePosition = { ...position };
+    let maxIterations = 10;
+    let iteration = 0;
+
+    while (this.isInsideBuilding(safePosition, playerRadius) && iteration < maxIterations) {
+      // Find nearest building
+      let nearestBuilding: BuildingData | null = null;
+      let minDistance = Infinity;
+
+      for (const building of this.buildings) {
+        const dx = safePosition.x - building.position.x;
+        const dz = safePosition.z - building.position.z;
+        const distance = Math.sqrt(dx * dx + dz * dz);
+
+        if (distance < minDistance) {
+          minDistance = distance;
+          nearestBuilding = building;
+        }
+      }
+
+      if (nearestBuilding) {
+        // Move away from nearest building
+        const dx = safePosition.x - nearestBuilding.position.x;
+        const dz = safePosition.z - nearestBuilding.position.z;
+        const distance = Math.sqrt(dx * dx + dz * dz);
+
+        if (distance > 0) {
+          const moveDistance = nearestBuilding.width / 2 + playerRadius + 1;
+          safePosition.x = nearestBuilding.position.x + (dx / distance) * moveDistance;
+          safePosition.z = nearestBuilding.position.z + (dz / distance) * moveDistance;
+        } else {
+          // If exactly at center, move in arbitrary direction
+          safePosition.x += nearestBuilding.width / 2 + playerRadius + 1;
+        }
+      }
+
+      iteration++;
+    }
+
+    return safePosition;
   }
 
   /**
-   * Get all collision objects
+   * Clear all registered data
    */
-  public getCollisionObjects(): CollisionObject[] {
-    return this.collisionObjects;
+  public clear(): void {
+    this.buildings = [];
+    this.dynamicObjects = [];
   }
 }

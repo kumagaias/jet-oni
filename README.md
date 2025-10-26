@@ -78,43 +78,50 @@ JetOni is currently a **3D interactive demo** that showcases the technical found
 
 1. **3D Earth Visualization**
    - Beautifully rendered Earth sphere with realistic textures
-   - Atmospheric diffuse map showing continents and oceans
-   - Normal map creating realistic terrain depth
+   - Atmospheric diffuse map (2048x2048) showing continents and oceans
+   - Normal map creating realistic terrain depth and surface detail
    - Specular map for realistic ocean reflections and highlights
-   - Smooth continuous rotation on multiple axes
+   - Smooth continuous rotation on two axes (Y: 0.0025 rad/frame, X: 0.001 rad/frame)
+   - High-quality sphere geometry (64x64 segments) for smooth appearance
 
 2. **Immersive Starfield**
    - 200 procedurally placed stars in 3D space
+   - Stars randomly distributed across 200-unit radius sphere
    - Creates depth and cosmic atmosphere
-   - Stars remain static while Earth rotates
+   - Stars remain static while Earth rotates, enhancing sense of motion
 
 3. **Interactive Click Mechanics**
    - Click anywhere on the Earth sphere to interact
    - Triggers a gentle bounce animation with velocity-based physics
    - Uses Three.js raycasting for precise 3D object detection
    - Smooth scale animation (grows to 1.2x, then returns to normal)
+   - Acceleration phase (velocity: 0.05) and deceleration phase (velocity: -0.04)
+   - Only clicks on the Earth sphere trigger actions, not background clicks
 
 4. **Real-time State Persistence**
    - Each click increments a counter displayed at screen center
-   - Counter value persisted to Redis on the server
+   - Counter value persisted to Redis on the server via `/api/increment` endpoint
    - Data survives page refreshes and sessions
-   - Demonstrates foundation for multiplayer game state
+   - Demonstrates foundation for multiplayer game state synchronization
 
 5. **Reddit Integration**
    - Personalized greeting displays your Reddit username on load
-   - Runs entirely within Reddit posts using Devvit
+   - Fetches initial state via `/api/init` endpoint
+   - Runs entirely within Reddit posts using Devvit platform
    - No external websites or downloads required
+   - Direct navigation to Devvit docs, r/Devvit community, and Discord
 
 6. **Responsive Design**
    - Fully responsive layout for desktop and mobile browsers
    - Automatic canvas resizing on window resize
-   - Touch-friendly interaction on mobile devices
+   - Touch-friendly interaction on mobile devices (pointer events)
+   - Camera aspect ratio automatically adjusts to screen dimensions
 
 **Game Foundation (Implemented, Not Yet Integrated):**
 - **Game Engine** (`src/client/game/game-engine.ts`): Scene management, camera control, renderer, and game loop with delta time
 - **Game State** (`src/client/game/game-state.ts`): Player state management, fuel tracking, position/velocity, game phases (lobby/playing/ended)
 - **Player Physics** (`src/client/player/player-physics.ts`): Gravity, velocity, surface detection (ground/rooftop/bridge), water resistance
-- **Collision System** (`src/client/environment/collision-system.ts`): Building collision detection, sliding mechanics
+- **Collision System** (`src/client/environment/collision-system.ts`): Building collision detection (box/cylinder shapes), sliding mechanics
 - **City Generator** (`src/client/environment/city-generator.ts`): Procedural city with 60+ buildings, 40+ houses, roads, rivers, and bridges
 - **Dynamic Objects** (`src/client/environment/dynamic-objects.ts`): Animated cars (20), pedestrians (30), and ladders (15)
 - **i18n System** (`src/client/i18n/`): Complete bilingual support (English/Japanese) with localStorage persistence
@@ -202,70 +209,88 @@ At the bottom of the screen, click:
 ### What Makes This Demo Innovative
 
 #### 1. Reddit-Native 3D Graphics
-One of the first fully interactive 3D WebGL applications running directly within Reddit posts using the Devvit platform. No external websites, downloads, or installations required - everything runs within Reddit's ecosystem.
+One of the first fully interactive 3D WebGL applications running directly within Reddit posts using the Devvit platform. No external websites, downloads, or installations required - everything runs within Reddit's ecosystem. This demonstrates that complex 3D games can be built and played entirely within Reddit's infrastructure.
 
 #### 2. Advanced 3D Rendering Techniques
-- **Multi-Texture Mapping**: Combines three texture maps (diffuse, normal, specular) for photorealistic Earth rendering
-- **Normal Mapping**: Creates realistic terrain depth without additional geometry
-- **Specular Mapping**: Produces accurate ocean reflections and highlights
-- **Dynamic Lighting**: Point light source creates realistic shadows and highlights
+- **Multi-Texture Mapping**: Combines three high-resolution texture maps (diffuse, normal, specular) for photorealistic Earth rendering
+- **Normal Mapping**: Creates realistic terrain depth and surface detail without additional geometry, improving performance
+- **Specular Mapping**: Produces accurate ocean reflections and highlights, distinguishing water from land
+- **Dynamic Lighting**: Ambient light (0.4 intensity) + Point light (1.0 intensity) creates realistic shadows and highlights
+- **High-Quality Geometry**: 64x64 segment sphere geometry ensures smooth, curved appearance
+- **Proper Texture Encoding**: sRGB encoding for diffuse map, Linear encoding for normal/specular maps
 
 #### 3. Precise 3D Interaction System
-- **Raycasting Technology**: Converts 2D mouse coordinates to 3D ray intersections
-- **Accurate Object Detection**: Only clicks on the Earth sphere trigger actions, not background
-- **Physics-Based Animation**: Velocity and acceleration create natural bounce effects
-- **Smooth Transitions**: Seamless scale animations with proper easing
+- **Raycasting Technology**: Converts 2D pointer coordinates to 3D ray intersections using Three.js Raycaster
+- **Accurate Object Detection**: Only clicks on the Earth sphere trigger actions, background clicks are ignored
+- **Physics-Based Animation**: Velocity-based bounce with acceleration (0.05) and deceleration (-0.04) phases
+- **Smooth Transitions**: Seamless scale animations from 1.0x to 1.2x and back with natural easing
+- **Touch Support**: Works with both mouse clicks and touch events via pointer events API
 
 #### 4. Real-time State Persistence
-- **Server-Side Storage**: Counter value persisted to Redis database
-- **Cross-Session Persistence**: Data survives page refreshes and browser restarts
-- **Instant Updates**: Counter updates immediately with each click
-- **Foundation for Multiplayer**: Demonstrates the infrastructure needed for multiplayer game state
+- **Server-Side Storage**: Counter value persisted to Redis database via RESTful API
+- **Cross-Session Persistence**: Data survives page refreshes, browser restarts, and device changes
+- **Instant Updates**: Counter updates immediately with each click via `/api/increment` POST request
+- **Foundation for Multiplayer**: Demonstrates the infrastructure needed for multiplayer game state synchronization
+- **Error Handling**: Graceful error handling for network failures and API errors
 
 #### 5. Seamless Social Integration
-- **Reddit Authentication**: Automatically displays your Reddit username
-- **Post-Native Experience**: Runs entirely within Reddit posts
+- **Reddit Authentication**: Automatically displays your Reddit username via `/api/init` endpoint
+- **Post-Native Experience**: Runs entirely within Reddit posts using Devvit's webview
 - **No External Dependencies**: No third-party websites or services required
-- **Direct Community Links**: Easy access to Devvit documentation and community
+- **Direct Community Links**: Easy access to Devvit documentation, r/Devvit community, and Discord server
+- **User Context**: Leverages Reddit's authentication system for personalized experience
 
 #### 6. Cross-Platform Compatibility
-- **Responsive Design**: Works on desktop and mobile browsers
-- **Touch-Friendly**: Mobile users can tap the Earth to interact
-- **Automatic Scaling**: Canvas and camera adjust to any screen size
-- **Performance Optimized**: Smooth 60 FPS animation on all devices
+- **Responsive Design**: Works seamlessly on desktop and mobile browsers
+- **Touch-Friendly**: Mobile users can tap the Earth to interact using pointer events
+- **Automatic Scaling**: Canvas and camera aspect ratio adjust to any screen size
+- **Performance Optimized**: Smooth 60 FPS animation on all devices with requestAnimationFrame
+- **Device Pixel Ratio**: Automatically adjusts for high-DPI displays (Retina, etc.)
 
 #### 7. Foundation for Complex Gaming
 Proves the technical viability of building sophisticated 3D multiplayer games on Reddit:
-- ✅ WebGL rendering within Reddit posts
-- ✅ Server-side state management with Redis
-- ✅ Real-time client-server communication
-- ✅ 3D interaction and physics systems
-- ✅ Cross-platform compatibility
-- ✅ Responsive design for mobile and desktop
+- ✅ WebGL rendering within Reddit posts (Three.js with custom shaders)
+- ✅ Server-side state management with Redis (persistent data storage)
+- ✅ Real-time client-server communication (RESTful API with JSON)
+- ✅ 3D interaction and physics systems (raycasting, velocity-based animations)
+- ✅ Cross-platform compatibility (desktop and mobile browsers)
+- ✅ Responsive design for mobile and desktop (automatic resizing)
+- ✅ User authentication and personalization (Reddit username integration)
 
 ### Technical Implementation
 
 #### Current Demo Architecture
 
 **Client-Side (Three.js):**
-- Complete 3D rendering pipeline with WebGL
-- PerspectiveCamera with 75° FOV and responsive aspect ratio
-- Raycasting for precise click detection on 3D objects
-- Smooth animation loop using requestAnimationFrame
-- Texture loading with proper encoding (sRGB for diffuse, Linear for normal/specular)
-- Dynamic bounce animation with velocity-based scaling
+- **Scene Setup**: Black background (0x000000) with ambient and point lighting
+- **Camera**: PerspectiveCamera with 75° FOV, positioned 30 units from Earth on Z-axis
+- **Renderer**: WebGLRenderer with antialiasing, automatic device pixel ratio detection
+- **Earth Sphere**: 10-unit radius sphere with 64x64 segments for smooth appearance
+- **Material**: MeshPhongMaterial with diffuse, normal, and specular maps (shininess: 5)
+- **Textures**: Three 2048x2048 texture maps loaded from `/earth_atmos_2048.jpg`, `/earth_normal_2048.jpg`, `/earth_specular_2048.jpg`
+- **Starfield**: 200 stars (0.25-unit radius spheres) randomly distributed in 200-unit radius
+- **Animation Loop**: requestAnimationFrame with continuous rotation (Y: 0.0025 rad/frame, X: 0.001 rad/frame)
+- **Raycasting**: Three.js Raycaster for precise click detection on Earth sphere
+- **Bounce Animation**: Velocity-based scale animation (1.0x → 1.2x → 1.0x) triggered by clicks
+- **Event Handling**: Pointer events for cross-platform mouse/touch support
+- **Responsive**: Window resize listener updates camera aspect ratio and renderer size
 
 **Server-Side (Devvit + Express):**
-- RESTful API endpoints (`/api/init`, `/api/increment`)
-- Redis integration for persistent counter storage
-- Reddit authentication and user context
-- JSON response formatting with TypeScript types
+- **API Endpoints**:
+  - `GET /api/init`: Returns initial counter value, post ID, and Reddit username
+  - `POST /api/increment`: Increments counter and returns new value
+- **Redis Integration**: Persistent storage for counter value using Devvit's Redis API
+- **Reddit Context**: Automatic user authentication via Devvit middleware
+- **Type Safety**: TypeScript interfaces for API requests/responses (`InitResponse`, `IncrementResponse`)
+- **Error Handling**: HTTP status codes and error responses for failed requests
 
 **Key Technical Features:**
-- **Raycasting**: Converts 2D mouse coordinates to 3D ray for object intersection
-- **Texture Mapping**: Multiple texture layers (diffuse, normal, specular) for realistic appearance
-- **Animation System**: Velocity-based bounce with acceleration and deceleration
-- **Responsive Design**: Automatic canvas resizing and camera aspect ratio adjustment
+- **Raycasting**: Converts 2D pointer coordinates (normalized to -1 to 1) to 3D ray for object intersection testing
+- **Texture Mapping**: Three texture layers (diffuse for color, normal for depth, specular for reflections) create photorealistic appearance
+- **Animation System**: Velocity-based bounce with acceleration phase (velocity: 0.05) and deceleration phase (velocity: -0.04)
+- **Responsive Design**: Automatic canvas resizing and camera aspect ratio adjustment on window resize events
+- **State Management**: Client-side counter display synchronized with server-side Redis storage
+- **Cross-Origin Textures**: TextureLoader with crossOrigin support for loading external assets
 
 #### Game Foundation (Implemented, Not Yet Integrated)
 
@@ -552,35 +577,11 @@ JetOni is currently a **3D interactive demo** that showcases the technical found
 
 ### What Makes This Demo Innovative
 
-1. **Reddit-Native 3D Graphics**: One of the first fully interactive 3D WebGL applications running directly within Reddit posts
+1. **Reddit-Native 3D Graphics**: One of the first fully interactive 3D WebGL applications running directly within Reddit posts using Three.js
 2. **Seamless Social Integration**: No external websites, downloads, or installations required - everything runs within Reddit's ecosystem
 3. **Real-time State Persistence**: Demonstrates server-side state management with Redis, showing the foundation for multiplayer gaming
-4. **Cross-Platform Compatibility**: Works seamlessly on desktop and mobile browsers without special configuration
+4. **Cross-Platform Compatibility**: Works seamlessly on desktop and mobile browsers with touch and mouse support
 5. **Foundation for Complex Gaming**: Proves the technical viability of building sophisticated 3D multiplayer games on Reddit
-
-### Technical Implementation
-
-#### Current Demo Architecture
-
-**Client-Side (Three.js):**
-- Complete 3D rendering pipeline with WebGL
-- PerspectiveCamera with 75° FOV and responsive aspect ratio
-- Raycasting for precise click detection on 3D objects
-- Smooth animation loop using requestAnimationFrame
-- Texture loading with proper encoding (sRGB for diffuse, Linear for normal/specular)
-- Dynamic bounce animation with velocity-based scaling
-
-**Server-Side (Devvit + Express):**
-- RESTful API endpoints (`/api/init`, `/api/increment`)
-- Redis integration for persistent counter storage
-- Reddit authentication and user context
-- JSON response formatting with TypeScript types
-
-**Key Technical Features:**
-- **Raycasting**: Converts 2D mouse coordinates to 3D ray for object intersection
-- **Texture Mapping**: Multiple texture layers (diffuse, normal, specular) for realistic appearance
-- **Animation System**: Velocity-based bounce with acceleration and deceleration
-- **Responsive Design**: Automatic canvas resizing and camera aspect ratio adjustment
 
 #### Game Foundation (Implemented, Not Yet Integrated)
 

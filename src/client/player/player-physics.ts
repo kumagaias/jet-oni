@@ -1,4 +1,3 @@
-import * as THREE from 'three';
 import { Vector3 } from '../../shared/types/game';
 import { GRAVITY, MAP_SIZE, WATER_SPEED_MULTIPLIER } from '../../shared/constants';
 

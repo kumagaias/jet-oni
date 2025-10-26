@@ -1,0 +1,1128 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JetOni Prototype</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Arial', sans-serif;
+      overflow: hidden;
+      background: #000;
+    }
+
+    #canvas-container {
+      width: 100vw;
+      height: 100vh;
+    }
+
+    #ui-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    #hud {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      color: white;
+      font-size: 16px;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+      pointer-events: none;
+    }
+
+    #jetpack-bar {
+      position: absolute;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 300px;
+      height: 30px;
+      background: rgba(0, 0, 0, 0.5);
+      border: 2px solid #fff;
+      border-radius: 15px;
+      overflow: hidden;
+    }
+
+    #jetpack-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #00ff88, #00ccff);
+      transition: width 0.1s;
+      width: 100%;
+    }
+
+    #controls {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      color: white;
+      font-size: 14px;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+      text-align: right;
+    }
+
+    #jetpack-button {
+      position: absolute;
+      bottom: 100px;
+      right: 30px;
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(135deg, #ff6600, #ff9900);
+      border: 4px solid #fff;
+      border-radius: 50%;
+      cursor: pointer;
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+      transition: transform 0.1s, box-shadow 0.1s;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    #jetpack-button:active {
+      transform: scale(0.95);
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+    }
+
+    #jetpack-button.disabled {
+      background: linear-gradient(135deg, #666, #888);
+      cursor: not-allowed;
+    }
+
+    #dash-button {
+      position: absolute;
+      bottom: 100px;
+      right: 30px;
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(135deg, #00ccff, #0088ff);
+      border: 4px solid #fff;
+      border-radius: 50%;
+      cursor: pointer;
+      pointer-events: auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+      transition: transform 0.1s, box-shadow 0.1s, background 0.3s;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+    
+    #dash-button.oni-mode {
+      background: linear-gradient(135deg, #ff6600, #ff9900);
+    }
+
+    #dash-button:active {
+      transform: scale(0.95);
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+    }
+
+    #dash-button.disabled {
+      background: linear-gradient(135deg, #666, #888);
+      cursor: not-allowed;
+    }
+
+    #beacon-button {
+      position: absolute;
+      bottom: 100px;
+      left: 30px;
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(135deg, #ffcc00, #ff9900);
+      border: 4px solid #fff;
+      border-radius: 50%;
+      cursor: pointer;
+      pointer-events: auto;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+      transition: transform 0.1s, box-shadow 0.1s;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+      overflow: hidden;
+    }
+
+    #beacon-button.visible {
+      display: flex;
+    }
+
+    #beacon-button:active {
+      transform: scale(0.95);
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+    }
+
+    #beacon-button.disabled {
+      background: linear-gradient(135deg, #666, #888);
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    #beacon-button.ready {
+      animation: beaconPulse 1s infinite;
+    }
+
+    @keyframes beaconPulse {
+      0%, 100% { 
+        box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+      }
+      50% { 
+        box-shadow: 0 0 30px rgba(255, 204, 0, 0.8);
+      }
+    }
+
+    #beacon-charge {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 0%;
+      background: rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+      transition: height 0.1s;
+      z-index: 1;
+      pointer-events: none;
+    }
+
+    #status {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      color: white;
+      font-size: 18px;
+      font-weight: bold;
+      padding: 10px 20px;
+      border-radius: 10px;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+    }
+
+    .oni {
+      background: rgba(255, 0, 0, 0.7);
+    }
+
+    .runner {
+      background: rgba(0, 255, 0, 0.7);
+    }
+
+    #timer {
+      position: absolute;
+      top: 70px;
+      right: 20px;
+      color: white;
+      font-size: 32px;
+      font-weight: bold;
+      padding: 15px 25px;
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.7);
+      border: 3px solid #fff;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+      font-family: 'Courier New', monospace;
+    }
+
+    #timer.warning {
+      color: #ff6600;
+      border-color: #ff6600;
+      animation: pulse 1s infinite;
+    }
+
+    #timer.critical {
+      color: #ff0000;
+      border-color: #ff0000;
+      animation: pulse 0.5s infinite;
+    }
+
+    #player-count {
+      position: absolute;
+      top: 130px;
+      right: 20px;
+      color: white;
+      font-size: 20px;
+      font-weight: bold;
+      padding: 12px 20px;
+      border-radius: 10px;
+      background: rgba(0, 0, 0, 0.7);
+      border: 3px solid #fff;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .count-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .count-icon {
+      font-size: 24px;
+    }
+
+    .count-number {
+      font-family: 'Courier New', monospace;
+      font-size: 22px;
+    }
+
+    .oni-count {
+      color: #ff6666;
+    }
+
+    .runner-count {
+      color: #66ff66;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+
+    #spotted-indicator {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #ff0000;
+      font-size: 28px;
+      font-weight: bold;
+      padding: 15px 30px;
+      border-radius: 15px;
+      background: rgba(255, 0, 0, 0.9);
+      border: 3px solid #fff;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+      display: none;
+      align-items: center;
+      gap: 10px;
+      animation: spotPulse 0.5s infinite;
+      z-index: 100;
+    }
+
+    #spotted-indicator.visible {
+      display: flex;
+    }
+
+    @keyframes spotPulse {
+      0%, 100% { 
+        transform: translateX(-50%) scale(1);
+        box-shadow: 0 0 20px rgba(255, 0, 0, 0.5);
+      }
+      50% { 
+        transform: translateX(-50%) scale(1.05);
+        box-shadow: 0 0 40px rgba(255, 0, 0, 0.8);
+      }
+    }
+
+    #toast-message {
+      position: absolute;
+      top: -100px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: white;
+      font-size: 24px;
+      font-weight: bold;
+      padding: 20px 40px;
+      border-radius: 15px;
+      background: rgba(0, 0, 0, 0.9);
+      border: 3px solid #fff;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+      z-index: 200;
+      transition: top 0.5s ease-out;
+      pointer-events: none;
+    }
+
+    #toast-message.show {
+      top: 80px;
+    }
+
+    #toast-message.oni-became {
+      background: rgba(255, 0, 0, 0.9);
+      border-color: #ff0000;
+    }
+
+    #toast-message.oni-tagged {
+      background: rgba(255, 165, 0, 0.9);
+      border-color: #ffa500;
+    }
+
+    #beacon-activation-effect {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 150;
+      display: none;
+    }
+
+    #beacon-activation-effect.active {
+      display: block;
+      animation: beaconFlash 0.5s ease-out;
+    }
+
+    @keyframes beaconFlash {
+      0% {
+        background: radial-gradient(circle, rgba(255, 204, 0, 0.8) 0%, rgba(255, 204, 0, 0) 70%);
+      }
+      100% {
+        background: radial-gradient(circle, rgba(255, 204, 0, 0) 0%, rgba(255, 204, 0, 0) 70%);
+      }
+    }
+
+    #beacon-activation-icon {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%) scale(0);
+      font-size: 120px;
+      z-index: 151;
+      pointer-events: none;
+      display: none;
+      filter: drop-shadow(0 0 20px rgba(255, 204, 0, 0.8));
+    }
+
+    #beacon-activation-icon.active {
+      display: block;
+      animation: beaconIconPop 1s ease-out;
+    }
+
+    @keyframes beaconIconPop {
+      0% {
+        transform: translate(-50%, -50%) scale(0) rotate(0deg);
+        opacity: 0;
+      }
+      50% {
+        transform: translate(-50%, -50%) scale(1.5) rotate(180deg);
+        opacity: 1;
+      }
+      100% {
+        transform: translate(-50%, -50%) scale(0.5) rotate(360deg);
+        opacity: 0;
+      }
+    }
+
+    #beacon-waves {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 100px;
+      height: 100px;
+      pointer-events: none;
+      z-index: 151;
+      display: none;
+    }
+
+    #beacon-waves.active {
+      display: block;
+    }
+
+    .beacon-wave {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border: 3px solid rgba(255, 204, 0, 0.8);
+      border-radius: 50%;
+      animation: beaconWaveExpand 1.5s ease-out;
+    }
+
+    .beacon-wave:nth-child(2) {
+      animation-delay: 0.3s;
+    }
+
+    .beacon-wave:nth-child(3) {
+      animation-delay: 0.6s;
+    }
+
+    @keyframes beaconWaveExpand {
+      0% {
+        transform: scale(0);
+        opacity: 1;
+      }
+      100% {
+        transform: scale(15);
+        opacity: 0;
+      }
+    }
+
+    #language-switcher {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      display: flex;
+      gap: 10px;
+      z-index: 1001;
+    }
+
+    .lang-btn {
+      padding: 10px 20px;
+      font-size: 16px;
+      font-weight: bold;
+      color: white;
+      background: rgba(255, 255, 255, 0.1);
+      border: 2px solid #fff;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .lang-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .lang-btn.active {
+      background: linear-gradient(135deg, #ff6600, #ff9900);
+      border-color: #ff6600;
+    }
+
+    #title-screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.9);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      pointer-events: auto;
+      overflow-y: auto;
+      padding: 20px;
+    }
+
+    #title-screen.hidden {
+      display: none;
+    }
+
+    #title-screen h1 {
+      color: #fff;
+      font-size: 72px;
+      margin-bottom: 60px;
+      text-shadow: 0 0 20px #ff6600;
+      font-weight: bold;
+    }
+
+    .menu-button {
+      width: 300px;
+      padding: 20px 40px;
+      margin: 15px;
+      font-size: 24px;
+      font-weight: bold;
+      color: white;
+      background: linear-gradient(135deg, #ff6600, #ff9900);
+      border: 3px solid #fff;
+      border-radius: 15px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+    }
+
+    .menu-button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 8px 25px rgba(255, 102, 0, 0.6);
+    }
+
+    .menu-button:active {
+      transform: scale(0.98);
+    }
+
+    #game-settings {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      max-width: 500px;
+      width: 90%;
+      background: rgba(0, 0, 0, 0.8);
+      padding: 40px;
+      border-radius: 20px;
+      border: 3px solid #ff6600;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    #game-settings.active {
+      display: flex;
+    }
+
+    .setting-group {
+      width: 100%;
+      margin: 20px 0;
+    }
+
+    .setting-group label {
+      color: #fff;
+      font-size: 20px;
+      font-weight: bold;
+      display: block;
+      margin-bottom: 10px;
+    }
+
+    .setting-options {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+
+    .option-btn {
+      padding: 10px 20px;
+      font-size: 18px;
+      color: #fff;
+      background: rgba(255, 255, 255, 0.1);
+      border: 2px solid #fff;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .option-btn:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    .option-btn.selected {
+      background: linear-gradient(135deg, #ff6600, #ff9900);
+      border-color: #ff6600;
+      box-shadow: 0 0 15px rgba(255, 102, 0, 0.6);
+    }
+
+    .back-button {
+      margin-top: 20px;
+      padding: 15px 40px;
+      font-size: 18px;
+      color: #fff;
+      background: rgba(255, 255, 255, 0.1);
+      border: 2px solid #fff;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    .back-button:hover {
+      background: rgba(255, 255, 255, 0.2);
+    }
+
+    #game-list {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      max-width: 600px;
+      width: 90%;
+      background: rgba(0, 0, 0, 0.8);
+      padding: 40px;
+      border-radius: 20px;
+      border: 3px solid #ff6600;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    #game-list.active {
+      display: flex;
+    }
+
+    .game-item {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.1);
+      border: 2px solid #fff;
+      border-radius: 10px;
+      padding: 20px;
+      margin: 10px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .game-info {
+      color: #fff;
+      text-align: left;
+      flex: 1;
+    }
+
+    .game-info h3 {
+      margin: 0 0 10px 0;
+      font-size: 20px;
+    }
+
+    .game-info p {
+      margin: 5px 0;
+      font-size: 14px;
+      opacity: 0.8;
+    }
+
+    .join-button {
+      padding: 15px 30px;
+      font-size: 18px;
+      font-weight: bold;
+      color: white;
+      background: linear-gradient(135deg, #00cc00, #00ff00);
+      border: 2px solid #fff;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .join-button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 5px 15px rgba(0, 255, 0, 0.5);
+    }
+
+    .join-button:disabled {
+      background: linear-gradient(135deg, #666, #888);
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    .join-button:disabled:hover {
+      transform: none;
+      box-shadow: none;
+    }
+
+    #game-end-screen {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.95);
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+      pointer-events: auto;
+      overflow-y: auto;
+      padding: 20px;
+    }
+
+    #game-end-screen.active {
+      display: flex;
+    }
+
+    #game-end-screen h1 {
+      color: #fff;
+      font-size: 64px;
+      margin-bottom: 40px;
+      text-shadow: 0 0 30px #ff6600;
+      font-weight: bold;
+    }
+
+    .results-container {
+      background: rgba(0, 0, 0, 0.8);
+      border: 3px solid #ff6600;
+      border-radius: 20px;
+      padding: 40px;
+      max-width: 600px;
+      width: 90%;
+      margin-bottom: 30px;
+    }
+
+    .results-title {
+      color: #fff;
+      font-size: 28px;
+      font-weight: bold;
+      margin-bottom: 30px;
+      text-align: center;
+      border-bottom: 2px solid #ff6600;
+      padding-bottom: 15px;
+    }
+
+    .player-result {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 15px 20px;
+      margin: 10px 0;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .player-result.winner {
+      background: rgba(255, 215, 0, 0.2);
+      border-color: #ffd700;
+      box-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
+    }
+
+    .player-name {
+      color: #fff;
+      font-size: 20px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .player-stats {
+      color: #fff;
+      font-size: 16px;
+      text-align: right;
+    }
+
+    .stat-label {
+      opacity: 0.7;
+      font-size: 14px;
+    }
+
+    .winner-crown {
+      font-size: 24px;
+      animation: bounce 1s infinite;
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-5px); }
+    }
+
+    .return-button {
+      padding: 20px 60px;
+      font-size: 24px;
+      font-weight: bold;
+      color: white;
+      background: linear-gradient(135deg, #ff6600, #ff9900);
+      border: 3px solid #fff;
+      border-radius: 15px;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.5);
+    }
+
+    .return-button:hover {
+      transform: scale(1.05);
+      box-shadow: 0 8px 25px rgba(255, 102, 0, 0.6);
+    }
+
+    .return-button:active {
+      transform: scale(0.98);
+    }
+
+    #stats-screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      max-width: 600px;
+      width: 90%;
+      background: rgba(0, 0, 0, 0.8);
+      padding: 40px;
+      border-radius: 20px;
+      border: 3px solid #ff6600;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    #stats-screen.active {
+      display: flex;
+    }
+
+    #stats-screen h2 {
+      color: #fff;
+      font-size: 36px;
+      margin-bottom: 30px;
+      text-shadow: 0 0 20px #ff6600;
+    }
+
+    .stat-item {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.1);
+      border: 2px solid #fff;
+      border-radius: 15px;
+      padding: 20px 30px;
+      margin: 10px 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .stat-label {
+      color: #fff;
+      font-size: 24px;
+      font-weight: bold;
+      display: flex;
+      align-items: center;
+    }
+
+    .stat-value {
+      color: #ffd700;
+      font-size: 32px;
+      font-weight: bold;
+      font-family: 'Courier New', monospace;
+    }
+
+    .stat-icon {
+      font-size: 36px;
+      margin-right: 15px;
+    }
+
+    .reset-stats-btn {
+      margin-top: 20px;
+      padding: 12px 30px;
+      font-size: 16px;
+      color: #fff;
+      background: rgba(255, 0, 0, 0.3);
+      border: 2px solid #ff6666;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .reset-stats-btn:hover {
+      background: rgba(255, 0, 0, 0.5);
+    }
+
+    #lobby-message {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.9);
+      border: 3px solid #ff6600;
+      border-radius: 20px;
+      padding: 40px 60px;
+      text-align: center;
+      display: none;
+      z-index: 100;
+    }
+
+    #lobby-message.active {
+      display: block;
+    }
+
+    #lobby-message h2 {
+      color: #fff;
+      font-size: 36px;
+      margin-bottom: 20px;
+      text-shadow: 0 0 20px #ff6600;
+    }
+
+    #lobby-message p {
+      color: #fff;
+      font-size: 20px;
+      margin: 10px 0;
+    }
+
+    #lobby-message .host-instruction {
+      color: #ffd700;
+      font-size: 24px;
+      font-weight: bold;
+      margin-top: 20px;
+      animation: pulse 1.5s infinite;
+    }
+  </style>
+</head>
+<body>
+  <div id="title-screen">
+    <div id="language-switcher">
+      <button class="lang-btn active" data-lang="en">EN</button>
+      <button class="lang-btn" data-lang="jp">JP</button>
+    </div>
+    <h1 data-i18n="gameTitle">JET ONI</h1>
+    <button class="menu-button" id="start-game" data-i18n="joinGame">Join Game</button>
+    <button class="menu-button" id="create-game" data-i18n="createGame">Create Game</button>
+    <button class="menu-button" id="view-stats">📊 Statistics</button>
+    
+    <div id="game-list">
+      <h2 style="color: #fff; margin-bottom: 30px;" data-i18n="gameList">Game List</h2>
+      <div id="games-container" style="max-height: 400px; overflow-y: auto; width: 100%;">
+        <!-- Games will be inserted here -->
+      </div>
+      <button class="back-button" id="back-from-list" data-i18n="back">Back</button>
+    </div>
+    
+    <div id="game-settings">
+      <h2 style="color: #fff; margin-bottom: 30px;" data-i18n="gameSettings">Game Settings</h2>
+      
+      <div class="setting-group">
+        <label data-i18n="players">Total Players</label>
+        <div class="setting-options">
+          <button class="option-btn selected" data-setting="players" data-value="4">4</button>
+          <button class="option-btn" data-setting="players" data-value="6">6</button>
+          <button class="option-btn" data-setting="players" data-value="8">8</button>
+          <button class="option-btn" data-setting="players" data-value="10">10</button>
+          <button class="option-btn" data-setting="players" data-value="15">15</button>
+          <button class="option-btn" data-setting="players" data-value="20">20</button>
+        </div>
+        <p style="color: #aaa; font-size: 14px; margin-top: 10px;">
+          (1 Human + AI Players)
+        </p>
+      </div>
+      
+      <div class="setting-group">
+        <label data-i18n="time">Time</label>
+        <div class="setting-options">
+          <button class="option-btn selected" data-setting="time" data-value="3"><span>3</span><span data-i18n="minutes">min</span></button>
+          <button class="option-btn" data-setting="time" data-value="5"><span>5</span><span data-i18n="minutes">min</span></button>
+        </div>
+      </div>
+      
+      <div class="setting-group">
+        <label data-i18n="rounds">Rounds</label>
+        <div class="setting-options">
+          <button class="option-btn selected" data-setting="rounds" data-value="1">1</button>
+          <button class="option-btn" data-setting="rounds" data-value="3">3</button>
+          <button class="option-btn" data-setting="rounds" data-value="5">5</button>
+        </div>
+      </div>
+      
+      <button class="menu-button" id="start-with-settings" data-i18n="startGame">Start Game</button>
+      <button class="back-button" id="back-to-menu" data-i18n="back">Back</button>
+    </div>
+    
+    <div id="stats-screen">
+      <h2>📊 Statistics</h2>
+      
+      <div class="stat-item">
+        <div class="stat-label">
+          <span class="stat-icon">🎮</span>
+          <span>Games Played</span>
+        </div>
+        <div class="stat-value" id="stat-games-played">0</div>
+      </div>
+      
+      <div class="stat-item">
+        <div class="stat-label">
+          <span class="stat-icon">🏆</span>
+          <span>Wins (Escaped)</span>
+        </div>
+        <div class="stat-value" id="stat-wins">0</div>
+      </div>
+      
+      <div class="stat-item">
+        <div class="stat-label">
+          <span class="stat-icon">👹</span>
+          <span>Losses (Tagged)</span>
+        </div>
+        <div class="stat-value" id="stat-losses">0</div>
+      </div>
+      
+      <div class="stat-item">
+        <div class="stat-label">
+          <span class="stat-icon">📈</span>
+          <span>Win Rate</span>
+        </div>
+        <div class="stat-value" id="stat-win-rate">0%</div>
+      </div>
+      
+      <button class="reset-stats-btn" id="reset-stats">Reset Statistics</button>
+      <button class="back-button" id="back-from-stats">Back</button>
+    </div>
+  </div>
+  <div id="game-end-screen">
+    <h1 data-i18n="gameOver">GAME OVER</h1>
+    <div class="results-container">
+      <div class="results-title" data-i18n="results">Results</div>
+      <div id="results-list">
+        <!-- Results will be inserted here -->
+      </div>
+    </div>
+    <button class="return-button" id="return-to-menu" data-i18n="returnToMenu">Return to Menu</button>
+  </div>
+  <div id="canvas-container"></div>
+  <div id="oni-overlay" style="
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 0, 0, 0.15);
+    pointer-events: none;
+    display: none;
+    z-index: 5;
+  "></div>
+  <div id="ui-overlay">
+    <div id="hud">
+      <div>Position: <span id="position">0, 0, 0</span></div>
+      <div>Speed: <span id="speed">0</span></div>
+      <div id="oni-info" style="margin-top: 10px; color: #ff6666;">
+        <div>Oni: <span id="oni-name">-</span></div>
+        <div>Oni Position: <span id="oni-position">-</span></div>
+      </div>
+      <div id="ai-players-info" style="margin-top: 10px; color: #88ccff;">
+        <div style="font-weight: bold; margin-bottom: 5px;">AI Players:</div>
+        <div id="ai-list"></div>
+      </div>
+    </div>
+    <div id="status" class="runner" data-i18n="runner">RUNNER</div>
+    <div id="timer">3:00</div>
+    <div id="player-count">
+      <div class="count-row">
+        <span class="count-icon">👹</span>
+        <span class="count-number oni-count" id="oni-count">1</span>
+      </div>
+      <div class="count-row">
+        <span class="count-icon">🏃</span>
+        <span class="count-number runner-count" id="runner-count">4</span>
+      </div>
+    </div>
+    <div id="spotted-indicator">
+      <span>👁️</span>
+      <span data-i18n="spotted">SPOTTED!</span>
+    </div>
+    <div id="lobby-message">
+      <h2>🎮 Lobby 🎮</h2>
+      <p>Waiting for players...</p>
+      <p id="lobby-player-count">Players: 1 / 4</p>
+      <p class="host-instruction">Press SPACE to start game</p>
+    </div>
+    <div id="toast-message"></div>
+    <div id="beacon-activation-effect"></div>
+    <div id="beacon-activation-icon">📡</div>
+    <div id="beacon-waves">
+      <div class="beacon-wave"></div>
+      <div class="beacon-wave"></div>
+      <div class="beacon-wave"></div>
+    </div>
+    <div id="ability-bar" style="
+      position: absolute;
+      bottom: 40px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 300px;
+      height: 30px;
+      background: rgba(0, 0, 0, 0.5);
+      border: 2px solid #fff;
+      border-radius: 15px;
+      overflow: hidden;
+    ">
+      <div id="ability-fill" style="
+        height: 100%;
+        background: linear-gradient(90deg, #00ff88, #00ccff);
+        transition: width 0.1s;
+        width: 100%;
+      "></div>
+    </div>
+    <button id="dash-button">⚡</button>
+    <button id="beacon-button">
+      <span style="font-size: 40px; position: relative; z-index: 2;">📡</span>
+      <div id="beacon-charge"></div>
+    </button>
+    <div id="controls">
+      <div data-i18n="controls.move">WASD: Move</div>
+      <div data-i18n="controls.jump">SPACE: Jump</div>
+      <div data-i18n="controls.dash">SHIFT: Dash</div>
+      <div data-i18n="controls.look">Mouse: Look Around</div>
+      <div data-i18n="controls.devMode">F3: Dev Mode</div>
+    </div>
+  </div>
+  <script type="module" src="/main.js"></script>
+</body>
+</html>

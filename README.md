@@ -4,13 +4,13 @@
 [![CodeQL](https://github.com/YOUR_USERNAME/jet-oni/actions/workflows/codeql.yml/badge.svg)](https://github.com/YOUR_USERNAME/jet-oni/actions/workflows/codeql.yml)
 [![GitLeaks](https://github.com/YOUR_USERNAME/jet-oni/actions/workflows/gitleaks.yml/badge.svg)](https://github.com/YOUR_USERNAME/jet-oni/actions/workflows/gitleaks.yml)
 
-A multiplayer 3D tag game built with Three.js and Devvit, running directly on Reddit. Players navigate a futuristic city environment in first-person view, chasing or evading each other in an intense game of tag with jetpacks, dash abilities, and strategic beacon powers.
+A multiplayer 3D tag game built with Three.js and Devvit, running directly on Reddit. Players will navigate a futuristic city environment in first-person view, chasing or evading each other in an intense game of tag with jetpacks, dash abilities, and strategic beacon powers.
 
 ## What is JetOni?
 
 JetOni (ジェット鬼) is an immersive 3D multiplayer tag game where one player starts as the "ONI" (demon/鬼) and must tag other players to convert them. The last player remaining untagged wins! The game combines traditional Japanese tag games with futuristic parkour mechanics in a fully 3D urban environment.
 
-### Key Features
+### Key Features (Planned)
 
 - **First-Person 3D Gameplay**: Experience the thrill of chase and escape from a first-person perspective with full 360° camera control
 - **Procedurally Generated City**: Navigate through a massive city with 60+ buildings, 40+ houses, roads, rivers, and bridges spanning a 400x400 unit map
@@ -66,33 +66,85 @@ JetOni (ジェット鬼) is an immersive 3D multiplayer tag game where one playe
 - **Real-time State Management**: Efficient game state synchronization with 20 updates/second
 - **Persistent Statistics**: Track wins, losses, survival times, and win rates across sessions
 
-## How to Play
+## Current Implementation
 
-### Getting Started
+### What You Can Do Now
 
-1. **Launch the Game**
+JetOni is currently a **3D interactive demo** that showcases the foundation for the planned multiplayer tag game. The current implementation includes:
+
+**Interactive Demo:**
+- **3D Earth Visualization**: A beautifully rendered Earth sphere with realistic textures (atmosphere, normal maps, and specular highlights)
+- **Starfield Background**: 200 procedurally placed stars creating an immersive space environment
+- **Click Interaction**: Click anywhere on the Earth to trigger a gentle bounce animation and increment the counter
+- **Reddit Integration**: Personalized greeting using your Reddit username
+- **Real-time Counter**: Server-side counter persistence using Redis, demonstrating client-server communication
+- **Responsive Design**: Fully responsive layout that works on desktop and mobile devices
+
+**Game Foundation (Implemented):**
+- **Game Engine**: Complete Three.js scene setup with camera, lighting, and rendering pipeline
+- **Game State Management**: Core game state classes for managing players, fuel, positions, and game phases
+- **City Generator**: Procedural city generation system with buildings, houses, roads, rivers, and bridges
+- **Dynamic Objects**: Cars, pedestrians, and ladders with animations
+- **i18n System**: Complete bilingual support (English/Japanese) with localStorage persistence
+- **Type Definitions**: Comprehensive TypeScript interfaces for game state, players, and API
+- **Constants**: All game constants defined (speeds, fuel rates, map size, etc.)
+- **Testing Infrastructure**: Vitest setup with comprehensive tests for game state, i18n, and game engine
+
+### How to Play (Current Demo)
+
+1. **Launch the App**
    - Find a JetOni post on Reddit
-   - Click the "Play" button on the splash screen
-   - Game opens in full-screen mode
+   - Click the "Play" button to open the app in full-screen mode
+   - The app loads with a personalized greeting using your Reddit username
 
-2. **Create or Join a Game**
-   - **Create Game**: Host a new game session
-     - Select player count: 4, 6, 8, 10, 15, or 20 players
-     - Choose round duration: 3 or 5 minutes
-     - Set number of rounds: 1, 3, or 5 rounds
-   - **Join Game**: Browse and join existing games
-     - View available games with player counts and settings
-     - Join any game that isn't full
-   - **Language**: Switch between English (EN) and Japanese (JP) anytime
+2. **Interact with the Earth**
+   - **Click anywhere on the Earth sphere** to interact
+   - Each click triggers a satisfying bounce animation
+   - The counter increments with each click
+   - Your clicks are saved to the server in real-time
 
-3. **Lobby Phase**
-   - Wait for players to join your game
-   - AI players automatically fill remaining slots
-   - Host presses **SPACE** to start when ready
-   - One random player is assigned as ONI (red marker)
-   - All other players become runners (green markers)
+3. **Explore the Scene**
+   - Watch the Earth slowly rotate on its axis
+   - Observe the realistic lighting and shadows on the planet surface
+   - Notice the starfield in the background creating depth
 
-### Controls
+4. **Access Resources**
+   - Click **"Docs"** to view Devvit documentation
+   - Click **"r/Devvit"** to visit the Devvit community
+   - Click **"Discord"** to join the Devvit Discord server
+
+### What Makes This Innovative
+
+1. **Reddit-Native 3D Experience**: One of the first fully interactive 3D applications running directly within Reddit posts using the Devvit platform
+2. **WebGL in Social Media**: Brings high-quality 3D graphics to a social media platform, opening new possibilities for interactive content
+3. **Seamless Integration**: No external websites or downloads required - everything runs within Reddit's ecosystem
+4. **Foundation for Multiplayer Gaming**: Demonstrates the technical foundation for building complex multiplayer 3D games on Reddit
+5. **Cross-Platform Compatibility**: Works seamlessly on desktop browsers and mobile devices without any special configuration
+
+### Technical Implementation
+
+**Current Demo Features:**
+- **Three.js Scene Setup**: Complete 3D rendering pipeline with camera, lighting, and materials
+- **Texture Mapping**: Earth textures including diffuse, normal, and specular maps for realistic appearance
+- **Raycasting**: Precise click detection on 3D objects using Three.js raycasting
+- **Animation System**: Smooth rotation and bounce animations using requestAnimationFrame
+- **Devvit Integration**: Server-side API endpoints with Reddit authentication
+
+**Game Foundation (Ready for Integration):**
+- **Game Engine (`src/client/game/game-engine.ts`)**: Scene management, camera, renderer, and game loop
+- **Game State (`src/client/game/game-state.ts`)**: Player state, fuel management, position tracking, and game phases
+- **City Generator (`src/client/environment/city-generator.ts`)**: Procedural city with 60+ buildings, 40+ houses, roads, rivers, and bridges
+- **Dynamic Objects (`src/client/environment/dynamic-objects.ts`)**: Animated cars, pedestrians, and ladders
+- **i18n System (`src/client/i18n/`)**: Complete bilingual support with translation files and UI integration
+- **Type Definitions (`src/shared/types/`)**: Comprehensive interfaces for game state, players, and API
+- **Constants (`src/shared/constants.ts`)**: All game parameters (speeds, fuel rates, map size, etc.)
+- **Testing Infrastructure**: Vitest with comprehensive tests (game state, i18n, game engine, city generator)
+- **Project Structure**: Organized monorepo with client, server, and shared code
+- **Build System**: Vite-based build pipeline optimized for both client and server
+
+## Planned Gameplay
+
+### Controls (Coming Soon)
 
 #### Desktop Controls
 
@@ -122,7 +174,7 @@ JetOni (ジェット鬼) is an immersive 3D multiplayer tag game where one playe
 - **On-screen beacon button** - Activate beacon (ONI only)
 - Buttons automatically adapt based on your role
 
-### Gameplay Guide
+### Gameplay Guide (Coming Soon)
 
 #### Playing as ONI (Demon/鬼)
 
@@ -279,6 +331,124 @@ The game tracks your performance across all sessions:
 - **Average Survival**: Mean survival time per game
 
 Statistics are stored locally and persist across sessions.
+
+## Current Implementation
+
+### What You Can Do Now
+
+JetOni is currently a **3D interactive demo** that showcases the foundation for the planned multiplayer tag game. The current implementation includes:
+
+**Interactive Demo:**
+- **3D Earth Visualization**: A beautifully rendered Earth sphere with realistic textures (atmosphere, normal maps, and specular highlights)
+- **Starfield Background**: 200 procedurally placed stars creating an immersive space environment
+- **Click Interaction**: Click anywhere on the Earth to trigger a gentle bounce animation and increment the counter
+- **Reddit Integration**: Personalized greeting using your Reddit username
+- **Real-time Counter**: Server-side counter persistence using Redis, demonstrating client-server communication
+- **Responsive Design**: Fully responsive layout that works on desktop and mobile devices
+
+**Game Foundation (Implemented):**
+- **Game Engine**: Complete Three.js scene setup with camera, lighting, and rendering pipeline
+- **Game State Management**: Core game state classes for managing players, fuel, positions, and game phases
+- **City Generator**: Procedural city generation system with buildings, houses, roads, rivers, and bridges
+- **Dynamic Objects**: Cars, pedestrians, and ladders with animations
+- **i18n System**: Complete bilingual support (English/Japanese) with localStorage persistence
+- **Type Definitions**: Comprehensive TypeScript interfaces for game state, players, and API
+- **Constants**: All game constants defined (speeds, fuel rates, map size, etc.)
+- **Testing Infrastructure**: Vitest setup with comprehensive tests for game state, i18n, and game engine
+
+### How to Play (Current Demo)
+
+1. **Launch the App**
+   - Find a JetOni post on Reddit
+   - Click the "Play" button to open the app in full-screen mode
+   - The app loads with a personalized greeting using your Reddit username
+
+2. **Interact with the Earth**
+   - **Click anywhere on the Earth sphere** to interact
+   - Each click triggers a satisfying bounce animation
+   - The counter increments with each click
+   - Your clicks are saved to the server in real-time
+
+3. **Explore the Scene**
+   - Watch the Earth slowly rotate on its axis
+   - Observe the realistic lighting and shadows on the planet surface
+   - Notice the starfield in the background creating depth
+
+4. **Access Resources**
+   - Click **"Docs"** to view Devvit documentation
+   - Click **"r/Devvit"** to visit the Devvit community
+   - Click **"Discord"** to join the Devvit Discord server
+
+### What Makes This Innovative
+
+1. **Reddit-Native 3D Experience**: One of the first fully interactive 3D applications running directly within Reddit posts using the Devvit platform
+2. **WebGL in Social Media**: Brings high-quality 3D graphics to a social media platform, opening new possibilities for interactive content
+3. **Seamless Integration**: No external websites or downloads required - everything runs within Reddit's ecosystem
+4. **Foundation for Multiplayer Gaming**: Demonstrates the technical foundation for building complex multiplayer 3D games on Reddit
+5. **Cross-Platform Compatibility**: Works seamlessly on desktop browsers and mobile devices without any special configuration
+
+### Technical Implementation
+
+**Current Demo Features:**
+- **Three.js Scene Setup**: Complete 3D rendering pipeline with camera, lighting, and materials
+- **Texture Mapping**: Earth textures including diffuse, normal, and specular maps for realistic appearance
+- **Raycasting**: Precise click detection on 3D objects using Three.js raycasting
+- **Animation System**: Smooth rotation and bounce animations using requestAnimationFrame
+- **Devvit Integration**: Server-side API endpoints with Reddit authentication
+
+**Game Foundation (Ready for Integration):**
+- **Game Engine (`src/client/game/game-engine.ts`)**: Scene management, camera, renderer, and game loop
+- **Game State (`src/client/game/game-state.ts`)**: Player state, fuel management, position tracking, and game phases
+- **City Generator (`src/client/environment/city-generator.ts`)**: Procedural city with 60+ buildings, 40+ houses, roads, rivers, and bridges
+- **Dynamic Objects (`src/client/environment/dynamic-objects.ts`)**: Animated cars, pedestrians, and ladders
+- **i18n System (`src/client/i18n/`)**: Complete bilingual support with translation files and UI integration
+- **Type Definitions (`src/shared/types/`)**: Comprehensive interfaces for game state, players, and API
+- **Constants (`src/shared/constants.ts`)**: All game parameters (speeds, fuel rates, map size, etc.)
+- **Testing Infrastructure**: Vitest with comprehensive tests (game state, i18n, game engine, city generator)
+- **Project Structure**: Organized monorepo with client, server, and shared code
+- **Build System**: Vite-based build pipeline optimized for both client and server
+
+### Development Roadmap
+
+The following features are planned for the full JetOni game (see `.kiro/specs/jetoni/tasks.md` for detailed roadmap):
+
+**Phase 1 - Foundation (✅ Complete)**
+- ✅ Project structure and build system
+- ✅ Shared type definitions and constants
+- ✅ i18n system with English and Japanese support
+- ✅ Three.js scene and game engine initialization
+- ✅ Game state management
+- ✅ City generation system with dynamic objects
+- ✅ Testing infrastructure (game state, i18n, game engine, city generator)
+
+**Phase 2 - Player Mechanics (Next)**
+- Player physics and collision detection
+- First-person controls with WASD movement and mouse look
+- Jetpack flight for ONI players (vertical mobility)
+- Dash ability for Runner players (horizontal speed boost)
+- Jump mechanics for Runner players
+- Fuel management system with context-aware regeneration
+
+**Phase 3 - Gameplay Systems (Planned)**
+- Tag mechanics with role switching (ONI ↔ Runner)
+- Beacon tracking system for ONI players
+- AI-powered opponent players with behavior trees
+- Camera system (first-person and third-person for ladders)
+- Visual indicators and particle effects
+
+**Phase 4 - UI & Polish (Planned)**
+- Complete menu system (title screen, game settings, lobby)
+- In-game HUD (timer, fuel gauge, player count)
+- Results screen with statistics
+- Mobile touch controls
+- Game timer and end conditions
+
+**Phase 5 - Multiplayer (Planned)**
+- Server API for game management
+- Real-time multiplayer synchronization
+- Lobby system with matchmaking
+- Persistent player statistics with Redis
+- Leaderboards
 
 ## Development
 

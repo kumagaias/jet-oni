@@ -39,6 +39,14 @@ export default defineConfig([
     },
   },
   {
+    extends: [js.configs.recommended, ...tseslint.configs.recommended],
+    files: ['src/client/**/*.test.{ts,tsx}'],
+    languageOptions: {
+      ecmaVersion: 2023,
+      globals: { ...globals.browser, ...globals.node },
+    },
+  },
+  {
     files: ['**/*.{js,mjs,cjs,ts,tsx}'],
     rules: {
       '@typescript-eslint/no-floating-promises': 'error',
@@ -55,7 +63,7 @@ export default defineConfig([
     ],
     languageOptions: {
       parserOptions: {
-        project: ['./tsconfig.json', './src/*/tsconfig.json'],
+        project: ['./tsconfig.json', './src/*/tsconfig.json', './src/*/tsconfig.test.json'],
         tsconfigRootDir: import.meta.dirname,
       },
     },

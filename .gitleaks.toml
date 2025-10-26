@@ -1,0 +1,40 @@
+# GitLeaks configuration file
+# https://github.com/gitleaks/gitleaks
+
+title = "Jet-Oni GitLeaks Configuration"
+
+# Extend default rules
+[extend]
+useDefault = true
+
+# Custom allowlist for false positives
+[allowlist]
+description = "Allowlist for known false positives"
+
+# Allowlist specific paths
+paths = [
+  '''node_modules/''',
+  '''dist/''',
+  '''\.git/''',
+  '''package-lock\.json''',
+]
+
+# Allowlist specific commits (if needed)
+# commits = [
+#   "commit-hash-here",
+# ]
+
+# Allowlist specific regexes
+regexes = [
+  # Example: Allow test API keys with specific pattern
+  '''test[_-]?api[_-]?key''',
+  '''mock[_-]?token''',
+  '''dummy[_-]?secret''',
+]
+
+# Custom rules (optional)
+# [[rules]]
+# id = "custom-rule-1"
+# description = "Custom rule description"
+# regex = '''your-regex-pattern'''
+# tags = ["custom", "security"]

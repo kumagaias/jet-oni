@@ -1,5 +1,9 @@
 # JetOni - 3D Tag Game on Reddit
 
+[![CI/CD Pipeline](https://github.com/YOUR_USERNAME/jet-oni/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_USERNAME/jet-oni/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/YOUR_USERNAME/jet-oni/actions/workflows/codeql.yml/badge.svg)](https://github.com/YOUR_USERNAME/jet-oni/actions/workflows/codeql.yml)
+[![GitLeaks](https://github.com/YOUR_USERNAME/jet-oni/actions/workflows/gitleaks.yml/badge.svg)](https://github.com/YOUR_USERNAME/jet-oni/actions/workflows/gitleaks.yml)
+
 A multiplayer 3D tag game built with Three.js and Devvit, running directly on Reddit. Players navigate a futuristic city environment in first-person view, chasing or evading each other in an intense game of tag with jetpacks, dash abilities, and strategic beacon powers.
 
 ## What is JetOni?
@@ -339,6 +343,31 @@ src/
 - **[Express](https://expressjs.com/)**: Backend API server
 - **[Redis](https://redis.io/)**: Data persistence (via Devvit)
 
+## Security
+
+This project implements multiple security measures to protect against vulnerabilities:
+
+### Automated Security Scanning
+
+- **GitLeaks**: Scans for secrets and credentials in code and git history
+- **CodeQL**: Analyzes code for security vulnerabilities
+- **Dependency Check**: Monitors npm packages for known vulnerabilities
+- **CI/CD Pipeline**: All security checks run automatically on every push and pull request
+
+### Security Best Practices
+
+- No secrets or API keys committed to repository
+- All sensitive data stored in GitHub Secrets
+- Regular dependency updates via Dependabot
+- Branch protection rules enforced on main branch
+
+### Reporting Security Issues
+
+If you discover a security vulnerability, please report it privately:
+1. Do not create a public GitHub issue
+2. Contact the maintainers directly
+3. Provide detailed information about the vulnerability
+
 ## Contributing
 
 1. Fork the repository
@@ -346,6 +375,8 @@ src/
 3. Make your changes
 4. Run tests: `make test`
 5. Create a pull request: `make pr`
+
+All contributions must pass security scans before being merged.
 
 ## License
 

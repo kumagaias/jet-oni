@@ -1,8 +1,24 @@
-.PHONY: test deploy deploy-quick build clean pr install dev
+.PHONY: test deploy deploy-quick build clean pr install dev security-check gitleaks
 
 # Run all tests
 test:
 	npm test
+
+# Run security checks
+security-check: gitleaks
+	@echo "Running security checks..."
+	npm audit --audit-level=moderate
+
+# Run GitLeaks scan
+gitleaks:
+	@echo "Scanning for secrets with GitLeaks..."
+	@if command -v gitleaks >/dev/null 2>&1; then \
+		gitleaks detect --verbose --no-git; \
+	else \
+		echo "GitLeaks not installed. Install with:"; \
+		echo "  brew install gitleaks  (macOS)"; \
+		echo "  Or download from: https://github.com/gitleaks/gitleaks/releases"; \
+	fi
 
 # Build the project
 build:
@@ -38,9 +54,9 @@ pr: test
 	echo "Creating pull request..."; \
 	gh pr create --title "$$title" --body "## Summary\n$$title\n\n## Testing\n- [x] All tests pass\n- [x] Type check passes\n- [x] Build succeeds" --base main
 
-# Deploy to Devvit (runs tests first)
-deploy: test
-	@echo "All tests passed. Deploying..."
+# Deploy to Devvit (runs tests and security checks first)
+deploy: test security-check
+	@echo "All tests and security checks passed. Deploying..."
 	git add .
 	git commit -m "Deploy: $(shell date '+%Y-%m-%d %H:%M:%S')"
 	git push

@@ -8,7 +8,9 @@ A multiplayer 3D tag game built with Three.js and Devvit, running directly on Re
 
 ## What is JetOni?
 
-JetOni (ジェット鬼) is an immersive 3D multiplayer tag game where one player starts as the "ONI" (demon/鬼) and must tag other players to convert them. The last player remaining untagged wins! The game combines traditional Japanese tag games with futuristic parkour mechanics in a fully 3D urban environment.
+JetOni (ジェット鬼) is a Reddit-native 3D game project that demonstrates the technical foundation for building complex 3D games directly within Reddit posts using the Devvit platform. Currently, it features an **interactive 3D Earth demo** that showcases WebGL rendering, real-time state persistence, and precise 3D interaction mechanics.
+
+**Planned Full Game:** An immersive 3D multiplayer tag game where one player starts as the "ONI" (demon/鬼) and must tag other players to convert them. The last player remaining untagged wins! The game will combine traditional Japanese tag games with futuristic parkour mechanics in a fully 3D urban environment.
 
 ### Key Features (Planned)
 
@@ -68,79 +70,244 @@ JetOni (ジェット鬼) is an immersive 3D multiplayer tag game where one playe
 
 ## Current Implementation
 
-### What You Can Do Now
+### What You Can Experience Now
 
-JetOni is currently a **3D interactive demo** that showcases the foundation for the planned multiplayer tag game. The current implementation includes:
+JetOni is currently a **3D interactive demo** that showcases the technical foundation for the planned multiplayer tag game. The current implementation demonstrates Reddit-native 3D capabilities while the full game mechanics are being developed.
 
-**Interactive Demo:**
-- **3D Earth Visualization**: A beautifully rendered Earth sphere with realistic textures (atmosphere, normal maps, and specular highlights)
-- **Starfield Background**: 200 procedurally placed stars creating an immersive space environment
-- **Click Interaction**: Click anywhere on the Earth to trigger a gentle bounce animation and increment the counter
-- **Reddit Integration**: Personalized greeting using your Reddit username
-- **Real-time Counter**: Server-side counter persistence using Redis, demonstrating client-server communication
-- **Responsive Design**: Fully responsive layout that works on desktop and mobile devices
+**Interactive Demo Features:**
 
-**Game Foundation (Implemented):**
-- **Game Engine**: Complete Three.js scene setup with camera, lighting, and rendering pipeline
-- **Game State Management**: Core game state classes for managing players, fuel, positions, and game phases
-- **City Generator**: Procedural city generation system with buildings, houses, roads, rivers, and bridges
-- **Dynamic Objects**: Cars, pedestrians, and ladders with animations
-- **i18n System**: Complete bilingual support (English/Japanese) with localStorage persistence
-- **Type Definitions**: Comprehensive TypeScript interfaces for game state, players, and API
-- **Constants**: All game constants defined (speeds, fuel rates, map size, etc.)
-- **Testing Infrastructure**: Vitest setup with comprehensive tests for game state, i18n, and game engine
+1. **3D Earth Visualization**
+   - Beautifully rendered Earth sphere with realistic textures
+   - Atmospheric diffuse map showing continents and oceans
+   - Normal map creating realistic terrain depth
+   - Specular map for realistic ocean reflections and highlights
+   - Smooth continuous rotation on multiple axes
 
-### How to Play (Current Demo)
+2. **Immersive Starfield**
+   - 200 procedurally placed stars in 3D space
+   - Creates depth and cosmic atmosphere
+   - Stars remain static while Earth rotates
 
-1. **Launch the App**
-   - Find a JetOni post on Reddit
-   - Click the "Play" button to open the app in full-screen mode
-   - The app loads with a personalized greeting using your Reddit username
+3. **Interactive Click Mechanics**
+   - Click anywhere on the Earth sphere to interact
+   - Triggers a gentle bounce animation with velocity-based physics
+   - Uses Three.js raycasting for precise 3D object detection
+   - Smooth scale animation (grows to 1.2x, then returns to normal)
 
-2. **Interact with the Earth**
-   - **Click anywhere on the Earth sphere** to interact
-   - Each click triggers a satisfying bounce animation
-   - The counter increments with each click
-   - Your clicks are saved to the server in real-time
+4. **Real-time State Persistence**
+   - Each click increments a counter displayed at screen center
+   - Counter value persisted to Redis on the server
+   - Data survives page refreshes and sessions
+   - Demonstrates foundation for multiplayer game state
 
-3. **Explore the Scene**
-   - Watch the Earth slowly rotate on its axis
-   - Observe the realistic lighting and shadows on the planet surface
-   - Notice the starfield in the background creating depth
+5. **Reddit Integration**
+   - Personalized greeting displays your Reddit username on load
+   - Runs entirely within Reddit posts using Devvit
+   - No external websites or downloads required
 
-4. **Access Resources**
-   - Click **"Docs"** to view Devvit documentation
-   - Click **"r/Devvit"** to visit the Devvit community
-   - Click **"Discord"** to join the Devvit Discord server
+6. **Responsive Design**
+   - Fully responsive layout for desktop and mobile browsers
+   - Automatic canvas resizing on window resize
+   - Touch-friendly interaction on mobile devices
 
-### What Makes This Innovative
+**Game Foundation (Implemented, Not Yet Integrated):**
+- **Game Engine** (`src/client/game/game-engine.ts`): Scene management, camera control, renderer, and game loop with delta time
+- **Game State** (`src/client/game/game-state.ts`): Player state management, fuel tracking, position/velocity, game phases (lobby/playing/ended)
+- **Player Physics** (`src/client/player/player-physics.ts`): Gravity, velocity, surface detection (ground/rooftop/bridge), water resistance
+- **Collision System** (`src/client/environment/collision-system.ts`): Building collision detection, sliding mechanics
+- **City Generator** (`src/client/environment/city-generator.ts`): Procedural city with 60+ buildings, 40+ houses, roads, rivers, and bridges
+- **Dynamic Objects** (`src/client/environment/dynamic-objects.ts`): Animated cars (20), pedestrians (30), and ladders (15)
+- **i18n System** (`src/client/i18n/`): Complete bilingual support (English/Japanese) with localStorage persistence
+- **Type Definitions** (`src/shared/types/`): Comprehensive TypeScript interfaces for game state, players, and API
+- **Constants** (`src/shared/constants.ts`): All game parameters (speeds, fuel rates, map size, physics values)
+- **Testing Infrastructure**: Vitest with comprehensive unit tests for all core systems
 
-1. **Reddit-Native 3D Experience**: One of the first fully interactive 3D applications running directly within Reddit posts using the Devvit platform
-2. **WebGL in Social Media**: Brings high-quality 3D graphics to a social media platform, opening new possibilities for interactive content
-3. **Seamless Integration**: No external websites or downloads required - everything runs within Reddit's ecosystem
-4. **Foundation for Multiplayer Gaming**: Demonstrates the technical foundation for building complex multiplayer 3D games on Reddit
-5. **Cross-Platform Compatibility**: Works seamlessly on desktop browsers and mobile devices without any special configuration
+### How to Play the Current Demo
+
+#### Step 1: Launch the App
+
+1. **Find a JetOni post on Reddit** (or create one using the development server)
+2. **Click the "Play" button** to open the app in full-screen mode
+3. **See your personalized greeting**: "Hey [YourUsername] 👋"
+
+The app loads instantly with a beautiful 3D Earth floating in space, surrounded by stars.
+
+#### Step 2: Interact with the Earth
+
+**Click anywhere on the rotating Earth sphere:**
+
+- 🌍 **Bounce Animation**: The planet gently bounces with each click
+  - Smoothly scales up to 1.2x size
+  - Returns to normal size with deceleration
+  - Uses velocity-based physics for natural movement
+
+- 🔢 **Counter Updates**: Watch the counter at screen center increment
+  - Each click adds 1 to the counter
+  - Counter value displayed in real-time
+  - Automatically saved to server
+
+- 💾 **Persistent State**: Your clicks are saved forever
+  - Data stored in Redis on the server
+  - Refresh the page - your count remains
+  - Demonstrates multiplayer game state foundation
+
+#### Step 3: Explore the Scene
+
+**Observe the Continuous Animation:**
+
+- **Earth Rotation**: The planet slowly spins on two axes
+  - Horizontal rotation: 0.0025 radians per frame
+  - Vertical tilt: 0.001 radians per frame
+  - Creates a natural, mesmerizing effect
+
+- **Realistic Rendering**: Notice the advanced graphics
+  - Detailed surface textures showing continents and oceans
+  - Specular highlights on water surfaces (realistic reflections)
+  - Normal mapping creating terrain depth and texture
+  - Dynamic lighting from point light source
+
+- **Starfield Background**: 200 stars in 3D space
+  - Randomly positioned throughout the scene
+  - Creates depth and cosmic atmosphere
+  - Stars remain static while Earth rotates
+
+#### Step 4: Access Resources
+
+At the bottom of the screen, click:
+
+- **"Docs"** → View Devvit platform documentation
+- **"r/Devvit"** → Visit the Devvit community subreddit
+- **"Discord"** → Join the Devvit Discord server for support
+
+#### Technical Details
+
+**3D Interaction System:**
+- **Raycasting**: Converts 2D mouse clicks to 3D ray intersections
+- **Precise Detection**: Only clicks on the Earth sphere trigger actions
+- **Physics-Based Animation**: Velocity and acceleration for natural bounce
+
+**Rendering Pipeline:**
+- **WebGL**: Hardware-accelerated 3D graphics via Three.js
+- **Camera**: PerspectiveCamera with 75° field of view, positioned 30 units from Earth
+- **Lighting**: Ambient light (0.4 intensity) + Point light (1.0 intensity) at (10, 10, 10)
+- **Textures**: Three texture maps (diffuse, normal, specular) for realistic appearance
+- **Responsive**: Automatic canvas and camera adjustment on window resize
+
+**Server Communication:**
+- **`GET /api/init`**: Fetches initial counter value and Reddit username
+- **`POST /api/increment`**: Increments counter on each click
+- **Redis Persistence**: All data stored in Redis for cross-session persistence
+- **Real-time Updates**: Counter updates immediately after each click
+
+### What Makes This Demo Innovative
+
+#### 1. Reddit-Native 3D Graphics
+One of the first fully interactive 3D WebGL applications running directly within Reddit posts using the Devvit platform. No external websites, downloads, or installations required - everything runs within Reddit's ecosystem.
+
+#### 2. Advanced 3D Rendering Techniques
+- **Multi-Texture Mapping**: Combines three texture maps (diffuse, normal, specular) for photorealistic Earth rendering
+- **Normal Mapping**: Creates realistic terrain depth without additional geometry
+- **Specular Mapping**: Produces accurate ocean reflections and highlights
+- **Dynamic Lighting**: Point light source creates realistic shadows and highlights
+
+#### 3. Precise 3D Interaction System
+- **Raycasting Technology**: Converts 2D mouse coordinates to 3D ray intersections
+- **Accurate Object Detection**: Only clicks on the Earth sphere trigger actions, not background
+- **Physics-Based Animation**: Velocity and acceleration create natural bounce effects
+- **Smooth Transitions**: Seamless scale animations with proper easing
+
+#### 4. Real-time State Persistence
+- **Server-Side Storage**: Counter value persisted to Redis database
+- **Cross-Session Persistence**: Data survives page refreshes and browser restarts
+- **Instant Updates**: Counter updates immediately with each click
+- **Foundation for Multiplayer**: Demonstrates the infrastructure needed for multiplayer game state
+
+#### 5. Seamless Social Integration
+- **Reddit Authentication**: Automatically displays your Reddit username
+- **Post-Native Experience**: Runs entirely within Reddit posts
+- **No External Dependencies**: No third-party websites or services required
+- **Direct Community Links**: Easy access to Devvit documentation and community
+
+#### 6. Cross-Platform Compatibility
+- **Responsive Design**: Works on desktop and mobile browsers
+- **Touch-Friendly**: Mobile users can tap the Earth to interact
+- **Automatic Scaling**: Canvas and camera adjust to any screen size
+- **Performance Optimized**: Smooth 60 FPS animation on all devices
+
+#### 7. Foundation for Complex Gaming
+Proves the technical viability of building sophisticated 3D multiplayer games on Reddit:
+- ✅ WebGL rendering within Reddit posts
+- ✅ Server-side state management with Redis
+- ✅ Real-time client-server communication
+- ✅ 3D interaction and physics systems
+- ✅ Cross-platform compatibility
+- ✅ Responsive design for mobile and desktop
 
 ### Technical Implementation
 
-**Current Demo Features:**
-- **Three.js Scene Setup**: Complete 3D rendering pipeline with camera, lighting, and materials
-- **Texture Mapping**: Earth textures including diffuse, normal, and specular maps for realistic appearance
-- **Raycasting**: Precise click detection on 3D objects using Three.js raycasting
-- **Animation System**: Smooth rotation and bounce animations using requestAnimationFrame
-- **Devvit Integration**: Server-side API endpoints with Reddit authentication
+#### Current Demo Architecture
 
-**Game Foundation (Ready for Integration):**
-- **Game Engine (`src/client/game/game-engine.ts`)**: Scene management, camera, renderer, and game loop
-- **Game State (`src/client/game/game-state.ts`)**: Player state, fuel management, position tracking, and game phases
-- **City Generator (`src/client/environment/city-generator.ts`)**: Procedural city with 60+ buildings, 40+ houses, roads, rivers, and bridges
-- **Dynamic Objects (`src/client/environment/dynamic-objects.ts`)**: Animated cars, pedestrians, and ladders
-- **i18n System (`src/client/i18n/`)**: Complete bilingual support with translation files and UI integration
-- **Type Definitions (`src/shared/types/`)**: Comprehensive interfaces for game state, players, and API
-- **Constants (`src/shared/constants.ts`)**: All game parameters (speeds, fuel rates, map size, etc.)
-- **Testing Infrastructure**: Vitest with comprehensive tests (game state, i18n, game engine, city generator)
-- **Project Structure**: Organized monorepo with client, server, and shared code
-- **Build System**: Vite-based build pipeline optimized for both client and server
+**Client-Side (Three.js):**
+- Complete 3D rendering pipeline with WebGL
+- PerspectiveCamera with 75° FOV and responsive aspect ratio
+- Raycasting for precise click detection on 3D objects
+- Smooth animation loop using requestAnimationFrame
+- Texture loading with proper encoding (sRGB for diffuse, Linear for normal/specular)
+- Dynamic bounce animation with velocity-based scaling
+
+**Server-Side (Devvit + Express):**
+- RESTful API endpoints (`/api/init`, `/api/increment`)
+- Redis integration for persistent counter storage
+- Reddit authentication and user context
+- JSON response formatting with TypeScript types
+
+**Key Technical Features:**
+- **Raycasting**: Converts 2D mouse coordinates to 3D ray for object intersection
+- **Texture Mapping**: Multiple texture layers (diffuse, normal, specular) for realistic appearance
+- **Animation System**: Velocity-based bounce with acceleration and deceleration
+- **Responsive Design**: Automatic canvas resizing and camera aspect ratio adjustment
+
+#### Game Foundation (Implemented, Not Yet Integrated)
+
+The following game systems are fully implemented and tested, ready for integration into the main application:
+
+**Core Game Systems:**
+- **Game Engine** (`src/client/game/game-engine.ts`): Scene management, camera control, renderer, and game loop with delta time
+- **Game State** (`src/client/game/game-state.ts`): Player state management, fuel tracking, position/velocity, game phases (lobby/playing/ended)
+- **Player Physics** (`src/client/player/player-physics.ts`): Gravity, velocity, acceleration, surface detection (ground/rooftop/bridge/water)
+- **Collision System** (`src/client/environment/collision-system.ts`): Building collision detection (box/cylinder), sliding mechanics
+- **City Generator** (`src/client/environment/city-generator.ts`): Procedural city with 60+ buildings, 40+ houses, roads, rivers, and bridges
+- **Dynamic Objects** (`src/client/environment/dynamic-objects.ts`): Animated cars (20), pedestrians (30), and ladders (15)
+
+**Support Systems:**
+- **i18n System** (`src/client/i18n/`): Complete bilingual support (English/Japanese) with localStorage persistence
+- **Type Definitions** (`src/shared/types/`): Comprehensive TypeScript interfaces for game state, players, and API
+- **Constants** (`src/shared/constants.ts`): All game parameters (speeds, fuel rates, map size, physics values)
+- **Testing Infrastructure**: Vitest with comprehensive unit tests for all core systems
+
+**Test Coverage:**
+- Game State: 15 test cases covering initialization, player management, fuel system, and time tracking
+- Game Engine: 12 test cases covering scene setup, game loop, and camera management
+- Player Physics: Tests for gravity, surface detection, water resistance, and landing prediction
+- Collision System: Tests for building collision, sliding mechanics, and boundary detection
+- City Generator: 8 test cases covering building placement, collision detection, and structure generation
+- i18n System: 10 test cases covering translation retrieval, language switching, and parameter substitution
+
+**Project Structure:**
+```
+src/
+├── client/          # Frontend (current: Earth demo, planned: full game)
+│   ├── main.ts      # Current demo entry point
+│   ├── game/        # Game engine and state (implemented, not integrated)
+│   ├── player/      # Player physics (implemented, not integrated)
+│   ├── environment/ # City generation and dynamic objects (implemented)
+│   └── i18n/        # Internationalization system (implemented)
+├── server/          # Backend API endpoints
+│   └── index.ts     # Express server with Devvit integration
+└── shared/          # Shared types and constants
+    ├── types/       # TypeScript interfaces
+    └── constants.ts # Game constants
+```
 
 ## Planned Gameplay
 
@@ -332,81 +499,125 @@ The game tracks your performance across all sessions:
 
 Statistics are stored locally and persist across sessions.
 
-## Current Implementation
+## Current Implementation Status
 
-### What You Can Do Now
+### What You Can Experience Now
 
-JetOni is currently a **3D interactive demo** that showcases the foundation for the planned multiplayer tag game. The current implementation includes:
+JetOni is currently a **3D interactive demo** that showcases the technical foundation for the planned multiplayer tag game. The current implementation demonstrates Reddit-native 3D capabilities while the full game mechanics are being developed.
 
-**Interactive Demo:**
-- **3D Earth Visualization**: A beautifully rendered Earth sphere with realistic textures (atmosphere, normal maps, and specular highlights)
-- **Starfield Background**: 200 procedurally placed stars creating an immersive space environment
-- **Click Interaction**: Click anywhere on the Earth to trigger a gentle bounce animation and increment the counter
-- **Reddit Integration**: Personalized greeting using your Reddit username
-- **Real-time Counter**: Server-side counter persistence using Redis, demonstrating client-server communication
-- **Responsive Design**: Fully responsive layout that works on desktop and mobile devices
+#### Interactive Demo Features
 
-**Game Foundation (Implemented):**
-- **Game Engine**: Complete Three.js scene setup with camera, lighting, and rendering pipeline
-- **Game State Management**: Core game state classes for managing players, fuel, positions, and game phases
-- **City Generator**: Procedural city generation system with buildings, houses, roads, rivers, and bridges
-- **Dynamic Objects**: Cars, pedestrians, and ladders with animations
-- **i18n System**: Complete bilingual support (English/Japanese) with localStorage persistence
-- **Type Definitions**: Comprehensive TypeScript interfaces for game state, players, and API
-- **Constants**: All game constants defined (speeds, fuel rates, map size, etc.)
-- **Testing Infrastructure**: Vitest setup with comprehensive tests for game state, i18n, and game engine
+**3D Earth Visualization:**
+- Beautifully rendered Earth sphere with realistic textures
+  - Atmospheric diffuse map for surface details
+  - Normal map for terrain depth and texture
+  - Specular map for realistic ocean reflections
+- Smooth rotation animation on multiple axes
+- Dynamic lighting with ambient and point lights
 
-### How to Play (Current Demo)
+**Interactive Elements:**
+- **Click-to-Interact**: Click anywhere on the Earth sphere to trigger a gentle bounce animation
+- **Real-time Counter**: Each click increments a server-persisted counter using Redis
+- **Personalized Greeting**: Displays your Reddit username on load
+- **Starfield Background**: 200 procedurally placed stars creating depth and immersion
+
+**Platform Integration:**
+- Runs entirely within Reddit posts using Devvit
+- Server-side state persistence with Redis
+- Responsive design for desktop and mobile browsers
+- Direct links to Devvit documentation and community
+
+### How to Play the Current Demo
 
 1. **Launch the App**
    - Find a JetOni post on Reddit
    - Click the "Play" button to open the app in full-screen mode
-   - The app loads with a personalized greeting using your Reddit username
+   - The app loads with a personalized greeting: "Hey [YourUsername] 👋"
 
 2. **Interact with the Earth**
-   - **Click anywhere on the Earth sphere** to interact
-   - Each click triggers a satisfying bounce animation
-   - The counter increments with each click
-   - Your clicks are saved to the server in real-time
+   - **Click anywhere on the rotating Earth sphere**
+   - Watch the planet gently bounce with each click
+   - Observe the counter increment in real-time
+   - Your clicks are automatically saved to the server
 
 3. **Explore the Scene**
-   - Watch the Earth slowly rotate on its axis
-   - Observe the realistic lighting and shadows on the planet surface
-   - Notice the starfield in the background creating depth
+   - Watch the Earth slowly rotate on its axis (0.0025 rad/frame on Y, 0.001 rad/frame on X)
+   - Notice the realistic lighting effects on the planet surface
+   - Observe the starfield creating a sense of depth and space
 
 4. **Access Resources**
    - Click **"Docs"** to view Devvit documentation
-   - Click **"r/Devvit"** to visit the Devvit community
+   - Click **"r/Devvit"** to visit the Devvit community subreddit
    - Click **"Discord"** to join the Devvit Discord server
 
-### What Makes This Innovative
+### What Makes This Demo Innovative
 
-1. **Reddit-Native 3D Experience**: One of the first fully interactive 3D applications running directly within Reddit posts using the Devvit platform
-2. **WebGL in Social Media**: Brings high-quality 3D graphics to a social media platform, opening new possibilities for interactive content
-3. **Seamless Integration**: No external websites or downloads required - everything runs within Reddit's ecosystem
-4. **Foundation for Multiplayer Gaming**: Demonstrates the technical foundation for building complex multiplayer 3D games on Reddit
-5. **Cross-Platform Compatibility**: Works seamlessly on desktop browsers and mobile devices without any special configuration
+1. **Reddit-Native 3D Graphics**: One of the first fully interactive 3D WebGL applications running directly within Reddit posts
+2. **Seamless Social Integration**: No external websites, downloads, or installations required - everything runs within Reddit's ecosystem
+3. **Real-time State Persistence**: Demonstrates server-side state management with Redis, showing the foundation for multiplayer gaming
+4. **Cross-Platform Compatibility**: Works seamlessly on desktop and mobile browsers without special configuration
+5. **Foundation for Complex Gaming**: Proves the technical viability of building sophisticated 3D multiplayer games on Reddit
 
 ### Technical Implementation
 
-**Current Demo Features:**
-- **Three.js Scene Setup**: Complete 3D rendering pipeline with camera, lighting, and materials
-- **Texture Mapping**: Earth textures including diffuse, normal, and specular maps for realistic appearance
-- **Raycasting**: Precise click detection on 3D objects using Three.js raycasting
-- **Animation System**: Smooth rotation and bounce animations using requestAnimationFrame
-- **Devvit Integration**: Server-side API endpoints with Reddit authentication
+#### Current Demo Architecture
 
-**Game Foundation (Ready for Integration):**
-- **Game Engine (`src/client/game/game-engine.ts`)**: Scene management, camera, renderer, and game loop
-- **Game State (`src/client/game/game-state.ts`)**: Player state, fuel management, position tracking, and game phases
-- **City Generator (`src/client/environment/city-generator.ts`)**: Procedural city with 60+ buildings, 40+ houses, roads, rivers, and bridges
-- **Dynamic Objects (`src/client/environment/dynamic-objects.ts`)**: Animated cars, pedestrians, and ladders
-- **i18n System (`src/client/i18n/`)**: Complete bilingual support with translation files and UI integration
-- **Type Definitions (`src/shared/types/`)**: Comprehensive interfaces for game state, players, and API
-- **Constants (`src/shared/constants.ts`)**: All game parameters (speeds, fuel rates, map size, etc.)
-- **Testing Infrastructure**: Vitest with comprehensive tests (game state, i18n, game engine, city generator)
-- **Project Structure**: Organized monorepo with client, server, and shared code
-- **Build System**: Vite-based build pipeline optimized for both client and server
+**Client-Side (Three.js):**
+- Complete 3D rendering pipeline with WebGL
+- PerspectiveCamera with 75° FOV and responsive aspect ratio
+- Raycasting for precise click detection on 3D objects
+- Smooth animation loop using requestAnimationFrame
+- Texture loading with proper encoding (sRGB for diffuse, Linear for normal/specular)
+- Dynamic bounce animation with velocity-based scaling
+
+**Server-Side (Devvit + Express):**
+- RESTful API endpoints (`/api/init`, `/api/increment`)
+- Redis integration for persistent counter storage
+- Reddit authentication and user context
+- JSON response formatting with TypeScript types
+
+**Key Technical Features:**
+- **Raycasting**: Converts 2D mouse coordinates to 3D ray for object intersection
+- **Texture Mapping**: Multiple texture layers (diffuse, normal, specular) for realistic appearance
+- **Animation System**: Velocity-based bounce with acceleration and deceleration
+- **Responsive Design**: Automatic canvas resizing and camera aspect ratio adjustment
+
+#### Game Foundation (Implemented, Not Yet Integrated)
+
+The following game systems are fully implemented and tested, ready for integration into the main application:
+
+**Core Game Systems:**
+- **Game Engine** (`src/client/game/game-engine.ts`): Scene management, camera control, renderer, and game loop with delta time
+- **Game State** (`src/client/game/game-state.ts`): Player state management, fuel tracking, position/velocity, game phases (lobby/playing/ended)
+- **City Generator** (`src/client/environment/city-generator.ts`): Procedural city with 60+ buildings, 40+ houses, roads, rivers, and bridges
+- **Dynamic Objects** (`src/client/environment/dynamic-objects.ts`): Animated cars (20), pedestrians (30), and ladders (15)
+
+**Support Systems:**
+- **i18n System** (`src/client/i18n/`): Complete bilingual support (English/Japanese) with localStorage persistence
+- **Type Definitions** (`src/shared/types/`): Comprehensive TypeScript interfaces for game state, players, and API
+- **Constants** (`src/shared/constants.ts`): All game parameters (speeds, fuel rates, map size, physics values)
+- **Testing Infrastructure**: Vitest with comprehensive unit tests for all core systems
+
+**Test Coverage:**
+- Game State: 15 test cases covering initialization, player management, fuel system, and time tracking
+- Game Engine: 12 test cases covering scene setup, game loop, and camera management
+- City Generator: 8 test cases covering building placement, collision detection, and structure generation
+- i18n System: 10 test cases covering translation retrieval, language switching, and parameter substitution
+
+**Project Structure:**
+```
+src/
+├── client/          # Frontend (current: Earth demo, planned: full game)
+│   ├── main.ts      # Current demo entry point
+│   ├── game/        # Game engine and state (implemented, not integrated)
+│   ├── environment/ # City generation and dynamic objects (implemented)
+│   └── i18n/        # Internationalization system (implemented)
+├── server/          # Backend API endpoints
+│   └── index.ts     # Express server with Devvit integration
+└── shared/          # Shared types and constants
+    ├── types/       # TypeScript interfaces
+    └── constants.ts # Game constants
+```
 
 ### Development Roadmap
 

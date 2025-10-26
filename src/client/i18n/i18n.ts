@@ -55,8 +55,12 @@ export class I18n {
   t(key: string, params?: Record<string, string | number>): string {
     const translation = this.getNestedTranslation(key);
     
-    if (typeof translation !== 'string') {
-      console.warn(`Translation key "${key}" not found or is not a string`);
+    if (translation === null || typeof translation !== 'string') {
+      if (translation === null) {
+        console.warn(`Translation key "${key}" not found`);
+      } else {
+        console.warn(`Translation key "${key}" is not a string`);
+      }
       return key;
     }
 
@@ -71,7 +75,7 @@ export class I18n {
   /**
    * Get nested translation by dot notation key
    */
-  private getNestedTranslation(key: string): string | Translations {
+  private getNestedTranslation(key: string): string | Translations | null {
     const keys = key.split('.');
     let current: string | Translations = this.translations[this.currentLanguage];
 
@@ -79,7 +83,7 @@ export class I18n {
       if (typeof current === 'object' && k in current) {
         current = current[k];
       } else {
-        return key; // Return key if not found
+        return null; // Return null if not found
       }
     }
 
@@ -161,7 +165,7 @@ export class I18n {
    */
   hasTranslation(key: string): boolean {
     const translation = this.getNestedTranslation(key);
-    return typeof translation === 'string';
+    return translation !== null && typeof translation === 'string';
   }
 
   /**

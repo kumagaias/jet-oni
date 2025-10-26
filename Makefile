@@ -8,22 +8,16 @@ test:
 build:
 	npm run build
 
-# Create PR after tests pass (auto-generates title and branch from recent commits)
+# Create PR after tests pass (prompts for branch name, auto-fills PR from commits)
 pr: test
 	@echo "All tests passed. Creating PR..."
-	@title="$$(git log --format=%s -n 1)"; \
-	if [ -z "$$title" ]; then \
-		echo "No commits found. Please make a commit first."; \
-		exit 1; \
-	fi; \
-	branch="feature/$$(echo "$$title" | tr '[:upper:]' '[:lower:]' | sed 's/ /-/g' | sed 's/[^a-z0-9-]//g')-$$(date +%s)"; \
-	echo "PR Title: $$title"; \
-	echo "Branch: $$branch"; \
+	@read -p "Enter branch name: " branch; \
+	echo "Creating branch: $$branch"; \
 	git checkout -b $$branch; \
 	git add .; \
-	git commit -m "$$title" --allow-empty; \
+	git commit -m "$$branch" --allow-empty; \
 	git push -u origin $$branch; \
-	gh pr create --title "$$title" --body "Auto-generated PR after successful tests" --base main
+	gh pr create --fill --base main
 
 # Deploy to Devvit (runs tests first)
 deploy: test

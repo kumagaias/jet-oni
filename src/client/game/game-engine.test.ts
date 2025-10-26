@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { GameEngine } from './game-engine';
 import * as THREE from 'three';
-import { CAMERA_HEIGHT, MAP_SIZE } from '../../shared/constants';
+import { CAMERA_HEIGHT } from '../../shared/constants';
 
 describe('GameEngine', () => {
   let canvas: HTMLCanvasElement;

@@ -113,6 +113,35 @@ JetOni is currently a **3D interactive demo** that showcases the foundation for 
    - Click **"r/Devvit"** to visit the Devvit community
    - Click **"Discord"** to join the Devvit Discord server
 
+### What Makes This Innovative
+
+1. **Reddit-Native 3D Experience**: One of the first fully interactive 3D applications running directly within Reddit posts using the Devvit platform
+2. **WebGL in Social Media**: Brings high-quality 3D graphics to a social media platform, opening new possibilities for interactive content
+3. **Seamless Integration**: No external websites or downloads required - everything runs within Reddit's ecosystem
+4. **Foundation for Multiplayer Gaming**: Demonstrates the technical foundation for building complex multiplayer 3D games on Reddit
+5. **Cross-Platform Compatibility**: Works seamlessly on desktop browsers and mobile devices without any special configuration
+
+### Technical Implementation
+
+**Current Demo Features:**
+- **Three.js Scene Setup**: Complete 3D rendering pipeline with camera, lighting, and materials
+- **Texture Mapping**: Earth textures including diffuse, normal, and specular maps for realistic appearance
+- **Raycasting**: Precise click detection on 3D objects using Three.js raycasting
+- **Animation System**: Smooth rotation and bounce animations using requestAnimationFrame
+- **Devvit Integration**: Server-side API endpoints with Reddit authentication
+
+**Game Foundation (Ready for Integration):**
+- **Game Engine (`src/client/game/game-engine.ts`)**: Scene management, camera, renderer, and game loop
+- **Game State (`src/client/game/game-state.ts`)**: Player state, fuel management, position tracking, and game phases
+- **City Generator (`src/client/environment/city-generator.ts`)**: Procedural city with 60+ buildings, 40+ houses, roads, rivers, and bridges
+- **Dynamic Objects (`src/client/environment/dynamic-objects.ts`)**: Animated cars, pedestrians, and ladders
+- **i18n System (`src/client/i18n/`)**: Complete bilingual support with translation files and UI integration
+- **Type Definitions (`src/shared/types/`)**: Comprehensive interfaces for game state, players, and API
+- **Constants (`src/shared/constants.ts`)**: All game parameters (speeds, fuel rates, map size, etc.)
+- **Testing Infrastructure**: Vitest with comprehensive tests (game state, i18n, game engine, city generator)
+- **Project Structure**: Organized monorepo with client, server, and shared code
+- **Build System**: Vite-based build pipeline optimized for both client and server
+
 ## Planned Gameplay
 
 ### Controls (Coming Soon)
@@ -387,31 +416,36 @@ The following features are planned for the full JetOni game (see `.kiro/specs/je
 - ✅ i18n system with English and Japanese support
 - ✅ Three.js scene and game engine initialization
 - ✅ Game state management
-- ✅ City generation system
-- ✅ Testing infrastructure
+- ✅ City generation system with dynamic objects
+- ✅ Testing infrastructure (game state, i18n, game engine, city generator)
 
 **Phase 2 - Player Mechanics (Next)**
+- Player physics and collision detection
 - First-person controls with WASD movement and mouse look
 - Jetpack flight for ONI players (vertical mobility)
 - Dash ability for Runner players (horizontal speed boost)
+- Jump mechanics for Runner players
 - Fuel management system with context-aware regeneration
 
 **Phase 3 - Gameplay Systems (Planned)**
 - Tag mechanics with role switching (ONI ↔ Runner)
 - Beacon tracking system for ONI players
-- AI-powered opponent players
-- Collision detection and physics
+- AI-powered opponent players with behavior trees
+- Camera system (first-person and third-person for ladders)
+- Visual indicators and particle effects
 
 **Phase 4 - UI & Polish (Planned)**
 - Complete menu system (title screen, game settings, lobby)
 - In-game HUD (timer, fuel gauge, player count)
 - Results screen with statistics
 - Mobile touch controls
+- Game timer and end conditions
 
 **Phase 5 - Multiplayer (Planned)**
+- Server API for game management
 - Real-time multiplayer synchronization
 - Lobby system with matchmaking
-- Persistent player statistics
+- Persistent player statistics with Redis
 - Leaderboards
 
 ## Development

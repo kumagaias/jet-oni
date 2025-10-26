@@ -28,20 +28,19 @@ build:
 pr: test
 	@echo "All tests passed. Creating PR..."
 	@echo ""
-	@echo "Branch naming examples:"
-	@echo "  feat/shared-types"
-	@echo "  fix/fuel-consumption"
-	@echo "  docs/api-documentation"
+	@echo "Branch naming examples (will be used as PR title):"
+	@echo "  feat/add-city-generator-tests"
+	@echo "  fix/fuel-consumption-bug"
+	@echo "  docs/update-api-documentation"
 	@echo ""
 	@read -p "Enter branch name (e.g., feat/feature-name): " branch; \
 	echo ""; \
-	echo "PR title examples:"; \
-	echo "  feat(game): add shared type definitions and constants"; \
-	echo "  fix(player): correct fuel consumption calculation"; \
+	type=$$(echo $$branch | cut -d'/' -f1); \
+	desc=$$(echo $$branch | cut -d'/' -f2- | sed 's/-/ /g'); \
+	title="$$type: $$desc"; \
+	echo "Branch: $$branch"; \
+	echo "PR title: $$title"; \
 	echo ""; \
-	read -p "Enter PR title (conventional commit format): " title; \
-	echo ""; \
-	echo "Creating branch: $$branch"; \
 	git checkout -b $$branch 2>/dev/null || git checkout $$branch; \
 	git add .; \
 	if git diff --cached --quiet; then \
@@ -52,7 +51,7 @@ pr: test
 	git push -u origin $$branch; \
 	echo ""; \
 	echo "Creating pull request..."; \
-	gh pr create --title "$$title" --body "## Summary\n$$title\n\n## Testing\n- [x] All tests pass\n- [x] Type check passes\n- [x] Build succeeds" --base main
+	printf "## Summary\n\n$$title\n\n## Testing\n\n- [x] All tests pass\n- [x] Type check passes\n- [x] Build succeeds\n" | gh pr create --title "$$title" --body-file - --base main
 
 # Deploy to Devvit (runs tests and security checks first)
 deploy: test security-check

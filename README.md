@@ -334,12 +334,12 @@ Statistics are stored locally and persist across sessions.
 
 ## Current Implementation
 
-### Current Implementation Status
+### What You Can Do Now
 
 JetOni is currently a **3D interactive demo** that showcases the foundation for the planned multiplayer tag game. The current implementation includes:
 
-**Frontend Demo:**
-- **Interactive 3D Earth**: A beautifully rendered Earth sphere with realistic textures (atmosphere, normal maps, and specular highlights)
+**Interactive Demo:**
+- **3D Earth Visualization**: A beautifully rendered Earth sphere with realistic textures (atmosphere, normal maps, and specular highlights)
 - **Starfield Background**: 200 procedurally placed stars creating an immersive space environment
 - **Click Interaction**: Click anywhere on the Earth to trigger a gentle bounce animation and increment the counter
 - **Reddit Integration**: Personalized greeting using your Reddit username
@@ -350,18 +350,11 @@ JetOni is currently a **3D interactive demo** that showcases the foundation for 
 - **Game Engine**: Complete Three.js scene setup with camera, lighting, and rendering pipeline
 - **Game State Management**: Core game state classes for managing players, fuel, positions, and game phases
 - **City Generator**: Procedural city generation system with buildings, houses, roads, rivers, and bridges
+- **Dynamic Objects**: Cars, pedestrians, and ladders with animations
 - **i18n System**: Complete bilingual support (English/Japanese) with localStorage persistence
 - **Type Definitions**: Comprehensive TypeScript interfaces for game state, players, and API
 - **Constants**: All game constants defined (speeds, fuel rates, map size, etc.)
-- **Testing Infrastructure**: Vitest setup with comprehensive tests for game state and i18n
-
-### What Makes This Innovative
-
-1. **Reddit-Native 3D Experience**: One of the first fully interactive 3D applications running directly within Reddit posts using the Devvit platform
-2. **WebGL in Social Media**: Brings high-quality 3D graphics to a social media platform, opening new possibilities for interactive content
-3. **Seamless Integration**: No external websites or downloads required - everything runs within Reddit's ecosystem
-4. **Foundation for Multiplayer Gaming**: Demonstrates the technical foundation for building complex multiplayer 3D games on Reddit
-5. **Cross-Platform Compatibility**: Works seamlessly on desktop browsers and mobile devices without any special configuration
+- **Testing Infrastructure**: Vitest setup with comprehensive tests for game state, i18n, and game engine
 
 ### How to Play (Current Demo)
 
@@ -386,6 +379,14 @@ JetOni is currently a **3D interactive demo** that showcases the foundation for 
    - Click **"r/Devvit"** to visit the Devvit community
    - Click **"Discord"** to join the Devvit Discord server
 
+### What Makes This Innovative
+
+1. **Reddit-Native 3D Experience**: One of the first fully interactive 3D applications running directly within Reddit posts using the Devvit platform
+2. **WebGL in Social Media**: Brings high-quality 3D graphics to a social media platform, opening new possibilities for interactive content
+3. **Seamless Integration**: No external websites or downloads required - everything runs within Reddit's ecosystem
+4. **Foundation for Multiplayer Gaming**: Demonstrates the technical foundation for building complex multiplayer 3D games on Reddit
+5. **Cross-Platform Compatibility**: Works seamlessly on desktop browsers and mobile devices without any special configuration
+
 ### Technical Implementation
 
 **Current Demo Features:**
@@ -399,10 +400,11 @@ JetOni is currently a **3D interactive demo** that showcases the foundation for 
 - **Game Engine (`src/client/game/game-engine.ts`)**: Scene management, camera, renderer, and game loop
 - **Game State (`src/client/game/game-state.ts`)**: Player state, fuel management, position tracking, and game phases
 - **City Generator (`src/client/environment/city-generator.ts`)**: Procedural city with 60+ buildings, 40+ houses, roads, rivers, and bridges
+- **Dynamic Objects (`src/client/environment/dynamic-objects.ts`)**: Animated cars, pedestrians, and ladders
 - **i18n System (`src/client/i18n/`)**: Complete bilingual support with translation files and UI integration
 - **Type Definitions (`src/shared/types/`)**: Comprehensive interfaces for game state, players, and API
 - **Constants (`src/shared/constants.ts`)**: All game parameters (speeds, fuel rates, map size, etc.)
-- **Testing Infrastructure**: Vitest with tests for game state and i18n (100% passing)
+- **Testing Infrastructure**: Vitest with comprehensive tests (game state, i18n, game engine, city generator)
 - **Project Structure**: Organized monorepo with client, server, and shared code
 - **Build System**: Vite-based build pipeline optimized for both client and server
 

@@ -14,7 +14,7 @@
     - [x] `make pr` が実行できることを確認（GitHub CLI認証済みの場合）
     - [x] フォルダ構造が正しいことを確認
 
-- [ ] 2. 共有型定義と定数の実装
+- [x] 2. 共有型定義と定数の実装
 
   - src/shared/types/game.tsにゲーム状態の型を定義
   - src/shared/types/api.tsにAPIの型を定義

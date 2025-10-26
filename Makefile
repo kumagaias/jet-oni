@@ -8,16 +8,37 @@ test:
 build:
 	npm run build
 
-# Create PR after tests pass (prompts for branch name, auto-fills PR from commits)
+# Create PR after tests pass with auto-generated description
 pr: test
 	@echo "All tests passed. Creating PR..."
-	@read -p "Enter branch name: " branch; \
+	@echo ""
+	@echo "Branch naming examples:"
+	@echo "  feat/shared-types"
+	@echo "  fix/fuel-consumption"
+	@echo "  docs/api-documentation"
+	@echo ""
+	@read -p "Enter branch name (e.g., feat/feature-name): " branch; \
+	echo ""; \
+	echo "PR title examples:"; \
+	echo "  feat(game): add shared type definitions and constants"; \
+	echo "  fix(player): correct fuel consumption calculation"; \
+	echo ""; \
+	@read -p "Enter PR title (conventional commit format): " title; \
+	echo ""; \
 	echo "Creating branch: $$branch"; \
-	git checkout -b $$branch; \
+	git checkout -b $$branch 2>/dev/null || git checkout $$branch; \
 	git add .; \
-	git commit -m "$$branch" --allow-empty; \
+	if git diff --cached --quiet; then \
+		echo "No changes to commit"; \
+	else \
+		git commit -m "$$title"; \
+	fi; \
 	git push -u origin $$branch; \
-	gh pr create --fill --base main
+	echo ""; \
+	echo "Generating PR description..."; \
+	CHANGES=$$(git diff main...$$branch --stat | head -20); \
+	COMMITS=$$(git log main..$$branch --oneline); \
+	gh pr create --title "$$title" --body "$$(cat <<-EOF\n## Summary\n$$title\n\n## Changes\n\`\`\`\n$$CHANGES\n\`\`\`\n\n## Commits\n$$COMMITS\n\n## Testing\n- [x] All tests pass\n- [x] Type check passes\n- [x] Lint passes\n- [x] Build succeeds\nEOF\n)" --base main
 
 # Deploy to Devvit (runs tests first)
 deploy: test

@@ -1,26 +1,44 @@
-# JetOni - 3D Tag Game on Reddit
+# JetOni - Interactive 3D Experience on Reddit
 
 [![CI/CD Pipeline](https://github.com/YOUR_USERNAME/jet-oni/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR_USERNAME/jet-oni/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/YOUR_USERNAME/jet-oni/actions/workflows/codeql.yml/badge.svg)](https://github.com/YOUR_USERNAME/jet-oni/actions/workflows/codeql.yml)
 [![GitLeaks](https://github.com/YOUR_USERNAME/jet-oni/actions/workflows/gitleaks.yml/badge.svg)](https://github.com/YOUR_USERNAME/jet-oni/actions/workflows/gitleaks.yml)
 
-A multiplayer 3D tag game built with Three.js and Devvit, running directly on Reddit. Players will navigate a futuristic city environment in first-person view, chasing or evading each other in an intense game of tag with jetpacks, dash abilities, and strategic beacon powers.
+An interactive 3D Earth experience built with Three.js and Devvit, running directly within Reddit posts. Click the rotating Earth to trigger physics-based animations while your interactions are saved in real-time. This project demonstrates the technical foundation for building complex 3D multiplayer games on Reddit's platform.
 
 ## What is JetOni?
 
-JetOni (ジェット鬼) is a Reddit-native 3D game project that demonstrates the technical foundation for building complex 3D games directly within Reddit posts using the Devvit platform. Currently, it features an **interactive 3D Earth demo** that showcases WebGL rendering, real-time state persistence, and precise 3D interaction mechanics.
+JetOni (ジェット鬼) is an **interactive 3D Earth experience** that runs entirely within Reddit posts using the Devvit platform. It showcases advanced WebGL rendering, real-time state persistence, and precise 3D interaction mechanics - all without leaving Reddit.
 
-**Planned Full Game:** An immersive 3D multiplayer tag game where one player starts as the "ONI" (demon/鬼) and must tag other players to convert them. The last player remaining untagged wins! The game will combine traditional Japanese tag games with futuristic parkour mechanics in a fully 3D urban environment.
+**What You Can Do Now:**
+- Click a beautifully rendered 3D Earth sphere with realistic textures
+- Watch physics-based bounce animations triggered by your clicks
+- See your interactions saved in real-time to a persistent counter
+- Experience smooth 60 FPS graphics with dynamic lighting and a starfield background
+- Enjoy a personalized greeting using your Reddit username
+
+**Future Vision:** This project demonstrates the technical foundation for building a full 3D multiplayer tag game called "JetOni" - where players navigate a futuristic city as either the "ONI" (demon/鬼) chasing others with jetpack flight, or as runners escaping with dash abilities. The game systems are already implemented and tested, awaiting integration.
 
 ### Current Features
 
-- **Interactive 3D Earth**: Beautifully rendered Earth sphere with realistic textures (atmosphere, normal maps, specular highlights)
-- **Click Interaction**: Click the Earth to trigger a bounce animation and increment a counter
-- **Starfield Background**: 200 procedurally placed stars creating an immersive space environment
-- **Reddit Integration**: Personalized greeting using your Reddit username
-- **Real-time Persistence**: Counter values saved to Redis via server API
-- **Responsive Design**: Works seamlessly on desktop and mobile browsers
-- **Smooth Animations**: Continuous Earth rotation with physics-based bounce effects
+**Interactive 3D Graphics:**
+- **Photorealistic Earth**: High-quality sphere with three texture layers (diffuse, normal, specular maps)
+- **Dynamic Lighting**: Ambient and point lights creating realistic shadows and highlights
+- **Smooth Animation**: Continuous rotation on two axes at 60 FPS
+- **Starfield Background**: 200 procedurally placed stars in 3D space
+
+**User Interaction:**
+- **Click-to-Interact**: Precise raycasting detects clicks on the Earth sphere
+- **Physics-Based Bounce**: Velocity-driven scale animation (1.0x → 1.2x → 1.0x)
+- **Real-time Counter**: Each click increments a server-persisted value
+- **Instant Feedback**: Smooth animations and immediate visual response
+
+**Platform Integration:**
+- **Reddit-Native**: Runs entirely within Reddit posts using Devvit
+- **Personalized Experience**: Displays your Reddit username on load
+- **Persistent State**: Counter values saved to Redis database
+- **Cross-Platform**: Works on desktop and mobile browsers with touch support
+- **Responsive Design**: Automatic canvas and camera adjustment on resize
 
 ### Planned Features (Game Foundation Ready)
 
@@ -38,32 +56,65 @@ The following game systems are implemented and tested, ready for integration:
 
 ## What Makes JetOni Innovative?
 
-### Current Innovation
+### 1. Reddit-Native 3D Graphics
 
-1. **Reddit-Native 3D Experience**
+**First-of-its-Kind Experience:**
+- One of the first fully interactive 3D WebGL applications running directly within Reddit posts
+- No external websites, downloads, or installations required
+- Proves that complex 3D graphics can run seamlessly within social media platforms
+- Opens possibilities for future 3D games and experiences on Reddit
 
-   - One of the first fully interactive 3D applications running directly within Reddit posts
-   - No external websites or downloads required - everything runs within Reddit's ecosystem
-   - Demonstrates the potential for bringing high-quality 3D graphics to social media platforms
+### 2. Advanced 3D Rendering Techniques
 
-2. **WebGL in Social Media**
+**Professional-Grade Graphics:**
+- **Multi-Texture Mapping**: Combines three 2048x2048 texture maps (diffuse, normal, specular)
+- **Normal Mapping**: Creates realistic terrain depth without additional geometry
+- **Specular Mapping**: Produces accurate ocean reflections distinguishing water from land
+- **Dynamic Lighting**: Ambient light (0.4) + Point light (1.0) for realistic illumination
+- **High-Quality Geometry**: 64x64 segment sphere for smooth curved appearance
+- **Proper Encoding**: sRGB for diffuse, Linear for normal/specular maps
 
-   - Brings Three.js-powered 3D rendering to Reddit
-   - Realistic Earth textures with normal and specular mapping
-   - Smooth 60 FPS animations with physics-based interactions
-   - Raycasting for precise 3D object interaction
+### 3. Precise 3D Interaction System
 
-3. **Seamless Integration**
+**Sophisticated Click Detection:**
+- **Raycasting Technology**: Converts 2D pointer coordinates to 3D ray intersections
+- **Accurate Object Detection**: Only clicks on Earth trigger actions, background ignored
+- **Physics-Based Animation**: Velocity-driven bounce with acceleration/deceleration phases
+- **Smooth Transitions**: Natural easing from 1.0x to 1.2x scale and back
+- **Cross-Platform Input**: Works with mouse clicks and touch events
 
-   - Server-side state persistence using Redis
-   - Reddit authentication handled automatically by Devvit
-   - Real-time client-server communication via REST API
-   - Cross-platform compatibility (desktop and mobile)
+### 4. Real-Time State Persistence
 
-4. **Foundation for Complex Gaming**
-   - Demonstrates the technical foundation for building multiplayer 3D games on Reddit
-   - Complete game engine, physics, and state management systems implemented
-   - Modular architecture ready for feature integration
+**Server-Side Data Management:**
+- **Redis Integration**: Counter values persisted to database via RESTful API
+- **Cross-Session Persistence**: Data survives page refreshes and device changes
+- **Instant Updates**: Counter updates immediately with each click
+- **Foundation for Multiplayer**: Demonstrates infrastructure for game state synchronization
+- **Error Handling**: Graceful handling of network failures
+
+### 5. Seamless Social Integration
+
+**Reddit-First Design:**
+- **Automatic Authentication**: Displays your Reddit username via Devvit API
+- **Post-Native Experience**: Runs entirely within Reddit's webview
+- **No External Dependencies**: No third-party services required
+- **Community Links**: Direct access to Devvit docs, r/Devvit, and Discord
+- **User Context**: Leverages Reddit's authentication for personalization
+
+### 6. Technical Foundation for Gaming
+
+**Proof of Concept:**
+This demo proves the viability of building sophisticated 3D multiplayer games on Reddit:
+- ✅ WebGL rendering within Reddit posts (Three.js with custom materials)
+- ✅ Server-side state management (Redis persistence)
+- ✅ Real-time client-server communication (RESTful API)
+- ✅ 3D interaction and physics (raycasting, velocity-based animations)
+- ✅ Cross-platform compatibility (desktop and mobile)
+- ✅ Responsive design (automatic resizing)
+- ✅ User authentication and personalization (Reddit integration)
+
+**Game Systems Ready:**
+Complete game engine, physics system, collision detection, city generation, and AI behavior systems are already implemented and tested - ready for integration when the full game is developed.
 
 ### Planned Gameplay Innovation (Foundation Ready)
 

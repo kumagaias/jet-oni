@@ -236,8 +236,8 @@ export class PlayerPhysics {
     maxTime = 5
   ): { position: Vector3; time: number } | null {
     const dt = 0.1; // Time step for simulation
-    let simPosition = { ...position };
-    let simVelocity = { ...velocity };
+    const simPosition = { ...position };
+    const simVelocity = { ...velocity };
     let time = 0;
 
     while (time < maxTime) {

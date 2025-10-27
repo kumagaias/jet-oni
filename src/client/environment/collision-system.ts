@@ -333,8 +333,8 @@ export class CollisionSystem {
    * Get nearest safe position outside buildings
    */
   public getNearestSafePosition(position: Vector3, playerRadius = 0.5): Vector3 {
-    let safePosition = { ...position };
-    let maxIterations = 10;
+    const safePosition = { ...position };
+    const maxIterations = 10;
     let iteration = 0;
 
     while (this.isInsideBuilding(safePosition, playerRadius) && iteration < maxIterations) {

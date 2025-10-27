@@ -4,7 +4,6 @@
   margin: 0;
   padding: 0;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  color: #ffffff;
 }
 
 html,
@@ -23,11 +22,14 @@ body {
   width: 100%;
   height: 100%;
   display: block;
+  cursor: pointer;
 }
 
 /* Overlay container sitting above the canvas */
 .overlay {
-  position: relative;
+  position: fixed;
+  top: 0;
+  left: 0;
   width: 100%;
   height: 100%;
   display: flex;
@@ -36,80 +38,91 @@ body {
   align-items: center;
   gap: 20px;
   text-align: center;
-  padding: 0 16px;
-  pointer-events: none; /* allow clicks to pass through except on interactive elements */
+  padding: 20px;
+  pointer-events: none;
+  z-index: 100;
 }
 
-.title {
-  font-size: 2rem;
-  font-weight: 700;
-  line-height: 1.2;
+.overlay > * {
   pointer-events: auto;
 }
 
-.description {
-  font-size: 1rem;
-  color: #d1d5db;
-  pointer-events: auto;
-}
-
-.code {
-  background-color: rgba(255, 255, 255, 0.15);
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
-/* Counter styles */
-.counter-row {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 20px;
-  margin-top: 12px;
-  pointer-events: auto;
-}
-
-.counter-button {
+/* Button styles */
+button {
   background-color: #ff4500;
   color: #ffffff;
   border: none;
-  width: 60px;
-  height: 60px;
-  font-size: 2rem;
-  border-radius: 50%;
+  padding: 10px 20px;
+  font-size: 18px;
+  border-radius: 8px;
   cursor: pointer;
-  transition: background-color 0.2s ease;
-}
-
-.counter-button:hover {
-  background-color: #d93900;
-}
-
-.counter-value {
-  font-size: 2rem;
+  transition: all 0.2s ease;
   font-weight: 600;
-  min-width: 60px;
-  text-align: center;
 }
 
-/* Footer links */
-.footer {
-  position: absolute;
-  bottom: 24px;
+button:hover {
+  background-color: #d93900;
+  transform: scale(1.05);
+}
+
+button:active {
+  transform: scale(0.95);
+}
+
+/* Text styles */
+h1 {
+  color: #ffffff;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+}
+
+p {
+  color: #ffffff;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+}
+
+/* HUD styles (for future use) */
+.hud {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  color: white;
+  font-size: 18px;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+  z-index: 200;
+}
+
+/* Crosshair (for future use) */
+.crosshair {
+  position: fixed;
+  top: 50%;
   left: 50%;
+  transform: translate(-50%, -50%);
+  width: 20px;
+  height: 20px;
+  pointer-events: none;
+  z-index: 150;
+}
+
+.crosshair::before,
+.crosshair::after {
+  content: '';
+  position: absolute;
+  background-color: rgba(255, 255, 255, 0.8);
+}
+
+.crosshair::before {
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  transform: translateY(-50%);
+}
+
+.crosshair::after {
+  top: 0;
+  left: 50%;
+  width: 2px;
+  height: 100%;
   transform: translateX(-50%);
-  display: flex;
-  gap: 12px;
-  font-size: 0.9rem;
-  color: #d1d5db;
-  pointer-events: auto;
-}
-
-.docs-link {
-  cursor: pointer;
-  text-decoration: underline;
-}
-
-.divider {
-  color: rgba(255, 255, 255, 0.25);
 }

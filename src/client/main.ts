@@ -1,163 +1,122 @@
-import * as THREE from 'three';
-import { navigateTo } from '@devvit/client';
-import { InitResponse, IncrementResponse, DecrementResponse } from '../shared/types/api';
+/**
+ * JetOni - Main entry point
+ * A 3D multiplayer tag game built with Three.js and Devvit
+ */
 
-const titleElement = document.getElementById('title') as HTMLHeadingElement;
-const counterValueElement = document.getElementById('counter-value') as HTMLSpanElement;
-// Buttons have been removed; interactions now happen on the planet mesh.
+import { GameEngine } from './game/game-engine';
+import { GameState } from './game/game-state';
+import { CityGenerator } from './environment/city-generator';
+import { PlayerController } from './player/player-controller';
+import { I18n } from './i18n/i18n';
+import { UIManager } from './ui/ui-manager';
+import { UIMenu } from './ui/ui-menu';
+import { en } from './i18n/translations/en';
+import { jp } from './i18n/translations/jp';
+import { InitResponse } from '../shared/types/api';
 
-const docsLink = document.getElementById('docs-link');
-const playtestLink = document.getElementById('playtest-link');
-const discordLink = document.getElementById('discord-link');
+// Create translations object
+const translations = { en, jp };
 
-docsLink?.addEventListener('click', () => navigateTo('https://developers.reddit.com/docs'));
-playtestLink?.addEventListener('click', () => navigateTo('https://www.reddit.com/r/Devvit'));
-discordLink?.addEventListener('click', () => navigateTo('https://discord.com/invite/R7yu2wh9Qz'));
+// Initialize i18n system
+const i18n = new I18n(translations);
 
-let currentPostId: string | null = null;
+// Initialize UI manager
+const uiManager = new UIManager();
 
-async function fetchInitialCount(): Promise<void> {
+// Get canvas element
+const canvas = document.getElementById('bg') as HTMLCanvasElement;
+if (!canvas) {
+  throw new Error('Canvas element not found');
+}
+
+// Initialize game engine
+const gameEngine = new GameEngine(canvas);
+
+// Fetch user info and initialize game
+async function initGame(): Promise<void> {
   try {
+    // Fetch initial data from server
     const response = await fetch('/api/init');
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     const data = (await response.json()) as InitResponse;
+    
     if (data.type === 'init') {
-      counterValueElement.textContent = data.count.toString();
-      currentPostId = data.postId;
-      titleElement.textContent = `Hey ${data.username} 👋`;
+      const playerId = data.username || 'anonymous';
+      
+      // Initialize game state with player ID
+      const gameState = new GameState(playerId);
+      
+      // Set game to playing state immediately for testing
+      gameState.setGamePhase('playing');
+      
+      // Generate city environment
+      console.log('Generating city...');
+      const cityGenerator = new CityGenerator();
+      const city = cityGenerator.generateCity();
+      gameEngine.addToScene(city);
+      console.log('City generated');
+      
+      // Initialize player controller
+      const playerController = new PlayerController(gameState);
+      playerController.init();
+      
+      // Setup game loop
+      gameEngine.onUpdate((deltaTime: number) => {
+        // Update player controller
+        playerController.update(deltaTime);
+        
+        // Update camera position to follow player
+        const localPlayer = gameState.getLocalPlayer();
+        const camera = gameEngine.getCamera();
+        camera.position.set(
+          localPlayer.position.x,
+          localPlayer.position.y + 1.7, // Eye height
+          localPlayer.position.z
+        );
+        
+        // Apply player rotation to camera
+        camera.rotation.order = 'YXZ';
+        camera.rotation.y = localPlayer.rotation.yaw;
+        camera.rotation.x = localPlayer.rotation.pitch;
+      });
+      
+      // Initialize UI menu
+      const uiMenu = new UIMenu(uiManager, i18n, data.username || 'Player');
+      uiMenu.showTitleScreen();
+      
+      // Start game loop
+      gameEngine.start();
+      console.log('Game started');
+      
     } else {
-      counterValueElement.textContent = 'Error';
+      console.error('Invalid response from server');
+      showError('Failed to initialize game');
     }
   } catch (err) {
-    console.error('Error fetching initial count:', err);
-    counterValueElement.textContent = 'Error';
+    console.error('Error initializing game:', err);
+    showError('Failed to connect to server');
   }
 }
 
-async function updateCounter(action: 'increment' | 'decrement'): Promise<void> {
-  if (!currentPostId) return;
-  try {
-    const response = await fetch(`/api/${action}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({}),
-    });
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    const data = (await response.json()) as IncrementResponse | DecrementResponse;
-    counterValueElement.textContent = data.count.toString();
-  } catch (err) {
-    console.error(`Error ${action}ing count:`, err);
-  }
+
+
+/**
+ * Show error message
+ */
+function showError(message: string): void {
+  const overlay = document.querySelector('.overlay') as HTMLElement;
+  if (!overlay) return;
+  
+  overlay.innerHTML = `
+    <div style="text-align: center; padding: 20px;">
+      <h1 style="color: red; font-size: 36px; margin-bottom: 20px;">Error</h1>
+      <p style="color: white; font-size: 18px;">${message}</p>
+      <button onclick="location.reload()" style="padding: 10px 20px; margin-top: 20px; font-size: 18px; cursor: pointer;">
+        Reload
+      </button>
+    </div>
+  `;
 }
 
-// Button event listeners removed – handled via planet click.
-
-const canvas = document.getElementById('bg') as HTMLCanvasElement;
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x000000);
-
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-camera.position.z = 30;
-
-const renderer = new THREE.WebGLRenderer({ antialias: true, canvas });
-renderer.setPixelRatio(window.devicePixelRatio ?? 1);
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setClearColor(0x000000, 1);
-
-camera.lookAt(0, 0, 0);
-
-renderer.render(scene, camera);
-
-// Resize handler
-window.addEventListener('resize', () => {
-  const { innerWidth, innerHeight } = window;
-  camera.aspect = innerWidth / innerHeight;
-  camera.updateProjectionMatrix();
-  renderer.setSize(innerWidth, innerHeight);
-});
-
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
-scene.add(ambientLight);
-const pointLight = new THREE.PointLight(0xffffff, 1);
-pointLight.position.set(10, 10, 10);
-scene.add(pointLight);
-
-const textureLoader = new THREE.TextureLoader();
-textureLoader.crossOrigin = '';
-
-const earthTexture = textureLoader.load('/earth_atmos_2048.jpg');
-const earthNormalMap = textureLoader.load('/earth_normal_2048.jpg');
-const earthSpecularMap = textureLoader.load('/earth_specular_2048.jpg');
-
-earthTexture.encoding = THREE.sRGBEncoding;
-earthNormalMap.encoding = THREE.LinearEncoding;
-earthSpecularMap.encoding = THREE.LinearEncoding;
-
-const earthGeo = new THREE.SphereGeometry(10, 64, 64);
-const earthMat = new THREE.MeshPhongMaterial({
-  map: earthTexture,
-  normalMap: earthNormalMap,
-  specularMap: earthSpecularMap,
-  shininess: 5,
-});
-const earthSphere = new THREE.Mesh(earthGeo, earthMat);
-
-const planetGroup = new THREE.Group();
-planetGroup.add(earthSphere);
-scene.add(planetGroup);
-
-function addStar(): void {
-  const starGeo = new THREE.SphereGeometry(0.25, 24, 24);
-  const starMat = new THREE.MeshStandardMaterial({ color: 0xffffff });
-  const star = new THREE.Mesh(starGeo, starMat);
-
-  const x = THREE.MathUtils.randFloatSpread(200);
-  const y = THREE.MathUtils.randFloatSpread(200);
-  const z = THREE.MathUtils.randFloatSpread(200);
-  star.position.set(x, y, z);
-  scene.add(star);
-}
-Array.from({ length: 200 }).forEach(addStar);
-
-const raycaster = new THREE.Raycaster();
-const mouse = new THREE.Vector2();
-
-let scaleVelocity = 0;
-
-function handleClick(event: PointerEvent): void {
-  mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-  mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-  raycaster.setFromCamera(mouse, camera);
-  const intersects = raycaster.intersectObject(earthSphere);
-  if (intersects.length > 0) {
-    // Start gentle bounce
-    scaleVelocity = 0.05;
-    void updateCounter('increment');
-  }
-}
-
-window.addEventListener('pointerdown', handleClick);
-
-function animate(): void {
-  requestAnimationFrame(animate);
-
-  planetGroup.rotation.y += 0.0025;
-  planetGroup.rotation.x += 0.001;
-
-  if (scaleVelocity !== 0) {
-    const newScale = planetGroup.scale.x + scaleVelocity;
-    planetGroup.scale.set(newScale, newScale, newScale);
-
-    if (newScale >= 1.2) scaleVelocity = -0.04;
-    if (newScale <= 1) {
-      planetGroup.scale.set(1, 1, 1);
-      scaleVelocity = 0;
-    }
-  }
-
-  renderer.render(scene, camera);
-}
-
-void fetchInitialCount();
-animate();
+// Start the game
+void initGame();

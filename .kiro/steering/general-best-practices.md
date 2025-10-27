@@ -34,6 +34,7 @@ When implementing features or components:
 
 ### Development Server Management
 
+- **NEVER run `npm run dev` in Kiro**: The developer will run this command manually in their terminal
 - **Suggest testing commands to the developer**: Recommend running `npm run dev` in a separate terminal for testing, but do not execute it
 - **Don't modify devvit.json**: Only change Devvit configuration when explicitly needed and confirmed by the developer.
 - **Never change the project name**: The project name in devvit.json and package.json must remain unchanged - Devvit requires this for deployment

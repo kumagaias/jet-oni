@@ -37,7 +37,7 @@ export class UIMenu {
           margin-bottom: 10px;
           font-weight: bold;
           letter-spacing: 2px;
-        ">JetOni [PROTOTYPE]</h1>
+        ">${this.i18n.t('menu.title')} [PROTOTYPE]</h1>
         
         <p style="
           color: #888;
@@ -48,7 +48,7 @@ export class UIMenu {
         ">v0.1.0-alpha | User: ${this.username}</p>
         
         <div style="margin-bottom: 20px;">
-          <p style="color: #aaa; font-size: 11px; margin-bottom: 5px;">LANGUAGE:</p>
+          <p style="color: #aaa; font-size: 11px; margin-bottom: 5px;">${this.i18n.t('menu.languageSelect').toUpperCase()}:</p>
           <button id="lang-en" style="
             padding: 8px 16px;
             margin: 3px;
@@ -89,7 +89,7 @@ export class UIMenu {
             background: #331a00;
             color: #ff8800;
             font-weight: bold;
-          ">▶ CREATE GAME</button>
+          ">▶ ${this.i18n.t('menu.createGame').toUpperCase()}</button>
           
           <button id="btn-join-game" style="
             width: 100%;
@@ -101,7 +101,7 @@ export class UIMenu {
             border: 1px solid #666;
             background: #222;
             color: #aaa;
-          ">▶ JOIN GAME</button>
+          ">▶ ${this.i18n.t('menu.joinGame').toUpperCase()}</button>
           
           <button id="btn-stats" style="
             width: 100%;
@@ -113,7 +113,7 @@ export class UIMenu {
             border: 1px solid #666;
             background: #222;
             color: #aaa;
-          ">▶ STATISTICS</button>
+          ">▶ ${this.i18n.t('menu.statistics').toUpperCase()}</button>
         </div>
         
         <div style="
@@ -123,10 +123,10 @@ export class UIMenu {
           border-radius: 4px;
           text-align: left;
         ">
-          <p style="color: #ff8800; font-size: 12px; margin-bottom: 10px;">CONTROLS:</p>
-          <p style="color: #aaa; font-size: 11px; margin: 3px 0;">→ WASD: Move</p>
-          <p style="color: #aaa; font-size: 11px; margin: 3px 0;">→ Mouse: Click & drag to look</p>
-          <p style="color: #aaa; font-size: 11px; margin: 3px 0;">→ Space: Jump / Jetpack</p>
+          <p style="color: #ff8800; font-size: 12px; margin-bottom: 10px;">${this.i18n.t('controls.movement').toUpperCase()}:</p>
+          <p style="color: #aaa; font-size: 11px; margin: 3px 0;">→ ${this.i18n.t('controls.wasd')}</p>
+          <p style="color: #aaa; font-size: 11px; margin: 3px 0;">→ ${this.i18n.t('controls.mouse')}</p>
+          <p style="color: #aaa; font-size: 11px; margin: 3px 0;">→ ${this.i18n.t('controls.space')}</p>
         </div>
         
         <p style="
@@ -152,12 +152,12 @@ export class UIMenu {
     
     enButton?.addEventListener('click', () => {
       this.i18n.setLanguage('en');
-      this.updateLanguageButtons();
+      this.showTitleScreen(); // Redraw with new language
     });
     
     jpButton?.addEventListener('click', () => {
       this.i18n.setLanguage('jp');
-      this.updateLanguageButtons();
+      this.showTitleScreen(); // Redraw with new language
     });
     
     this.updateLanguageButtons();
@@ -219,7 +219,7 @@ export class UIMenu {
           font-size: 24px;
           margin-bottom: 20px;
           font-weight: bold;
-        ">CREATE GAME</h2>
+        ">${this.i18n.t('settings.title')}</h2>
         
         <div style="
           background: #111;
@@ -229,7 +229,7 @@ export class UIMenu {
           margin-bottom: 15px;
         ">
           <div style="margin-bottom: 15px;">
-            <p style="color: #aaa; font-size: 11px; margin-bottom: 5px;">PLAYERS:</p>
+            <p style="color: #aaa; font-size: 11px; margin-bottom: 5px;">${this.i18n.t('settings.players').toUpperCase()}:</p>
             <div id="player-options">
               ${[4, 6, 8, 10, 15, 20].map(num => `
                 <button class="option-btn" data-option="players" data-value="${num}" style="
@@ -247,7 +247,7 @@ export class UIMenu {
           </div>
           
           <div style="margin-bottom: 15px;">
-            <p style="color: #aaa; font-size: 11px; margin-bottom: 5px;">DURATION:</p>
+            <p style="color: #aaa; font-size: 11px; margin-bottom: 5px;">${this.i18n.t('settings.duration').toUpperCase()}:</p>
             <div id="duration-options">
               ${[3, 5].map(min => `
                 <button class="option-btn" data-option="duration" data-value="${min}" style="
@@ -259,13 +259,13 @@ export class UIMenu {
                   border: 1px solid #666;
                   background: #222;
                   color: #aaa;
-                ">${min} min</button>
+                ">${this.i18n.t('settings.minutes', { value: min })}</button>
               `).join('')}
             </div>
           </div>
           
           <div style="margin-bottom: 15px;">
-            <p style="color: #aaa; font-size: 11px; margin-bottom: 5px;">ROUNDS:</p>
+            <p style="color: #aaa; font-size: 11px; margin-bottom: 5px;">${this.i18n.t('settings.rounds').toUpperCase()}:</p>
             <div id="rounds-options">
               ${[1, 3, 5].map(num => `
                 <button class="option-btn" data-option="rounds" data-value="${num}" style="
@@ -294,7 +294,7 @@ export class UIMenu {
           background: #331a00;
           color: #ff8800;
           font-weight: bold;
-        ">START GAME</button>
+        ">${this.i18n.t('settings.confirm').toUpperCase()}</button>
         
         <button id="btn-back" style="
           width: 100%;
@@ -306,7 +306,7 @@ export class UIMenu {
           border: 1px solid #666;
           background: #222;
           color: #aaa;
-        ">← BACK</button>
+        ">← ${this.i18n.t('menu.back').toUpperCase()}</button>
       </div>
     `;
     
@@ -377,7 +377,126 @@ export class UIMenu {
   /**
    * Show join game screen
    */
-  public showJoinGameScreen(): void {
+  public showJoinGameScreen(games?: Array<{
+    id: string;
+    hostName: string;
+    currentPlayers: number;
+    maxPlayers: number;
+    duration: number;
+    rounds: number;
+    isFull: boolean;
+  }>): void {
+    const overlay = this.uiManager.getOverlay();
+    
+    const gameListHTML = games && games.length > 0
+      ? games.map(game => `
+          <div style="
+            background: #222;
+            border: 1px solid ${game.isFull ? '#666' : '#ff8800'};
+            padding: 12px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          ">
+            <div style="flex: 1;">
+              <p style="color: #ff8800; font-size: 14px; font-weight: bold; margin-bottom: 5px;">
+                ${game.hostName}'s Game
+              </p>
+              <p style="color: #aaa; font-size: 11px; margin: 2px 0;">
+                ${this.i18n.t('gameList.players', { current: game.currentPlayers, max: game.maxPlayers })} | 
+                ${this.i18n.t('gameList.duration', { minutes: game.duration })} | 
+                ${this.i18n.t('gameList.rounds', { count: game.rounds })}
+              </p>
+            </div>
+            <button 
+              class="join-game-btn" 
+              data-game-id="${game.id}"
+              ${game.isFull ? 'disabled' : ''}
+              style="
+                padding: 8px 16px;
+                font-size: 12px;
+                cursor: ${game.isFull ? 'not-allowed' : 'pointer'};
+                font-family: monospace;
+                border: 1px solid ${game.isFull ? '#666' : '#0f0'};
+                background: ${game.isFull ? '#333' : '#003300'};
+                color: ${game.isFull ? '#666' : '#0f0'};
+                font-weight: bold;
+                opacity: ${game.isFull ? '0.5' : '1'};
+              ">
+              ${game.isFull ? this.i18n.t('gameList.full').toUpperCase() : this.i18n.t('gameList.join').toUpperCase()}
+            </button>
+          </div>
+        `).join('')
+      : `<p style="color: #666; font-size: 12px; text-align: center; padding: 20px;">
+          ${this.i18n.t('gameList.noGames')}
+        </p>`;
+    
+    overlay.innerHTML = `
+      <div style="
+        background: rgba(0, 0, 0, 0.85);
+        border: 2px solid #666;
+        border-radius: 8px;
+        padding: 30px;
+        max-width: 500px;
+        font-family: monospace;
+      ">
+        <h2 style="
+          color: #ff8800;
+          font-size: 24px;
+          margin-bottom: 20px;
+          font-weight: bold;
+        ">${this.i18n.t('gameList.title')}</h2>
+        
+        <div style="
+          background: #111;
+          border: 1px solid #333;
+          padding: 15px;
+          border-radius: 4px;
+          margin-bottom: 15px;
+          max-height: 300px;
+          overflow-y: auto;
+        ">
+          ${gameListHTML}
+        </div>
+        
+        <button id="btn-back" style="
+          width: 100%;
+          padding: 12px;
+          margin: 5px 0;
+          font-size: 14px;
+          cursor: pointer;
+          font-family: monospace;
+          border: 1px solid #666;
+          background: #222;
+          color: #aaa;
+        ">← ${this.i18n.t('menu.back').toUpperCase()}</button>
+      </div>
+    `;
+    
+    // Setup join button listeners
+    document.querySelectorAll('.join-game-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const target = e.target as HTMLButtonElement;
+        const gameId = target.dataset.gameId;
+        if (gameId) {
+          console.log('Joining game:', gameId);
+          // TODO: Implement join game logic
+          this.uiManager.hideOverlay();
+        }
+      });
+    });
+    
+    document.getElementById('btn-back')?.addEventListener('click', () => {
+      this.showTitleScreen();
+    });
+  }
+
+  /**
+   * Show lobby screen
+   */
+  public showLobbyScreen(currentPlayers: number, maxPlayers: number, isHost: boolean): void {
     const overlay = this.uiManager.getOverlay();
     
     overlay.innerHTML = `
@@ -394,7 +513,7 @@ export class UIMenu {
           font-size: 24px;
           margin-bottom: 20px;
           font-weight: bold;
-        ">JOIN GAME</h2>
+        ">${this.i18n.t('lobby.title')}</h2>
         
         <div style="
           background: #111;
@@ -402,13 +521,31 @@ export class UIMenu {
           padding: 15px;
           border-radius: 4px;
           margin-bottom: 15px;
-          max-height: 300px;
-          overflow-y: auto;
+          text-align: center;
         ">
-          <p style="color: #666; font-size: 12px; text-align: center; padding: 20px;">
-            No active games found.<br>
-            Create a new game to start playing!
+          <p style="color: #aaa; font-size: 14px; margin-bottom: 10px;">
+            ${this.i18n.t('lobby.waiting')}
           </p>
+          
+          <p style="color: #ff8800; font-size: 24px; font-weight: bold; margin: 20px 0;">
+            ${this.i18n.t('lobby.players', { current: currentPlayers, max: maxPlayers })}
+          </p>
+          
+          ${isHost ? `
+            <p style="color: #0f0; font-size: 16px; margin-top: 20px; animation: pulse 1.5s infinite;">
+              ${this.i18n.t('lobby.pressSpace')}
+            </p>
+          ` : `
+            <p style="color: #aaa; font-size: 14px; margin-top: 20px;">
+              ${this.i18n.t('lobby.ready')}
+            </p>
+          `}
+          
+          ${currentPlayers < maxPlayers ? `
+            <p style="color: #666; font-size: 12px; margin-top: 15px; font-style: italic;">
+              ${this.i18n.t('lobby.addingAI')}
+            </p>
+          ` : ''}
         </div>
         
         <button id="btn-back" style="
@@ -421,8 +558,15 @@ export class UIMenu {
           border: 1px solid #666;
           background: #222;
           color: #aaa;
-        ">← BACK</button>
+        ">← ${this.i18n.t('menu.back').toUpperCase()}</button>
       </div>
+      
+      <style>
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+      </style>
     `;
     
     document.getElementById('btn-back')?.addEventListener('click', () => {
@@ -460,7 +604,7 @@ export class UIMenu {
           font-size: 24px;
           margin-bottom: 20px;
           font-weight: bold;
-        ">STATISTICS</h2>
+        ">${this.i18n.t('stats.title')}</h2>
         
         <div style="
           background: #111;
@@ -470,33 +614,33 @@ export class UIMenu {
           margin-bottom: 15px;
         ">
           <div style="margin-bottom: 10px;">
-            <p style="color: #aaa; font-size: 11px;">GAMES PLAYED:</p>
+            <p style="color: #aaa; font-size: 11px;">${this.i18n.t('stats.gamesPlayed').toUpperCase()}:</p>
             <p style="color: #ff8800; font-size: 18px; font-weight: bold;">${stats.gamesPlayed}</p>
           </div>
           
           <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
             <div style="flex: 1;">
-              <p style="color: #aaa; font-size: 11px;">WINS:</p>
+              <p style="color: #aaa; font-size: 11px;">${this.i18n.t('stats.wins').toUpperCase()}:</p>
               <p style="color: #ff8800; font-size: 16px; font-weight: bold;">${stats.wins}</p>
             </div>
             <div style="flex: 1;">
-              <p style="color: #aaa; font-size: 11px;">LOSSES:</p>
+              <p style="color: #aaa; font-size: 11px;">${this.i18n.t('stats.losses').toUpperCase()}:</p>
               <p style="color: #ff0000; font-size: 16px; font-weight: bold;">${stats.losses}</p>
             </div>
           </div>
           
           <div style="margin-bottom: 10px;">
-            <p style="color: #aaa; font-size: 11px;">WIN RATE:</p>
+            <p style="color: #aaa; font-size: 11px;">${this.i18n.t('stats.winRate').toUpperCase()}:</p>
             <p style="color: #ff8800; font-size: 18px; font-weight: bold;">${stats.winRate}%</p>
           </div>
           
           <div style="border-top: 1px solid #333; padding-top: 10px; margin-top: 10px;">
-            <p style="color: #aaa; font-size: 11px;">TOTAL SURVIVAL TIME:</p>
+            <p style="color: #aaa; font-size: 11px;">${this.i18n.t('stats.totalSurvivalTime').toUpperCase()}:</p>
             <p style="color: #ff8800; font-size: 16px; font-weight: bold;">${stats.totalSurvivalTime}s</p>
           </div>
           
           <div style="margin-top: 10px;">
-            <p style="color: #aaa; font-size: 11px;">LONGEST SURVIVAL:</p>
+            <p style="color: #aaa; font-size: 11px;">${this.i18n.t('stats.longestSurvival').toUpperCase()}:</p>
             <p style="color: #ff8800; font-size: 16px; font-weight: bold;">${stats.longestSurvival}s</p>
           </div>
         </div>
@@ -511,7 +655,7 @@ export class UIMenu {
           border: 1px solid #ff0000;
           background: #330000;
           color: #ff0000;
-        ">RESET STATISTICS</button>
+        ">${this.i18n.t('stats.reset').toUpperCase()}</button>
         
         <button id="btn-back" style="
           width: 100%;
@@ -523,12 +667,12 @@ export class UIMenu {
           border: 1px solid #666;
           background: #222;
           color: #aaa;
-        ">← BACK</button>
+        ">← ${this.i18n.t('menu.back').toUpperCase()}</button>
       </div>
     `;
     
     document.getElementById('btn-reset-stats')?.addEventListener('click', () => {
-      if (confirm('Are you sure you want to reset all statistics?')) {
+      if (confirm(this.i18n.t('stats.confirmReset'))) {
         console.log('Resetting statistics...');
         this.showStatsScreen(); // Refresh
       }

@@ -217,6 +217,60 @@ describe('GameState', () => {
     });
   });
 
+  describe('game end conditions', () => {
+    it('should detect when all players are oni', () => {
+      gameState.setGameConfig({
+        totalPlayers: 4,
+        roundDuration: 180,
+        rounds: 1,
+      });
+      gameState.setGamePhase('playing');
+      gameState.setLocalPlayerIsOni(true);
+
+      expect(gameState.areAllPlayersOni()).toBe(true);
+    });
+
+    it('should not detect all oni when there are runners', () => {
+      gameState.setGameConfig({
+        totalPlayers: 4,
+        roundDuration: 180,
+        rounds: 1,
+      });
+      gameState.setGamePhase('playing');
+      gameState.setLocalPlayerIsOni(false);
+
+      expect(gameState.areAllPlayersOni()).toBe(false);
+    });
+
+    it('should detect when game should end due to timeout', () => {
+      gameState.setGameConfig({
+        totalPlayers: 4,
+        roundDuration: 0,
+        rounds: 1,
+      });
+      gameState.setGamePhase('playing');
+
+      expect(gameState.shouldGameEnd()).toBe(true);
+    });
+
+    it('should detect when game should end due to all oni', () => {
+      gameState.setGameConfig({
+        totalPlayers: 4,
+        roundDuration: 180,
+        rounds: 1,
+      });
+      gameState.setGamePhase('playing');
+      gameState.setLocalPlayerIsOni(true);
+
+      expect(gameState.shouldGameEnd()).toBe(true);
+    });
+
+    it('should not end game when in lobby', () => {
+      gameState.setGamePhase('lobby');
+      expect(gameState.shouldGameEnd()).toBe(false);
+    });
+  });
+
   describe('reset and clear', () => {
     it('should reset for new round', () => {
       gameState.setLocalPlayerPosition({ x: 100, y: 50, z: 100 });

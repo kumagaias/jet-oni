@@ -31,6 +31,12 @@ export class UIMenu {
   public startGame(): void {
     this.uiManager.hideOverlay();
     
+    // Show canvas when game starts
+    const canvas = document.getElementById('bg') as HTMLCanvasElement;
+    if (canvas) {
+      canvas.style.display = 'block';
+    }
+    
     // Resume game engine
     if (this.gameEngine) {
       this.gameEngine.resume();
@@ -53,6 +59,12 @@ export class UIMenu {
     // Pause game engine when showing menu
     if (this.gameEngine) {
       this.gameEngine.pause();
+    }
+    
+    // Hide canvas on title screen
+    const canvas = document.getElementById('bg') as HTMLCanvasElement;
+    if (canvas) {
+      canvas.style.display = 'none';
     }
     
     const overlay = this.uiManager.getOverlay();
@@ -238,6 +250,12 @@ export class UIMenu {
    * Show create game screen
    */
   public showCreateGameScreen(): void {
+    // Hide canvas on settings screen
+    const canvas = document.getElementById('bg') as HTMLCanvasElement;
+    if (canvas) {
+      canvas.style.display = 'none';
+    }
+    
     const overlay = this.uiManager.getOverlay();
     
     overlay.innerHTML = `
@@ -421,6 +439,12 @@ export class UIMenu {
     rounds: number;
     isFull: boolean;
   }>): void {
+    // Hide canvas on join game screen
+    const canvas = document.getElementById('bg') as HTMLCanvasElement;
+    if (canvas) {
+      canvas.style.display = 'none';
+    }
+    
     const overlay = this.uiManager.getOverlay();
     
     const gameListHTML = games && games.length > 0
@@ -532,6 +556,12 @@ export class UIMenu {
    * Show lobby screen
    */
   public showLobbyScreen(currentPlayers: number, maxPlayers: number, isHost: boolean): void {
+    // Show canvas in lobby so players can walk around
+    const canvas = document.getElementById('bg') as HTMLCanvasElement;
+    if (canvas) {
+      canvas.style.display = 'block';
+    }
+    
     // Resume game engine so players can walk around
     if (this.gameEngine) {
       this.gameEngine.resume();
@@ -631,6 +661,12 @@ export class UIMenu {
    * Show statistics screen
    */
   public showStatsScreen(): void {
+    // Hide canvas on stats screen
+    const canvas = document.getElementById('bg') as HTMLCanvasElement;
+    if (canvas) {
+      canvas.style.display = 'none';
+    }
+    
     const overlay = this.uiManager.getOverlay();
     
     // Mock stats data

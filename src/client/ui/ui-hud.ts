@@ -223,17 +223,30 @@ export class UIHud {
   private updateFuel(fuel: number): void {
     if (!this.fuelBar || !this.fuelText) return;
 
+    const localPlayer = this.gameState.getLocalPlayer();
     const fuelPercent = (fuel / MAX_FUEL) * 100;
     this.fuelBar.style.width = `${fuelPercent}%`;
     this.fuelText.textContent = `${Math.round(fuel)}`;
 
-    // Change color based on fuel level
-    if (fuel < 25) {
-      this.fuelBar.style.background = '#ff0000';
-    } else if (fuel < 50) {
-      this.fuelBar.style.background = 'linear-gradient(90deg, #ff0000, #ffff00)';
+    // Change color based on role (ONI = orange, RUNNER = green)
+    if (localPlayer.isOni) {
+      // ONI - Orange gradient
+      if (fuel < 25) {
+        this.fuelBar.style.background = '#ff4500';
+      } else if (fuel < 50) {
+        this.fuelBar.style.background = 'linear-gradient(90deg, #ff4500, #ffa500)';
+      } else {
+        this.fuelBar.style.background = 'linear-gradient(90deg, #ffa500, #ff8c00)';
+      }
     } else {
-      this.fuelBar.style.background = 'linear-gradient(90deg, #00ff00, #ffff00, #ff0000)';
+      // RUNNER - Green gradient
+      if (fuel < 25) {
+        this.fuelBar.style.background = '#00ff00';
+      } else if (fuel < 50) {
+        this.fuelBar.style.background = 'linear-gradient(90deg, #00ff00, #7fff00)';
+      } else {
+        this.fuelBar.style.background = 'linear-gradient(90deg, #00ff00, #32cd32)';
+      }
     }
   }
 

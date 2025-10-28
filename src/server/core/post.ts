@@ -9,11 +9,11 @@ export const createPost = async () => {
   return await reddit.submitCustomPost({
     splash: {
       // Splash Screen Configuration
-      appDisplayName: 'jet-oni',
+      appDisplayName: 'JetOni',
       backgroundUri: 'default-splash.png',
-      buttonLabel: 'Tap to Start',
-      description: 'An exciting interactive experience',
-      heading: 'Welcome to the Game!',
+      buttonLabel: '🚀 Launch Game',
+      description: 'Chase or escape in a 3D city! Use jetpacks, dash abilities, and beacons in this thrilling multiplayer tag game.',
+      heading: 'Ready to Play?',
       appIconUri: 'default-icon.png',
     },
     postData: {
@@ -21,6 +21,6 @@ export const createPost = async () => {
       score: 0,
     },
     subredditName: subredditName,
-    title: 'jet-oni',
+    title: 'JetOni - 3D Multiplayer Tag Game',
   });
 };

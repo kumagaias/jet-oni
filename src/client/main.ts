@@ -160,6 +160,20 @@ async function initGame(): Promise<void> {
         // Update player controller
         playerController.update(deltaTime);
         
+        // Get mobile control input and merge with keyboard input
+        const buttonState = uiControls.getButtonState();
+        if (buttonState.dash || buttonState.jetpack) {
+          // Simulate SHIFT key press for dash/jetpack
+          const inputState = playerController.getInputState();
+          inputState.dash = true;
+          inputState.jetpack = true;
+        }
+        if (buttonState.beacon) {
+          // Simulate B key press for beacon
+          const inputState = playerController.getInputState();
+          inputState.beacon = true;
+        }
+        
         // Check if player became ONI
         const localPlayer = gameState.getLocalPlayer();
         if (localPlayer.isOni && !wasOni) {
@@ -177,6 +191,9 @@ async function initGame(): Promise<void> {
           beaconSystem.activate();
           console.log('Beacon activated!');
         }
+        
+        // Update UI controls
+        uiControls.update();
         
         // Update beacon visuals
         const isBeaconActive = beaconSystem.isBeaconActive();
@@ -279,6 +296,14 @@ async function initGame(): Promise<void> {
         uiHud.show();
         uiControls.show();
       });
+      
+      // Listen for lobby event (when user creates a game)
+      window.addEventListener('showLobby', ((e: CustomEvent) => {
+        console.log('Showing lobby');
+        gameState.setGamePhase('lobby');
+        const { currentPlayers, maxPlayers, isHost } = e.detail;
+        uiMenu.showLobbyScreen(currentPlayers, maxPlayers, isHost);
+      }) as EventListener);
       
       uiMenu.showTitleScreen();
       

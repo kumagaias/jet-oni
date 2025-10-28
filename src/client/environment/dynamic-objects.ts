@@ -107,8 +107,8 @@ export class DynamicObjects {
 
       // Rotate car to face direction
       // Car body is 2 wide x 4 deep, so depth (Z) is the front
-      // Calculate rotation based on direction vector
-      const angle = Math.atan2(direction.x, direction.z);
+      // Calculate rotation based on direction vector and add 90 degrees
+      const angle = Math.atan2(direction.x, direction.z) + Math.PI / 2;
       car.rotation.y = angle;
 
       this.cars.add(car);

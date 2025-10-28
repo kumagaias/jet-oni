@@ -385,10 +385,17 @@ export class UIMenu {
       });
     });
     
-    // Start game button
+    // Start game button (actually goes to lobby)
     document.getElementById('btn-start-game')?.addEventListener('click', () => {
-      console.log('Starting game with options:', selectedOptions);
-      this.startGame();
+      console.log('Creating game with options:', selectedOptions);
+      // Dispatch event to show lobby
+      window.dispatchEvent(new CustomEvent('showLobby', {
+        detail: {
+          currentPlayers: 1,
+          maxPlayers: selectedOptions.players,
+          isHost: true
+        }
+      }));
     });
     
     // Back button
@@ -525,6 +532,11 @@ export class UIMenu {
    * Show lobby screen
    */
   public showLobbyScreen(currentPlayers: number, maxPlayers: number, isHost: boolean): void {
+    // Resume game engine so players can walk around
+    if (this.gameEngine) {
+      this.gameEngine.resume();
+    }
+    
     const overlay = this.uiManager.getOverlay();
     
     overlay.innerHTML = `
@@ -600,6 +612,19 @@ export class UIMenu {
     document.getElementById('btn-back')?.addEventListener('click', () => {
       this.showTitleScreen();
     });
+    
+    // Listen for SPACE key to start game (host only)
+    if (isHost) {
+      const spaceKeyHandler = (e: KeyboardEvent) => {
+        if (e.code === 'Space') {
+          e.preventDefault();
+          console.log('Host pressed SPACE - starting game');
+          this.startGame();
+          window.removeEventListener('keydown', spaceKeyHandler);
+        }
+      };
+      window.addEventListener('keydown', spaceKeyHandler);
+    }
   }
 
   /**

@@ -1,6 +1,5 @@
 import * as THREE from 'three';
 import { Player } from '../../shared/types/game';
-import { ObjectPool } from '../utils/object-pool';
 
 /**
  * Particle represents a single particle in the system

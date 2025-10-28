@@ -2,7 +2,6 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { TaggingSystem } from './tagging-system';
 import { GameState } from './game-state';
 import { BeaconSystem } from '../abilities/beacon-system';
-import { TAG_DISTANCE } from '../../shared/constants';
 
 describe('TaggingSystem', () => {
   let gameState: GameState;

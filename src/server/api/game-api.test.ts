@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import type { Express } from 'express';
+import supertest from 'supertest';
 
 // Create mock functions
 const mockCreateGame = vi.fn();

@@ -1,301 +1,126 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { VisualIndicators } from './visual-indicators';
-import { Player } from '../../shared/types/game';
+import { describe, it, expect, beforeEach } from 'vitest';
 import * as THREE from 'three';
-import {
-  MARKER_OPACITY_MOVING,
-  MARKER_OPACITY_STATIONARY,
-} from '../../shared/constants';
-
-// Mock THREE.js scene
-class MockScene {
-  public objects: THREE.Object3D[] = [];
-
-  add(object: THREE.Object3D): void {
-    this.objects.push(object);
-  }
-
-  remove(object: THREE.Object3D): void {
-    const index = this.objects.indexOf(object);
-    if (index > -1) {
-      this.objects.splice(index, 1);
-    }
-  }
-}
+import { VisualIndicators } from './visual-indicators';
 
 describe('VisualIndicators', () => {
-  let scene: MockScene;
-  let visualIndicators: VisualIndicators;
-  let mockPlayers: Player[];
+  let scene: THREE.Scene;
+  let indicators: VisualIndicators;
 
   beforeEach(() => {
-    scene = new MockScene();
-    visualIndicators = new VisualIndicators(scene as unknown as THREE.Scene);
-
-    // Create mock players
-    mockPlayers = [
-      {
-        id: 'player1',
-        username: 'Player 1',
-        isOni: true,
-        isAI: false,
-        position: { x: 0, y: 0, z: 0 },
-        velocity: { x: 5, y: 0, z: 0 }, // Moving
-        fuel: 100,
-        survivedTime: 0,
-        wasTagged: false,
-        isOnSurface: true,
-        isDashing: false,
-        isJetpacking: false,
-        beaconCooldown: 0,
-      },
-      {
-        id: 'player2',
-        username: 'Player 2',
-        isOni: false,
-        isAI: false,
-        position: { x: 10, y: 0, z: 0 },
-        velocity: { x: 0, y: 0, z: 0 }, // Stationary
-        fuel: 100,
-        survivedTime: 0,
-        wasTagged: false,
-        isOnSurface: true,
-        isDashing: false,
-        isJetpacking: false,
-        beaconCooldown: 0,
-      },
-      {
-        id: 'player3',
-        username: 'Player 3',
-        isOni: false,
-        isAI: true,
-        position: { x: 20, y: 0, z: 0 },
-        velocity: { x: 3, y: 0, z: 3 }, // Moving
-        fuel: 50,
-        survivedTime: 10,
-        wasTagged: false,
-        isOnSurface: false,
-        isDashing: true,
-        isJetpacking: false,
-        beaconCooldown: 0,
-      },
-    ];
+    scene = new THREE.Scene();
+    indicators = new VisualIndicators(scene);
   });
 
-  describe('updateMarkers', () => {
-    it('should create markers for all players except local player', () => {
-      const localPlayerId = 'player1';
+  describe('updateMarker', () => {
+    it('should create a marker for a new player', () => {
+      const position = new THREE.Vector3(10, 0, 10);
+      indicators.updateMarker('player1', position, false, true);
 
-      visualIndicators.updateMarkers(mockPlayers, localPlayerId);
-
-      // Should create markers for player2 and player3 only
-      expect(scene.objects.length).toBe(2);
+      expect(scene.children.length).toBe(1);
     });
 
-    it('should set red color for ONI players', () => {
-      const localPlayerId = 'player2';
+    it('should use red color for oni players', () => {
+      const position = new THREE.Vector3(10, 0, 10);
+      indicators.updateMarker('player1', position, true, true);
 
-      visualIndicators.updateMarkers(mockPlayers, localPlayerId);
-
-      // Find marker for player1 (ONI)
-      const oniMarker = scene.objects[0] as THREE.Group;
-      const cone = oniMarker.children[0] as THREE.Mesh;
-      const material = cone.material as THREE.MeshBasicMaterial;
-
-      expect(material.color.getHex()).toBe(0xff0000); // Red
+      const marker = scene.children[0] as THREE.Mesh;
+      const material = marker.material as THREE.MeshBasicMaterial;
+      expect(material.color.getHex()).toBe(0xff0000);
     });
 
-    it('should set green color for runner players', () => {
-      const localPlayerId = 'player1';
+    it('should use green color for runner players', () => {
+      const position = new THREE.Vector3(10, 0, 10);
+      indicators.updateMarker('player1', position, false, true);
 
-      visualIndicators.updateMarkers(mockPlayers, localPlayerId);
-
-      // Find marker for player2 (runner)
-      const runnerMarker = scene.objects[0] as THREE.Group;
-      const cone = runnerMarker.children[0] as THREE.Mesh;
-      const material = cone.material as THREE.MeshBasicMaterial;
-
-      expect(material.color.getHex()).toBe(0x00ff00); // Green
+      const marker = scene.children[0] as THREE.Mesh;
+      const material = marker.material as THREE.MeshBasicMaterial;
+      expect(material.color.getHex()).toBe(0x00ff00);
     });
 
-    it('should set opacity to MARKER_OPACITY_MOVING for moving players', () => {
-      const localPlayerId = 'player2';
+    it('should use 90% opacity when player is moving', () => {
+      const position = new THREE.Vector3(10, 0, 10);
+      indicators.updateMarker('player1', position, false, true);
 
-      visualIndicators.updateMarkers(mockPlayers, localPlayerId);
-
-      // Find marker for player1 (moving)
-      const movingMarker = scene.objects[0] as THREE.Group;
-      const cone = movingMarker.children[0] as THREE.Mesh;
-      const material = cone.material as THREE.MeshBasicMaterial;
-
-      expect(material.opacity).toBe(MARKER_OPACITY_MOVING);
+      const marker = scene.children[0] as THREE.Mesh;
+      const material = marker.material as THREE.MeshBasicMaterial;
+      expect(material.opacity).toBe(0.9);
     });
 
-    it('should set opacity to MARKER_OPACITY_STATIONARY for stationary players', () => {
-      const localPlayerId = 'player1';
+    it('should use 50% opacity when player is stationary', () => {
+      const position = new THREE.Vector3(10, 0, 10);
+      indicators.updateMarker('player1', position, false, false);
 
-      visualIndicators.updateMarkers(mockPlayers, localPlayerId);
-
-      // Find marker for player2 (stationary)
-      const stationaryMarker = scene.objects[0] as THREE.Group;
-      const cone = stationaryMarker.children[0] as THREE.Mesh;
-      const material = cone.material as THREE.MeshBasicMaterial;
-
-      expect(material.opacity).toBe(MARKER_OPACITY_STATIONARY);
+      const marker = scene.children[0] as THREE.Mesh;
+      const material = marker.material as THREE.MeshBasicMaterial;
+      expect(material.opacity).toBe(0.5);
     });
 
-    it('should position markers above player heads', () => {
-      const localPlayerId = 'player1';
+    it('should position marker 3 units above player', () => {
+      const position = new THREE.Vector3(10, 5, 10);
+      indicators.updateMarker('player1', position, false, true);
 
-      visualIndicators.updateMarkers(mockPlayers, localPlayerId);
-
-      // Check marker for player2
-      const marker = scene.objects[0] as THREE.Group;
-
-      expect(marker.position.x).toBe(mockPlayers[1].position.x);
-      expect(marker.position.y).toBe(mockPlayers[1].position.y + 2.5);
-      expect(marker.position.z).toBe(mockPlayers[1].position.z);
+      const marker = scene.children[0] as THREE.Mesh;
+      expect(marker.position.y).toBe(8); // 5 + 3
     });
 
-    it('should remove markers for players that no longer exist', () => {
-      const localPlayerId = 'player1';
+    it('should reuse existing marker for same player', () => {
+      const position1 = new THREE.Vector3(10, 0, 10);
+      const position2 = new THREE.Vector3(20, 0, 20);
 
-      // First update with all players
-      visualIndicators.updateMarkers(mockPlayers, localPlayerId);
-      expect(scene.objects.length).toBe(2);
+      indicators.updateMarker('player1', position1, false, true);
+      indicators.updateMarker('player1', position2, false, true);
 
-      // Remove player3
-      const reducedPlayers = mockPlayers.slice(0, 2);
-      visualIndicators.updateMarkers(reducedPlayers, localPlayerId);
+      expect(scene.children.length).toBe(1);
+    });
 
-      // Should only have marker for player2 now
-      expect(scene.objects.length).toBe(1);
+    it('should update marker color when player becomes oni', () => {
+      const position = new THREE.Vector3(10, 0, 10);
+
+      // Start as runner
+      indicators.updateMarker('player1', position, false, true);
+      let marker = scene.children[0] as THREE.Mesh;
+      let material = marker.material as THREE.MeshBasicMaterial;
+      expect(material.color.getHex()).toBe(0x00ff00);
+
+      // Become oni
+      indicators.updateMarker('player1', position, true, true);
+      marker = scene.children[0] as THREE.Mesh;
+      material = marker.material as THREE.MeshBasicMaterial;
+      expect(material.color.getHex()).toBe(0xff0000);
     });
   });
 
-  describe('updateSpotIndicators', () => {
-    it('should not show spot indicator when local player is ONI', () => {
-      const localPlayerId = 'player1'; // ONI player
+  describe('removeMarker', () => {
+    it('should remove marker from scene', () => {
+      const position = new THREE.Vector3(10, 0, 10);
+      indicators.updateMarker('player1', position, false, true);
 
-      visualIndicators.updateSpotIndicators(mockPlayers, localPlayerId);
+      expect(scene.children.length).toBe(1);
 
-      // No spot indicators should be created
-      const spotIndicators = scene.objects.filter((obj) => {
-        return obj.children.some((child) => child instanceof THREE.Sprite);
-      });
-      expect(spotIndicators.length).toBe(0);
+      indicators.removeMarker('player1');
+
+      expect(scene.children.length).toBe(0);
     });
 
-    it('should show spot indicator when ONI is within range', () => {
-      const localPlayerId = 'player2'; // Runner at x=10
-
-      // Move ONI player closer (within 50 units)
-      mockPlayers[0].position.x = 15; // 5 units away
-
-      visualIndicators.updateSpotIndicators(mockPlayers, localPlayerId, 50);
-
-      // Spot indicator should be created
-      const spotIndicators = scene.objects.filter((obj) => {
-        return obj.children.some((child) => child instanceof THREE.Sprite);
-      });
-      expect(spotIndicators.length).toBe(1);
-    });
-
-    it('should not show spot indicator when ONI is out of range', () => {
-      const localPlayerId = 'player2'; // Runner at x=10
-
-      // ONI player is at x=0 (10 units away)
-      visualIndicators.updateSpotIndicators(mockPlayers, localPlayerId, 5);
-
-      // No spot indicator should be created
-      const spotIndicators = scene.objects.filter((obj) => {
-        return obj.children.some((child) => child instanceof THREE.Sprite);
-      });
-      expect(spotIndicators.length).toBe(0);
-    });
-
-    it('should remove spot indicator when ONI moves out of range', () => {
-      const localPlayerId = 'player2';
-
-      // First, ONI is close
-      mockPlayers[0].position.x = 15;
-      visualIndicators.updateSpotIndicators(mockPlayers, localPlayerId, 50);
-
-      let spotIndicators = scene.objects.filter((obj) => {
-        return obj.children.some((child) => child instanceof THREE.Sprite);
-      });
-      expect(spotIndicators.length).toBe(1);
-
-      // Now, ONI moves far away
-      mockPlayers[0].position.x = 100;
-      visualIndicators.updateSpotIndicators(mockPlayers, localPlayerId, 50);
-
-      spotIndicators = scene.objects.filter((obj) => {
-        return obj.children.some((child) => child instanceof THREE.Sprite);
-      });
-      expect(spotIndicators.length).toBe(0);
+    it('should handle removing non-existent marker', () => {
+      expect(() => {
+        indicators.removeMarker('nonexistent');
+      }).not.toThrow();
     });
   });
 
-  describe('animate', () => {
-    it('should rotate markers over time', () => {
-      const localPlayerId = 'player1';
+  describe('clear', () => {
+    it('should remove all markers', () => {
+      const position = new THREE.Vector3(10, 0, 10);
+      indicators.updateMarker('player1', position, false, true);
+      indicators.updateMarker('player2', position, true, true);
+      indicators.updateMarker('player3', position, false, false);
 
-      visualIndicators.updateMarkers(mockPlayers, localPlayerId);
+      expect(scene.children.length).toBe(3);
 
-      const marker = scene.objects[0] as THREE.Group;
-      const initialRotation = marker.rotation.y;
+      indicators.clear();
 
-      // Animate for 1 second
-      visualIndicators.animate(1);
-
-      expect(marker.rotation.y).toBeGreaterThan(initialRotation);
-    });
-
-    it('should pulse spot indicator opacity', () => {
-      const localPlayerId = 'player2';
-
-      // Create spot indicator
-      mockPlayers[0].position.x = 15;
-      visualIndicators.updateSpotIndicators(mockPlayers, localPlayerId, 50);
-
-      const spotIndicator = scene.objects.find((obj) => {
-        return obj.children.some((child) => child instanceof THREE.Sprite);
-      }) as THREE.Group;
-
-      const sprite = spotIndicator.children[0] as THREE.Sprite;
-      const material = sprite.material as THREE.SpriteMaterial;
-      const initialOpacity = material.opacity;
-
-      // Animate
-      visualIndicators.animate(0.1);
-
-      // Opacity should change (pulse effect)
-      expect(material.opacity).not.toBe(initialOpacity);
-    });
-  });
-
-  describe('dispose', () => {
-    it('should remove all markers and spot indicators', () => {
-      const localPlayerId = 'player1';
-
-      // Create markers
-      visualIndicators.updateMarkers(mockPlayers, localPlayerId);
-
-      // Create spot indicator
-      mockPlayers[0].position.x = 15;
-      visualIndicators.updateSpotIndicators(
-        [mockPlayers[1]],
-        mockPlayers[1].id,
-        50
-      );
-
-      expect(scene.objects.length).toBeGreaterThan(0);
-
-      // Dispose
-      visualIndicators.dispose();
-
-      expect(scene.objects.length).toBe(0);
+      expect(scene.children.length).toBe(0);
     });
   });
 });

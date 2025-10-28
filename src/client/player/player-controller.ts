@@ -577,21 +577,27 @@ export class PlayerController {
     // Check for exit conditions
     if (shouldExit || this.inputState.jump || this.inputState.left || this.inputState.right) {
       // Exit climbing
-      const exitPosition = this.ladderSystem.exitClimbing(
+      let exitPosition = this.ladderSystem.exitClimbing(
         this.ladderClimbState.currentLadder!,
         this.ladderClimbState.climbProgress,
         player.rotation.yaw
       );
 
-      // If at the top (progress >= 0.95), place player on rooftop
-      if (this.ladderClimbState.climbProgress >= 0.95) {
-        exitPosition.y = this.ladderClimbState.currentLadder!.topPosition.y;
+      // If at the top (progress >= 0.95), automatically place player on rooftop
+      if (this.ladderClimbState.climbProgress >= 0.95 && shouldExit) {
+        // Place player on top of the building with a small offset forward
+        const ladder = this.ladderClimbState.currentLadder!;
+        exitPosition = {
+          x: ladder.position.x + Math.sin(player.rotation.yaw) * 1.5,
+          y: ladder.topPosition.y + 0.5, // Slightly above rooftop to ensure landing
+          z: ladder.position.z + Math.cos(player.rotation.yaw) * 1.5,
+        };
       }
 
       this.gameState.setLocalPlayerPosition(exitPosition);
-      this.gameState.setLocalPlayerVelocity({ x: 0, y: 0, z: 0 });
+      this.gameState.setLocalPlayerVelocity({ x: 0, y: -0.1, z: 0 }); // Small downward velocity to land
       this.gameState.setLocalPlayerClimbing(false);
-      this.gameState.setLocalPlayerOnSurface(true); // Mark as on surface when exiting
+      this.gameState.setLocalPlayerOnSurface(this.ladderClimbState.climbProgress < 0.1); // Only on surface if exiting at bottom
 
       this.ladderClimbState.isClimbing = false;
       this.ladderClimbState.currentLadder = null;

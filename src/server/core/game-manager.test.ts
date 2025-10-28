@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { GameManager } from './game-manager';
-import { GameConfig } from '../../shared/types/game';
+import { GameConfig, GameState } from '../../shared/types/game';
 
 // Mock Redis
 vi.mock('@devvit/web/server', () => ({
@@ -180,20 +180,20 @@ describe('GameManager', () => {
         timeRemaining: 180,
       };
 
-      let savedGameState: any;
+      let savedGameState: GameState | null = null;
       mockRedis.get.mockResolvedValue(JSON.stringify(mockGameState));
       mockRedis.set.mockImplementation((key: string, data: string) => {
-        savedGameState = JSON.parse(data);
+        savedGameState = JSON.parse(data) as GameState;
         return Promise.resolve(undefined);
       });
 
       const result = await gameManager.joinGame('test_game', 'Player2');
 
       expect(result.success).toBe(true);
-      expect(savedGameState.players).toHaveLength(2);
+      expect(savedGameState?.players).toHaveLength(2);
 
       // One player should be oni
-      const oniCount = savedGameState.players.filter((p) => p.isOni).length;
+      const oniCount = savedGameState?.players.filter((p) => p.isOni).length;
       expect(oniCount).toBe(1);
     });
   });
@@ -394,21 +394,21 @@ describe('GameManager', () => {
         timeRemaining: 180,
       };
 
-      let savedGameState: any;
+      let savedGameState: GameState | null = null;
       mockRedis.get.mockResolvedValue(JSON.stringify(mockGameState));
       mockRedis.set.mockImplementation((key: string, data: string) => {
-        savedGameState = JSON.parse(data);
+        savedGameState = JSON.parse(data) as GameState;
         return Promise.resolve(undefined);
       });
 
       await gameManager.addAIPlayers('test_game');
 
-      expect(savedGameState.players).toHaveLength(4);
-      const aiPlayers = savedGameState.players.filter((p) => p.isAI);
+      expect(savedGameState?.players).toHaveLength(4);
+      const aiPlayers = savedGameState?.players.filter((p) => p.isAI);
       expect(aiPlayers).toHaveLength(3);
 
       // Should have assigned oni
-      const oniCount = savedGameState.players.filter((p) => p.isOni).length;
+      const oniCount = savedGameState?.players.filter((p) => p.isOni).length;
       expect(oniCount).toBe(1);
     });
   });

@@ -106,9 +106,11 @@ export class DynamicObjects {
       car.position.copy(position);
 
       // Rotate car to face direction
-      // Car body is 2 wide x 4 deep
-      // We want the short side (width=2) to be the front, so rotate 90 degrees from direction
-      const angle = Math.atan2(direction.x, direction.z);
+      // Car body is BoxGeometry(2, 1, 4) where X=width, Z=depth
+      // By default, Z-axis is forward (depth=4, the long side)
+      // We want X-axis (width=2, the short side) to be forward
+      // So we need to rotate 90 degrees, then align with direction
+      const angle = Math.atan2(direction.x, direction.z) + Math.PI / 2;
       car.rotation.y = angle;
 
       this.cars.add(car);

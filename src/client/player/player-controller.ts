@@ -90,15 +90,22 @@ export class PlayerController {
     const canvas = document.querySelector('canvas');
     if (!canvas) return;
 
+    // Check if we're in a sandboxed environment (like Devvit)
+    const isSandboxed = window.self !== window.top;
+
     // Enable mouse look on canvas click
     canvas.addEventListener('click', () => {
-      // Try to request pointer lock (will fail in Devvit, but that's okay)
-      if (document.pointerLockElement !== canvas) {
+      if (isSandboxed || !document.pointerLockElement) {
+        // In sandboxed environment, skip pointer lock and use fallback
+        this.isPointerLocked = true;
+        this.usePointerLockFallback = true;
+        console.log('Using fallback mouse control (sandboxed environment)');
+      } else if (document.pointerLockElement !== canvas) {
+        // Try to request pointer lock in non-sandboxed environment
         canvas.requestPointerLock().catch(() => {
-          // Pointer lock not available in Devvit sandbox, use fallback
-          console.log('Pointer lock not available, using fallback mode');
-          // Enable fallback mode
+          // Pointer lock not available, use fallback
           this.isPointerLocked = true;
+          this.usePointerLockFallback = true;
         });
       } else {
         this.isPointerLocked = true;
@@ -108,16 +115,16 @@ export class PlayerController {
     // Handle pointer lock change
     document.addEventListener('pointerlockchange', () => {
       this.isPointerLocked = document.pointerLockElement === canvas;
-      if (this.isPointerLocked) {
+      if (this.isPointerLocked && !isSandboxed) {
         console.log('Pointer lock enabled');
       }
     });
 
     // Handle pointer lock error (expected in Devvit)
     document.addEventListener('pointerlockerror', () => {
-      console.log('Pointer lock not supported in this environment');
-      // Enable fallback mode anyway
+      // Silently enable fallback mode
       this.isPointerLocked = true;
+      this.usePointerLockFallback = true;
     });
   }
 

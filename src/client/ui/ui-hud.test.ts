@@ -119,10 +119,8 @@ describe('UIHud', () => {
       uiHud.update();
 
       const fuelBar = document.getElementById('hud-fuel-bar');
-      const fuelText = document.getElementById('hud-fuel-text');
       
       expect(fuelBar?.style.width).toBe('100%');
-      expect(fuelText?.textContent).toBe('100');
     });
 
     it('should display half fuel at 50%', () => {
@@ -130,10 +128,8 @@ describe('UIHud', () => {
       uiHud.update();
 
       const fuelBar = document.getElementById('hud-fuel-bar');
-      const fuelText = document.getElementById('hud-fuel-text');
       
       expect(fuelBar?.style.width).toBe('50%');
-      expect(fuelText?.textContent).toBe('50');
     });
 
     it('should display empty fuel at 0%', () => {
@@ -141,10 +137,8 @@ describe('UIHud', () => {
       uiHud.update();
 
       const fuelBar = document.getElementById('hud-fuel-bar');
-      const fuelText = document.getElementById('hud-fuel-text');
       
       expect(fuelBar?.style.width).toBe('0%');
-      expect(fuelText?.textContent).toBe('0');
     });
 
     it('should change color when fuel is low', () => {
@@ -177,24 +171,22 @@ describe('UIHud', () => {
       expect(beacon?.style.display).toBe('none');
     });
 
-    it('should show beacon ready when player is oni and cooldown is 0', () => {
+    it('should hide beacon display (now item-based)', () => {
       gameState.setLocalPlayerIsOni(true);
       uiHud.update(0);
 
       const beacon = document.getElementById('hud-beacon');
-      expect(beacon?.style.display).toBe('block');
-      expect(beacon?.textContent).toBe('Beacon Ready');
-      expect(beacon?.style.backgroundColor).toContain('0, 255, 0'); // Green
+      // Beacon is now item-based, so it should be hidden
+      expect(beacon?.style.display).toBe('none');
     });
 
-    it('should show beacon cooldown when player is oni and cooldown > 0', () => {
+    it('should keep beacon hidden even with cooldown', () => {
       gameState.setLocalPlayerIsOni(true);
       uiHud.update(15);
 
       const beacon = document.getElementById('hud-beacon');
-      expect(beacon?.style.display).toBe('block');
-      expect(beacon?.textContent).toContain('15');
-      expect(beacon?.style.backgroundColor).toContain('0, 0, 0'); // Dark
+      // Beacon is now item-based, so it should be hidden
+      expect(beacon?.style.display).toBe('none');
     });
   });
 

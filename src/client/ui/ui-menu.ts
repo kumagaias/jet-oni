@@ -81,21 +81,13 @@ export class UIMenu {
         <h1 style="
           color: #ff8800;
           font-size: 36px;
-          margin-bottom: 10px;
+          margin-bottom: 30px;
           font-weight: bold;
           letter-spacing: 2px;
-        ">${this.i18n.t('menu.title')} [PROTOTYPE]</h1>
+          text-align: center;
+        ">${this.i18n.t('menu.title')}</h1>
         
-        <p style="
-          color: #888;
-          font-size: 12px;
-          margin-bottom: 20px;
-          border-bottom: 1px solid #333;
-          padding-bottom: 10px;
-        ">v0.1.0-alpha | User: ${this.username}</p>
-        
-        <div style="margin-bottom: 20px;">
-          <p style="color: #aaa; font-size: 11px; margin-bottom: 5px;">${this.i18n.t('menu.languageSelect').toUpperCase()}:</p>
+        <div style="margin-bottom: 20px; text-align: center;">
           <button id="lang-en" style="
             padding: 8px 16px;
             margin: 3px;
@@ -118,70 +110,42 @@ export class UIMenu {
           ">JP</button>
         </div>
         
-        <div style="
-          background: #111;
-          border: 1px solid #333;
-          padding: 15px;
-          border-radius: 4px;
-          margin-bottom: 15px;
-        ">
-          <button id="btn-create-game" style="
-            width: 100%;
-            padding: 12px;
-            margin: 5px 0;
-            font-size: 14px;
-            cursor: pointer;
-            font-family: monospace;
-            border: 1px solid #ff8800;
-            background: #331a00;
-            color: #ff8800;
-            font-weight: bold;
-          ">▶ ${this.i18n.t('menu.createGame').toUpperCase()}</button>
-          
-          <button id="btn-join-game" style="
-            width: 100%;
-            padding: 12px;
-            margin: 5px 0;
-            font-size: 14px;
-            cursor: pointer;
-            font-family: monospace;
-            border: 1px solid #666;
-            background: #222;
-            color: #aaa;
+        <button id="btn-create-game" style="
+          width: 100%;
+          padding: 12px;
+          margin: 5px 0;
+          font-size: 14px;
+          cursor: pointer;
+          font-family: monospace;
+          border: 1px solid #ff8800;
+          background: #331a00;
+          color: #ff8800;
+          font-weight: bold;
+        ">▶ ${this.i18n.t('menu.createGame').toUpperCase()}</button>
+        
+        <button id="btn-join-game" style="
+          width: 100%;
+          padding: 12px;
+          margin: 5px 0;
+          font-size: 14px;
+          cursor: pointer;
+          font-family: monospace;
+          border: 1px solid #666;
+          background: #222;
+          color: #aaa;
           ">▶ ${this.i18n.t('menu.joinGame').toUpperCase()}</button>
-          
-          <button id="btn-stats" style="
-            width: 100%;
-            padding: 12px;
-            margin: 5px 0;
-            font-size: 14px;
-            cursor: pointer;
-            font-family: monospace;
-            border: 1px solid #666;
-            background: #222;
-            color: #aaa;
-          ">▶ ${this.i18n.t('menu.statistics').toUpperCase()}</button>
-        </div>
         
-        <div style="
-          background: #111;
-          border: 1px solid #333;
-          padding: 15px;
-          border-radius: 4px;
-          text-align: left;
-        ">
-          <p style="color: #ff8800; font-size: 12px; margin-bottom: 10px;">${this.i18n.t('controls.movement').toUpperCase()}:</p>
-          <p style="color: #aaa; font-size: 11px; margin: 3px 0;">→ ${this.i18n.t('controls.wasd')}</p>
-          <p style="color: #aaa; font-size: 11px; margin: 3px 0;">→ ${this.i18n.t('controls.mouse')}</p>
-          <p style="color: #aaa; font-size: 11px; margin: 3px 0;">→ ${this.i18n.t('controls.space')}</p>
-        </div>
-        
-        <p style="
-          color: #666;
-          font-size: 10px;
-          margin-top: 15px;
-          font-style: italic;
-        ">* Minimal viable prototype - More features coming soon</p>
+        <button id="btn-stats" style="
+          width: 100%;
+          padding: 12px;
+          margin: 5px 0;
+          font-size: 14px;
+          cursor: pointer;
+          font-family: monospace;
+          border: 1px solid #666;
+          background: #222;
+          color: #aaa;
+        ">▶ ${this.i18n.t('menu.statistics').toUpperCase()}</button>
       </div>
     `;
     

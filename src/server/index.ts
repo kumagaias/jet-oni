@@ -2,6 +2,8 @@ import express from 'express';
 import { InitResponse, IncrementResponse, DecrementResponse } from '../shared/types/api';
 import { redis, reddit, createServer, context, getServerPort } from '@devvit/web/server';
 import { createPost } from './core/post';
+import gameApiRouter from './api/game-api';
+import statsApiRouter from './api/stats-api';
 
 const app = express();
 
@@ -123,6 +125,12 @@ router.post('/internal/menu/post-create', async (_req, res): Promise<void> => {
     });
   }
 });
+
+// Mount game API routes
+app.use(gameApiRouter);
+
+// Mount stats API routes
+app.use(statsApiRouter);
 
 app.use(router);
 

@@ -25,6 +25,8 @@ export class ParticleSystem {
   private dashMesh: THREE.Points | null = null;
   private readonly maxJetpackParticles = 100;
   private readonly maxDashParticles = 50;
+  private updateCounter = 0;
+  private readonly updateInterval = 1; // Update every frame (can be increased for performance)
 
   constructor(scene: THREE.Scene) {
     this.scene = scene;
@@ -211,6 +213,8 @@ export class ParticleSystem {
    * Update all particles
    */
   public update(deltaTime: number, players: Player[]): void {
+    this.updateCounter++;
+
     // Emit particles for active players
     for (const player of players) {
       if (player.isJetpacking) {
@@ -221,14 +225,19 @@ export class ParticleSystem {
       }
     }
 
-    // Update jetpack particles
-    this.updateParticles(this.jetpackParticles, deltaTime);
+    // Update particles every frame
+    if (this.updateCounter >= this.updateInterval) {
+      // Update jetpack particles
+      this.updateParticles(this.jetpackParticles, deltaTime * this.updateInterval);
 
-    // Update dash particles
-    this.updateParticles(this.dashParticles, deltaTime);
+      // Update dash particles
+      this.updateParticles(this.dashParticles, deltaTime * this.updateInterval);
 
-    // Update meshes
-    this.updateMeshes();
+      // Update meshes
+      this.updateMeshes();
+
+      this.updateCounter = 0;
+    }
   }
 
   /**

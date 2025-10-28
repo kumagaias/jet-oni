@@ -5,6 +5,7 @@ import {
   ONI_SPEED_MULTIPLIER,
   MAP_SIZE,
 } from '../../shared/constants';
+import { EdgeCaseHandler } from '../utils/edge-case-handler';
 
 /**
  * LocalPlayerState represents the local player's state
@@ -101,14 +102,16 @@ export class GameState {
    * Update local player position
    */
   public setLocalPlayerPosition(position: Vector3): void {
-    this.localPlayer.position = { ...position };
+    // Sanitize position to ensure all components are finite
+    this.localPlayer.position = EdgeCaseHandler.sanitizeVector(position);
   }
 
   /**
    * Update local player velocity
    */
   public setLocalPlayerVelocity(velocity: Vector3): void {
-    this.localPlayer.velocity = { ...velocity };
+    // Sanitize velocity to ensure all components are finite
+    this.localPlayer.velocity = EdgeCaseHandler.sanitizeVector(velocity);
   }
 
   /**
@@ -397,6 +400,26 @@ export class GameState {
    */
   public hasTimeRunOut(): boolean {
     return this.getRemainingTime() <= 0;
+  }
+
+  /**
+   * Check if all players are oni (game over condition)
+   */
+  public areAllPlayersOni(): boolean {
+    if (!this.isPlaying()) {
+      return false;
+    }
+    return this.countRunnerPlayers() === 0;
+  }
+
+  /**
+   * Check if game should end
+   */
+  public shouldGameEnd(): boolean {
+    if (!this.isPlaying()) {
+      return false;
+    }
+    return this.hasTimeRunOut() || this.areAllPlayersOni();
   }
 
   /**

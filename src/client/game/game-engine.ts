@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { CAMERA_HEIGHT, MAP_SIZE, MAP_HEIGHT } from '../../shared/constants';
+import { PerformanceOptimizer } from '../utils/performance-optimizer';
 
 /**
  * GameEngine manages the Three.js scene, camera, renderer, and game loop
@@ -13,9 +14,13 @@ export class GameEngine {
   private isRunning = false;
   private lastTime = 0;
   private updateCallbacks: Array<(deltaTime: number) => void> = [];
+  private performanceOptimizer: PerformanceOptimizer;
+  private shadowUpdateCounter = 0;
+  private readonly shadowUpdateInterval = 10; // Update shadows every 10 frames
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
+    this.performanceOptimizer = PerformanceOptimizer.getInstance();
     
     // Initialize scene
     this.scene = new THREE.Scene();
@@ -35,11 +40,16 @@ export class GameEngine {
     this.renderer = new THREE.WebGLRenderer({
       canvas: this.canvas,
       antialias: true,
+      powerPreference: 'high-performance',
     });
     this.renderer.setPixelRatio(window.devicePixelRatio ?? 1);
     this.renderer.setSize(window.innerWidth, window.innerHeight);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    this.renderer.shadowMap.autoUpdate = false; // Manual shadow updates for performance
+
+    // Apply performance optimizations
+    this.performanceOptimizer.optimizeRenderer(this.renderer);
 
     // Setup lighting
     this.setupLighting();
@@ -121,9 +131,19 @@ export class GameEngine {
     // Cap delta time to prevent large jumps
     const cappedDeltaTime = Math.min(deltaTime, 0.1);
 
+    // Update FPS tracking
+    this.performanceOptimizer.updateFPS(currentTime);
+
     // Call all update callbacks
     for (const callback of this.updateCallbacks) {
       callback(cappedDeltaTime);
+    }
+
+    // Update shadows periodically instead of every frame
+    this.shadowUpdateCounter++;
+    if (this.shadowUpdateCounter >= this.shadowUpdateInterval) {
+      this.renderer.shadowMap.needsUpdate = true;
+      this.shadowUpdateCounter = 0;
     }
 
     // Render the scene
@@ -170,6 +190,27 @@ export class GameEngine {
   }
 
   /**
+   * Optimize scene for performance
+   */
+  public optimizeScene(): void {
+    this.performanceOptimizer.optimizeScene(this.scene);
+  }
+
+  /**
+   * Get current FPS
+   */
+  public getFPS(): number {
+    return this.performanceOptimizer.getAverageFPS();
+  }
+
+  /**
+   * Check if performance is low
+   */
+  public isLowPerformance(): boolean {
+    return this.performanceOptimizer.isLowPerformance();
+  }
+
+  /**
    * Get the scene
    */
   public getScene(): THREE.Scene {
@@ -196,7 +237,12 @@ export class GameEngine {
   public dispose(): void {
     this.stop();
     window.removeEventListener('resize', this.handleResize);
+    
+    // Dispose all scene objects
+    this.performanceOptimizer.disposeObject(this.scene);
+    
     this.renderer.dispose();
     this.updateCallbacks = [];
+    this.performanceOptimizer.reset();
   }
 }

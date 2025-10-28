@@ -451,51 +451,34 @@ export class CityGenerator {
    * Cleanup resources
    */
   public dispose(): void {
-    this.buildings.traverse((object) => {
-      if (object instanceof THREE.Mesh) {
-        object.geometry.dispose();
-        if (object.material instanceof THREE.Material) {
-          object.material.dispose();
-        }
-      }
-    });
-
-    this.roads.traverse((object) => {
-      if (object instanceof THREE.Mesh) {
-        object.geometry.dispose();
-        if (object.material instanceof THREE.Material) {
-          object.material.dispose();
-        }
-      }
-    });
-
-    this.rivers.traverse((object) => {
-      if (object instanceof THREE.Mesh) {
-        object.geometry.dispose();
-        if (object.material instanceof THREE.Material) {
-          object.material.dispose();
-        }
-      }
-    });
-
-    this.bridges.traverse((object) => {
-      if (object instanceof THREE.Mesh) {
-        object.geometry.dispose();
-        if (object.material instanceof THREE.Material) {
-          object.material.dispose();
-        }
-      }
-    });
-
-    if (this.landmark) {
-      this.landmark.traverse((object) => {
+    const disposeGroup = (group: THREE.Group) => {
+      group.traverse((object) => {
         if (object instanceof THREE.Mesh) {
-          object.geometry.dispose();
-          if (object.material instanceof THREE.Material) {
-            object.material.dispose();
+          if (object.geometry) {
+            object.geometry.dispose();
+          }
+          if (object.material) {
+            if (Array.isArray(object.material)) {
+              object.material.forEach((m) => m.dispose());
+            } else {
+              object.material.dispose();
+            }
           }
         }
       });
+      group.clear();
+    };
+
+    disposeGroup(this.buildings);
+    disposeGroup(this.roads);
+    disposeGroup(this.rivers);
+    disposeGroup(this.bridges);
+
+    if (this.landmark) {
+      disposeGroup(this.landmark);
+      this.landmark = null;
     }
+
+    this.occupiedAreas = [];
   }
 }

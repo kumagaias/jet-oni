@@ -1,8 +1,14 @@
+// TypeScript config for client test files
 {
-  "extends": "./tsconfig.json",
+  "extends": "../../tools/tsconfig-base.json",
   "compilerOptions": {
-    "types": ["vitest/globals", "node"]
+    "customConditions": ["browser"],
+    "lib": ["DOM", "ES2023", "esnext.disposable"],
+    "types": ["vitest/globals"],
+    "outDir": "../../dist/types/client-test",
+    "jsx": "react-jsx",
+    "tsBuildInfoFile": "../../dist/client/tsconfig.client-test.tsbuildinfo"
   },
-  "include": ["**/*.test.ts", "**/*.spec.ts"],
-  "exclude": []
+  "include": ["**/*.test.ts"],
+  "references": [{ "path": "../shared" }]
 }

@@ -7,6 +7,7 @@ import {
   JETPACK_FORCE,
   JUMP_FORCE,
 } from '../../shared/constants';
+import { AIBehaviorSystem } from './ai-behavior';
 
 /**
  * AI behavior types
@@ -56,13 +57,17 @@ const DEFAULT_AI_CONFIG: AIConfig = {
 export class AIController {
   private gameState: GameState;
   private config: AIConfig;
-  private wanderDirections: Map<string, Vector3> = new Map();
-  private wanderTimers: Map<string, number> = new Map();
+  private behaviorSystem: AIBehaviorSystem;
   private abilityTimers: Map<string, number> = new Map();
 
   constructor(gameState: GameState, config: Partial<AIConfig> = {}) {
     this.gameState = gameState;
     this.config = { ...DEFAULT_AI_CONFIG, ...config };
+    this.behaviorSystem = new AIBehaviorSystem({
+      chaseDistance: this.config.chaseDistance,
+      fleeDistance: this.config.fleeDistance,
+      wanderChangeInterval: this.config.wanderChangeInterval,
+    });
   }
 
   /**
@@ -91,18 +96,14 @@ export class AIController {
     allPlayers: Player[],
     deltaTime: number
   ): AIDecision {
-    // Update wander timer
-    const wanderTimer = this.wanderTimers.get(aiPlayer.id) || 0;
-    this.wanderTimers.set(aiPlayer.id, wanderTimer + deltaTime);
-    
     // Update ability timer
     const abilityTimer = this.abilityTimers.get(aiPlayer.id) || 0;
     this.abilityTimers.set(aiPlayer.id, abilityTimer + deltaTime);
     
     if (aiPlayer.isOni) {
-      return this.makeOniDecision(aiPlayer, allPlayers);
+      return this.makeOniDecision(aiPlayer, allPlayers, deltaTime);
     } else {
-      return this.makeRunnerDecision(aiPlayer, allPlayers);
+      return this.makeRunnerDecision(aiPlayer, allPlayers, deltaTime);
     }
   }
 
@@ -111,24 +112,26 @@ export class AIController {
    */
   private makeOniDecision(
     aiPlayer: Player,
-    allPlayers: Player[]
+    allPlayers: Player[],
+    deltaTime: number
   ): AIDecision {
     // Find nearest runner
-    const nearestRunner = this.findNearestRunner(aiPlayer, allPlayers);
+    const nearestRunner = this.behaviorSystem.findNearestRunner(aiPlayer, allPlayers);
     
     if (!nearestRunner) {
       // No runners found, wander
-      return this.makeWanderDecision(aiPlayer);
+      const decision = this.behaviorSystem.wander(aiPlayer, deltaTime);
+      return this.addAbilityDecision(aiPlayer, decision, 'jetpack');
     }
     
-    const distance = this.calculateDistance(aiPlayer.position, nearestRunner.position);
-    
-    if (distance <= this.config.chaseDistance) {
+    if (this.behaviorSystem.isWithinChaseDistance(aiPlayer, nearestRunner)) {
       // Chase nearest runner
-      return this.makeChaseDecision(aiPlayer, nearestRunner);
+      const decision = this.behaviorSystem.chase(aiPlayer, nearestRunner);
+      return this.addAbilityDecision(aiPlayer, decision, 'jetpack');
     } else {
       // Too far, wander
-      return this.makeWanderDecision(aiPlayer);
+      const decision = this.behaviorSystem.wander(aiPlayer, deltaTime);
+      return this.addAbilityDecision(aiPlayer, decision, 'jetpack');
     }
   }
 
@@ -137,92 +140,58 @@ export class AIController {
    */
   private makeRunnerDecision(
     aiPlayer: Player,
-    allPlayers: Player[]
+    allPlayers: Player[],
+    deltaTime: number
   ): AIDecision {
     // Find nearest ONI
-    const nearestOni = this.findNearestOni(aiPlayer, allPlayers);
+    const nearestOni = this.behaviorSystem.findNearestOni(aiPlayer, allPlayers);
     
     if (!nearestOni) {
       // No ONI found, wander
-      return this.makeWanderDecision(aiPlayer);
+      const decision = this.behaviorSystem.wander(aiPlayer, deltaTime);
+      return this.addAbilityDecision(aiPlayer, decision, 'dash');
     }
     
-    const distance = this.calculateDistance(aiPlayer.position, nearestOni.position);
-    
-    if (distance <= this.config.fleeDistance) {
+    if (this.behaviorSystem.isWithinFleeDistance(aiPlayer, nearestOni)) {
       // Flee from nearest ONI
-      return this.makeFleeDecision(aiPlayer, nearestOni);
+      const decision = this.behaviorSystem.flee(aiPlayer, nearestOni);
+      return this.addAbilityDecision(aiPlayer, decision, 'dash');
     } else {
       // Safe distance, wander
-      return this.makeWanderDecision(aiPlayer);
+      const decision = this.behaviorSystem.wander(aiPlayer, deltaTime);
+      return this.addAbilityDecision(aiPlayer, decision, 'dash');
     }
   }
 
   /**
-   * Make chase decision (ONI chasing runner)
+   * Add ability decision to base decision
    */
-  private makeChaseDecision(
+  private addAbilityDecision(
     aiPlayer: Player,
-    target: Player
+    baseDecision: AIDecision,
+    abilityType: 'jetpack' | 'dash'
   ): AIDecision {
-    const direction = this.calculateDirection(aiPlayer.position, target.position);
-    
-    // Decide whether to use jetpack
-    const useAbility = this.shouldUseAbility(aiPlayer, 'jetpack');
+    const useAbility = this.shouldUseAbility(aiPlayer, abilityType);
     
     return {
-      behavior: AIBehavior.CHASE,
-      targetPlayerId: target.id,
-      moveDirection: direction,
+      ...baseDecision,
       useAbility,
-      abilityType: useAbility ? 'jetpack' : null,
+      abilityType: useAbility ? abilityType : null,
     };
   }
 
   /**
-   * Make flee decision (Runner fleeing from ONI)
+   * Check if AI should use beacon ability
    */
-  private makeFleeDecision(
-    aiPlayer: Player,
-    threat: Player
-  ): AIDecision {
-    // Calculate direction away from threat
-    const direction = this.calculateDirection(threat.position, aiPlayer.position);
+  public shouldUseBeacon(aiPlayer: Player): boolean {
+    // Only ONI can use beacon
+    if (!aiPlayer.isOni) return false;
     
-    // Decide whether to use dash
-    const useAbility = this.shouldUseAbility(aiPlayer, 'dash');
+    // Check if beacon is on cooldown
+    if (aiPlayer.beaconCooldown > 0) return false;
     
-    return {
-      behavior: AIBehavior.FLEE,
-      targetPlayerId: threat.id,
-      moveDirection: direction,
-      useAbility,
-      abilityType: useAbility ? 'dash' : null,
-    };
-  }
-
-  /**
-   * Make wander decision (random movement)
-   */
-  private makeWanderDecision(aiPlayer: Player): AIDecision {
-    const wanderTimer = this.wanderTimers.get(aiPlayer.id) || 0;
-    
-    // Change direction periodically
-    if (wanderTimer >= this.config.wanderChangeInterval) {
-      const newDirection = this.generateRandomDirection();
-      this.wanderDirections.set(aiPlayer.id, newDirection);
-      this.wanderTimers.set(aiPlayer.id, 0);
-    }
-    
-    const direction = this.wanderDirections.get(aiPlayer.id) || { x: 0, y: 0, z: 0 };
-    
-    return {
-      behavior: AIBehavior.WANDER,
-      targetPlayerId: null,
-      moveDirection: direction,
-      useAbility: false,
-      abilityType: null,
-    };
+    // Random chance to use beacon when available
+    return Math.random() < this.config.abilityUseChance;
   }
 
   /**
@@ -309,94 +278,7 @@ export class AIController {
     return true;
   }
 
-  /**
-   * Find nearest runner to ONI
-   */
-  private findNearestRunner(
-    aiPlayer: Player,
-    allPlayers: Player[]
-  ): Player | null {
-    let nearestRunner: Player | null = null;
-    let minDistance = Infinity;
-    
-    for (const player of allPlayers) {
-      // Skip self, ONI players, and non-existent players
-      if (player.id === aiPlayer.id || player.isOni) continue;
-      
-      const distance = this.calculateDistance(aiPlayer.position, player.position);
-      if (distance < minDistance) {
-        minDistance = distance;
-        nearestRunner = player;
-      }
-    }
-    
-    return nearestRunner;
-  }
 
-  /**
-   * Find nearest ONI to runner
-   */
-  private findNearestOni(
-    aiPlayer: Player,
-    allPlayers: Player[]
-  ): Player | null {
-    let nearestOni: Player | null = null;
-    let minDistance = Infinity;
-    
-    for (const player of allPlayers) {
-      // Skip self, runner players, and non-existent players
-      if (player.id === aiPlayer.id || !player.isOni) continue;
-      
-      const distance = this.calculateDistance(aiPlayer.position, player.position);
-      if (distance < minDistance) {
-        minDistance = distance;
-        nearestOni = player;
-      }
-    }
-    
-    return nearestOni;
-  }
-
-  /**
-   * Calculate distance between two positions
-   */
-  private calculateDistance(pos1: Vector3, pos2: Vector3): number {
-    const dx = pos2.x - pos1.x;
-    const dy = pos2.y - pos1.y;
-    const dz = pos2.z - pos1.z;
-    return Math.sqrt(dx * dx + dy * dy + dz * dz);
-  }
-
-  /**
-   * Calculate normalized direction from pos1 to pos2
-   */
-  private calculateDirection(from: Vector3, to: Vector3): Vector3 {
-    const dx = to.x - from.x;
-    const dz = to.z - from.z;
-    const length = Math.sqrt(dx * dx + dz * dz);
-    
-    if (length === 0) {
-      return { x: 0, y: 0, z: 0 };
-    }
-    
-    return {
-      x: dx / length,
-      y: 0,
-      z: dz / length,
-    };
-  }
-
-  /**
-   * Generate random direction for wandering
-   */
-  private generateRandomDirection(): Vector3 {
-    const angle = Math.random() * Math.PI * 2;
-    return {
-      x: Math.cos(angle),
-      y: 0,
-      z: Math.sin(angle),
-    };
-  }
 
   /**
    * Get AI configuration
@@ -410,14 +292,20 @@ export class AIController {
    */
   public setConfig(config: Partial<AIConfig>): void {
     this.config = { ...this.config, ...config };
+    
+    // Update behavior system config
+    this.behaviorSystem.setConfig({
+      chaseDistance: this.config.chaseDistance,
+      fleeDistance: this.config.fleeDistance,
+      wanderChangeInterval: this.config.wanderChangeInterval,
+    });
   }
 
   /**
    * Reset AI state for a player
    */
   public resetPlayer(playerId: string): void {
-    this.wanderDirections.delete(playerId);
-    this.wanderTimers.delete(playerId);
+    this.behaviorSystem.resetPlayer(playerId);
     this.abilityTimers.delete(playerId);
   }
 
@@ -425,8 +313,7 @@ export class AIController {
    * Reset all AI state
    */
   public reset(): void {
-    this.wanderDirections.clear();
-    this.wanderTimers.clear();
+    this.behaviorSystem.reset();
     this.abilityTimers.clear();
   }
 }

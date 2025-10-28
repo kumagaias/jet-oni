@@ -98,6 +98,10 @@ export const jp: Translations = {
     gameStarting: 'ゲーム開始...',
     roundStarting: 'ラウンド{round}開始...',
     getReady: '準備してください！',
+    notifications: {
+      becameOni: '鬼になった！',
+      taggedPlayer: '{player}をタグ付けした！',
+    },
   },
 
   // 結果画面

@@ -30,8 +30,10 @@ export const ROUND_DURATION_3MIN = 180; // seconds
 export const ROUND_DURATION_5MIN = 300; // seconds
 
 // Player limits
-export const PLAYER_COUNTS = [4, 6, 8, 10, 15, 20];
+export const PLAYER_COUNTS = [6, 8, 10, 15, 20];
 export const ROUND_COUNTS = [1, 3, 5];
+export const MIN_ONI_COUNT = 2; // Minimum number of oni players
+export const MIN_TOTAL_PLAYERS = 6; // Minimum total players
 
 // Map boundaries
 export const MAP_SIZE = 200; // units (half-width/half-depth)

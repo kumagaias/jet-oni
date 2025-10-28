@@ -151,7 +151,13 @@ export class LadderSystem {
     }
 
     // Calculate new position
-    const newY = ladder.bottomPosition.y + newProgress * ladder.height;
+    // When exiting at the top, place player on the rooftop surface
+    let newY = ladder.bottomPosition.y + newProgress * ladder.height;
+    if (shouldExit && newProgress >= 1) {
+      // Place player on top of the building (rooftop level)
+      newY = ladder.topPosition.y;
+    }
+    
     const position = {
       x: ladder.position.x,
       y: newY,

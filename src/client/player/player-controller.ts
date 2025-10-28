@@ -87,22 +87,15 @@ export class PlayerController {
     const canvas = document.querySelector('canvas');
     if (!canvas) return;
 
-    // Enable mouse look on canvas click (without pointer lock for Devvit compatibility)
-    canvas.addEventListener('mousedown', () => {
-      this.isPointerLocked = true;
-    });
-
-    // Disable mouse look on mouse up
-    window.addEventListener('mouseup', () => {
-      this.isPointerLocked = false;
-    });
-
-    // Try to request pointer lock (will fail in Devvit, but that's okay)
+    // Enable mouse look on canvas click
     canvas.addEventListener('click', () => {
+      this.isPointerLocked = true;
+      
+      // Try to request pointer lock (will fail in Devvit, but that's okay)
       if (document.pointerLockElement !== canvas) {
         canvas.requestPointerLock().catch(() => {
           // Pointer lock not available in Devvit sandbox, use fallback
-          console.log('Pointer lock not available, using click-and-drag mode');
+          console.log('Pointer lock not available, using fallback mode');
         });
       }
     });

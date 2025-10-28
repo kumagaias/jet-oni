@@ -193,7 +193,7 @@ async function initGame(): Promise<void> {
         }
         
         // Update UI controls
-        uiControls.update();
+        uiControls.update(gameState);
         
         // Update beacon visuals
         const isBeaconActive = beaconSystem.isBeaconActive();

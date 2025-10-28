@@ -59,11 +59,8 @@ async function initGame(): Promise<void> {
       // Initialize game state with player ID
       const gameState = new GameState(playerId);
       
-      // Set game to playing state immediately for testing
-      gameState.setGamePhase('playing');
-      
-      // Set player as ONI for testing jetpack
-      gameState.setLocalPlayerIsOni(true);
+      // Start in lobby state
+      gameState.setGamePhase('lobby');
       
       // Generate city environment
       console.log('Generating city...');
@@ -390,6 +387,7 @@ async function initGame(): Promise<void> {
         console.log('Game starting - showing HUD and controls');
         gameState.setGamePhase('playing');
         uiHud.show();
+        uiHud.startTimer(300); // Start 5 minute timer
         uiControls.show();
         
         // Place beacon items on the map

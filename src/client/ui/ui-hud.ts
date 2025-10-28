@@ -8,6 +8,7 @@ import { MAX_FUEL } from '../../shared/constants';
  */
 export class UIHud {
   private hudContainer: HTMLElement | null = null;
+  private timerElement: HTMLElement | null = null;
   private statusElement: HTMLElement | null = null;
   private playerCountElement: HTMLElement | null = null;
   private fuelContainer: HTMLElement | null = null;
@@ -17,6 +18,8 @@ export class UIHud {
   private beaconElement: HTMLElement | null = null;
   private gameState: GameState;
   private i18n: I18n;
+  private gameStartTime: number = 0;
+  private gameDuration: number = 300; // 5 minutes default
 
   constructor(gameState: GameState, i18n: I18n) {
     this.gameState = gameState;
@@ -57,6 +60,26 @@ export class UIHud {
       text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
       transition: background-color 0.3s ease, color 0.3s ease;
     `;
+
+    // Timer display
+    this.timerElement = document.createElement('div');
+    this.timerElement.id = 'hud-timer';
+    this.timerElement.style.cssText = `
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 32px;
+      font-weight: bold;
+      color: #ffffff;
+      text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.8);
+      background-color: rgba(0, 0, 0, 0.6);
+      padding: 15px 30px;
+      border-radius: 12px;
+      min-width: 120px;
+      text-align: center;
+    `;
+    this.timerElement.textContent = '5:00';
 
     // Player count display
     this.playerCountElement = document.createElement('div');
@@ -157,11 +180,20 @@ export class UIHud {
     `;
 
     // Append all elements
+    this.hudContainer.appendChild(this.timerElement);
     this.hudContainer.appendChild(this.statusElement);
     this.hudContainer.appendChild(this.playerCountElement);
     this.hudContainer.appendChild(this.fuelContainer);
     this.hudContainer.appendChild(this.beaconElement);
     document.body.appendChild(this.hudContainer);
+  }
+
+  /**
+   * Start the game timer
+   */
+  public startTimer(durationSeconds: number = 300): void {
+    this.gameStartTime = Date.now();
+    this.gameDuration = durationSeconds;
   }
 
   /**
@@ -172,6 +204,9 @@ export class UIHud {
     if (!this.hudContainer) return;
 
     const localPlayer = this.gameState.getLocalPlayer();
+
+    // Update timer
+    this.updateTimer();
 
     // Update status display
     this.updateStatus(localPlayer.isOni);
@@ -184,6 +219,32 @@ export class UIHud {
 
     // Update beacon status (only for ONI)
     this.updateBeacon(localPlayer.isOni, beaconCooldown);
+  }
+
+  /**
+   * Update timer display
+   */
+  private updateTimer(): void {
+    if (!this.timerElement) return;
+
+    const elapsed = (Date.now() - this.gameStartTime) / 1000;
+    const remaining = Math.max(0, this.gameDuration - elapsed);
+    
+    const minutes = Math.floor(remaining / 60);
+    const seconds = Math.floor(remaining % 60);
+    this.timerElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+    
+    // Change color based on time remaining
+    if (remaining < 30) {
+      this.timerElement.style.color = '#ff0000'; // Red
+      this.timerElement.style.backgroundColor = 'rgba(255, 0, 0, 0.3)';
+    } else if (remaining < 60) {
+      this.timerElement.style.color = '#ffaa00'; // Orange
+      this.timerElement.style.backgroundColor = 'rgba(255, 170, 0, 0.3)';
+    } else {
+      this.timerElement.style.color = '#ffffff'; // White
+      this.timerElement.style.backgroundColor = 'rgba(0, 0, 0, 0.6)';
+    }
   }
 
   /**
@@ -249,26 +310,13 @@ export class UIHud {
   }
 
   /**
-   * Update beacon status display
+   * Update beacon status display (now item-based, so hide this element)
    */
   private updateBeacon(isOni: boolean, cooldown: number): void {
     if (!this.beaconElement) return;
-
-    if (isOni) {
-      this.beaconElement.style.display = 'block';
-
-      if (cooldown <= 0) {
-        this.beaconElement.textContent = this.i18n.t('hud.beaconReady');
-        this.beaconElement.style.backgroundColor = 'rgba(0, 255, 0, 0.7)';
-      } else {
-        this.beaconElement.textContent = this.i18n.t('hud.beaconCooldown', {
-          seconds: Math.ceil(cooldown).toString(),
-        });
-        this.beaconElement.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-      }
-    } else {
-      this.beaconElement.style.display = 'none';
-    }
+    
+    // Beacon is now item-based, hide the status element
+    this.beaconElement.style.display = 'none';
   }
 
   /**

@@ -44,12 +44,6 @@ export class UIMenu {
     
     // Dispatch custom event to notify game start
     window.dispatchEvent(new CustomEvent('gameStart'));
-    
-    // Show debug info when game starts
-    const debugInfo = document.getElementById('debug-info');
-    if (debugInfo) {
-      debugInfo.style.display = 'block';
-    }
   }
 
   /**

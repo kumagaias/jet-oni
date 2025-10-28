@@ -233,6 +233,72 @@ export class GameState {
   }
 
   /**
+   * Get a specific player (local or remote)
+   */
+  public getPlayer(playerId: string): Player | undefined {
+    if (playerId === this.localPlayer.id) {
+      return {
+        id: this.localPlayer.id,
+        username: 'You',
+        isOni: this.localPlayer.isOni,
+        isAI: false,
+        position: this.localPlayer.position,
+        velocity: this.localPlayer.velocity,
+        fuel: this.localPlayer.fuel,
+        survivedTime: this.localPlayer.survivedTime,
+        wasTagged: false,
+        isOnSurface: this.localPlayer.isOnSurface,
+        isDashing: this.localPlayer.isDashing,
+        isJetpacking: this.localPlayer.isJetpacking,
+        beaconCooldown: 0,
+      };
+    }
+    return this.remotePlayers.get(playerId);
+  }
+
+  /**
+   * Set player velocity (for AI players)
+   */
+  public setPlayerVelocity(playerId: string, velocity: Vector3): void {
+    if (playerId === this.localPlayer.id) {
+      this.setLocalPlayerVelocity(velocity);
+    } else {
+      const player = this.remotePlayers.get(playerId);
+      if (player) {
+        player.velocity = { ...velocity };
+      }
+    }
+  }
+
+  /**
+   * Set player jetpacking state (for AI players)
+   */
+  public setPlayerJetpacking(playerId: string, isJetpacking: boolean): void {
+    if (playerId === this.localPlayer.id) {
+      this.setLocalPlayerJetpacking(isJetpacking);
+    } else {
+      const player = this.remotePlayers.get(playerId);
+      if (player) {
+        player.isJetpacking = isJetpacking;
+      }
+    }
+  }
+
+  /**
+   * Set player dashing state (for AI players)
+   */
+  public setPlayerDashing(playerId: string, isDashing: boolean): void {
+    if (playerId === this.localPlayer.id) {
+      this.setLocalPlayerDashing(isDashing);
+    } else {
+      const player = this.remotePlayers.get(playerId);
+      if (player) {
+        player.isDashing = isDashing;
+      }
+    }
+  }
+
+  /**
    * Get all players (local + remote)
    */
   public getAllPlayers(): Player[] {

@@ -37,7 +37,6 @@ export class PerformanceOptimizer {
 
     // Adjust shadow map resolution
     if (renderer.shadowMap.enabled) {
-      const shadowMapSize = isLowEnd ? 1024 : 2048;
       renderer.shadowMap.autoUpdate = false; // Manual shadow updates
       
       // Update shadow map size for all lights

@@ -98,6 +98,10 @@ export const en: Translations = {
     gameStarting: 'Game starting...',
     roundStarting: 'Round {round} starting...',
     getReady: 'Get ready!',
+    notifications: {
+      becameOni: 'You became ONI!',
+      taggedPlayer: 'Tagged {player}!',
+    },
   },
 
   // Results screen

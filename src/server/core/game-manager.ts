@@ -1,4 +1,4 @@
-import { GameState, GameConfig, Player, Vector3 } from '../../shared/types/game';
+import { GameState, GameConfig, Player } from '../../shared/types/game';
 import { GameListItem, GameResults, PlayerResult } from '../../shared/types/api';
 import { redis } from '@devvit/web/server';
 

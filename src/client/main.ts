@@ -390,11 +390,7 @@ async function initGame(): Promise<void> {
         uiControls.show();
         
         // Place beacon items on the map
-        const buildings = cityGenerator.getBuildings().map(b => ({
-          position: b.position,
-          width: b.width,
-          depth: b.depth
-        }));
+        const buildings = cityGenerator.getBuildingData();
         beaconItem.placeItems(buildings);
         console.log('Beacon items placed on map');
       });

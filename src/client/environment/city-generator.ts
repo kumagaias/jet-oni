@@ -27,6 +27,7 @@ interface BuildingConfig {
  */
 export class CityGenerator {
   private occupiedAreas: OccupiedArea[] = [];
+  private buildingData: Array<{ position: { x: number; y: number; z: number }; width: number; depth: number }> = [];
   private buildings: THREE.Group;
   private roads: THREE.Group;
   private rivers: THREE.Group;
@@ -275,6 +276,13 @@ export class CityGenerator {
       building.position.set(position.x, config.height / 2, position.z);
       this.buildings.add(building);
 
+      // Store building data for collision detection
+      this.buildingData.push({
+        position: { x: position.x, y: config.height / 2, z: position.z },
+        width: config.width,
+        depth: config.depth
+      });
+
       this.markAreaOccupied(position.x, position.z, config.width, config.depth, 'building');
       buildingsCreated++;
     }
@@ -319,6 +327,13 @@ export class CityGenerator {
       const house = this.createHouse(width, height, depth);
       house.position.set(position.x, height / 2, position.z);
       this.buildings.add(house);
+
+      // Store house data for collision detection
+      this.buildingData.push({
+        position: { x: position.x, y: height / 2, z: position.z },
+        width: width,
+        depth: depth
+      });
 
       this.markAreaOccupied(position.x, position.z, width, depth, 'house');
       housesCreated++;
@@ -445,6 +460,13 @@ export class CityGenerator {
    */
   public getBuildings(): THREE.Group {
     return this.buildings;
+  }
+
+  /**
+   * Get building data array (for beacon placement)
+   */
+  public getBuildingData(): Array<{ position: { x: number; y: number; z: number }; width: number; depth: number }> {
+    return this.buildingData;
   }
 
   /**

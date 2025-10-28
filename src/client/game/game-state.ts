@@ -222,6 +222,13 @@ export class GameState {
   }
 
   /**
+   * Remove a player (alias for removeRemotePlayer)
+   */
+  public removePlayer(playerId: string): void {
+    this.removeRemotePlayer(playerId);
+  }
+
+  /**
    * Get all remote players
    */
   public getRemotePlayers(): Player[] {

@@ -30,13 +30,19 @@ export interface JoinGameRequest {
   username: string;
 }
 
-export interface UpdatePlayerRequest {
-  gameId: string;
+export interface UpdatePlayerStateRequest {
   playerId: string;
-  position?: { x: number; y: number; z: number };
-  velocity?: { x: number; y: number; z: number };
-  fuel?: number;
-  isOni?: boolean;
+  position: { x: number; y: number; z: number };
+  velocity: { x: number; y: number; z: number };
+  rotation: { yaw: number; pitch: number };
+  fuel: number;
+  isOni: boolean;
+  isDashing: boolean;
+  isJetpacking: boolean;
+  isOnSurface: boolean;
+  beaconCooldown: number;
+  survivedTime: number;
+  wasTagged: boolean;
 }
 
 export interface EndGameRequest {
@@ -73,7 +79,7 @@ export interface GetGameStateResponse {
   error?: string;
 }
 
-export interface UpdatePlayerResponse {
+export interface UpdatePlayerStateResponse {
   success: boolean;
   error?: string;
 }

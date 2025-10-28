@@ -347,13 +347,13 @@ describe('GameManager', () => {
 
       const games = await gameManager.listGames();
 
-      expect(games).toHaveLength(2);
+      // Only lobby games that are not full should be returned
+      expect(games).toHaveLength(1);
       expect(games[0].gameId).toBe('game1');
       expect(games[0].hostUsername).toBe('Host1');
       expect(games[0].currentPlayers).toBe(1);
       expect(games[0].totalPlayers).toBe(6);
-      expect(games[1].gameId).toBe('game2');
-      expect(games[1].status).toBe('playing');
+      expect(games[0].status).toBe('lobby');
     });
 
     it('should return empty array if no active games', async () => {

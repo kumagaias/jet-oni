@@ -2,16 +2,18 @@
  * UIMenu tests
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { UIMenu } from './ui-menu';
 import { UIManager } from './ui-manager';
 import { I18n } from '../i18n/i18n';
+import { GameAPIClient } from '../api/game-api-client';
 
 describe('UIMenu', () => {
   let uiMenu: UIMenu;
   let uiManager: UIManager;
   let i18n: I18n;
   let mockOverlay: HTMLDivElement;
+  let mockGameApiClient: GameAPIClient;
 
   beforeEach(() => {
     // Create mock overlay with correct class
@@ -22,7 +24,46 @@ describe('UIMenu', () => {
     // Create UIManager and I18n
     uiManager = new UIManager();
     i18n = new I18n('en');
-    uiMenu = new UIMenu(uiManager, i18n, 'TestUser');
+    
+    // Create mock GameAPIClient
+    mockGameApiClient = {
+      listGames: vi.fn().mockResolvedValue({
+        success: true,
+        games: [],
+      }),
+      createGame: vi.fn().mockResolvedValue({
+        success: true,
+        gameId: 'test-game-id',
+      }),
+      joinGame: vi.fn().mockResolvedValue({
+        success: true,
+        playerId: 'test-player-id',
+        gameState: {
+          gameId: 'test-game-id',
+          hostId: 'host-id',
+          status: 'lobby',
+          config: { totalPlayers: 4, roundDuration: 180, rounds: 1 },
+          players: [],
+          startTime: 0,
+          endTime: 0,
+          currentRound: 0,
+          timeRemaining: 180,
+        },
+      }),
+      getGameState: vi.fn().mockResolvedValue({
+        gameId: 'test-game-id',
+        hostId: 'host-id',
+        status: 'lobby',
+        config: { totalPlayers: 4, roundDuration: 180, rounds: 1 },
+        players: [],
+        startTime: 0,
+        endTime: 0,
+        currentRound: 0,
+        timeRemaining: 180,
+      }),
+    } as unknown as GameAPIClient;
+    
+    uiMenu = new UIMenu(uiManager, i18n, 'TestUser', mockGameApiClient);
   });
 
   afterEach(() => {
@@ -79,11 +120,14 @@ describe('UIMenu', () => {
       expect(mockOverlay.innerHTML).toContain('player-options');
     });
 
-    it('should navigate to join game screen when button is clicked', () => {
+    it('should navigate to join game screen when button is clicked', async () => {
       uiMenu.showTitleScreen();
 
       const joinButton = document.getElementById('btn-join-game') as HTMLButtonElement;
       joinButton.click();
+
+      // Wait for async operation
+      await new Promise(resolve => setTimeout(resolve, 10));
 
       expect(mockOverlay.innerHTML).toContain('btn-back');
     });
@@ -155,61 +199,68 @@ describe('UIMenu', () => {
   });
 
   describe('Join Game Screen', () => {
-    it('should display empty state when no games available', () => {
-      uiMenu.showJoinGameScreen();
+    it('should display empty state when no games available', async () => {
+      await uiMenu.showJoinGameScreen();
 
       expect(mockOverlay.innerHTML).toContain('btn-back');
     });
 
-    it('should display game list when games are provided', () => {
-      const games = [
-        {
-          id: 'game1',
-          hostName: 'Player1',
-          currentPlayers: 2,
-          maxPlayers: 4,
-          duration: 3,
-          rounds: 1,
-          isFull: false,
-        },
-        {
-          id: 'game2',
-          hostName: 'Player2',
-          currentPlayers: 4,
-          maxPlayers: 4,
-          duration: 5,
-          rounds: 3,
-          isFull: true,
-        },
-      ];
+    it('should display game list when games are provided', async () => {
+      // Mock listGames to return games
+      mockGameApiClient.listGames = vi.fn().mockResolvedValue({
+        success: true,
+        games: [
+          {
+            gameId: 'game1',
+            hostUsername: 'Player1',
+            currentPlayers: 2,
+            totalPlayers: 4,
+            roundDuration: 180,
+            rounds: 1,
+            status: 'lobby',
+          },
+          {
+            gameId: 'game2',
+            hostUsername: 'Player2',
+            currentPlayers: 4,
+            totalPlayers: 4,
+            roundDuration: 300,
+            rounds: 3,
+            status: 'lobby',
+          },
+        ],
+      });
 
-      uiMenu.showJoinGameScreen(games);
+      await uiMenu.showJoinGameScreen();
 
       expect(mockOverlay.innerHTML).toContain('Player1');
       expect(mockOverlay.innerHTML).toContain('Player2');
     });
 
-    it('should disable join button for full games', () => {
-      const games = [
-        {
-          id: 'game1',
-          hostName: 'Player1',
-          currentPlayers: 4,
-          maxPlayers: 4,
-          duration: 3,
-          rounds: 1,
-          isFull: true,
-        },
-      ];
+    it('should disable join button for full games', async () => {
+      mockGameApiClient.listGames = vi.fn().mockResolvedValue({
+        success: true,
+        games: [
+          {
+            gameId: 'game1',
+            hostUsername: 'Player1',
+            currentPlayers: 4,
+            totalPlayers: 4,
+            roundDuration: 180,
+            rounds: 1,
+            status: 'lobby',
+          },
+        ],
+      });
 
-      uiMenu.showJoinGameScreen(games);
+      await uiMenu.showJoinGameScreen();
 
       const joinButton = document.querySelector('.join-game-btn') as HTMLButtonElement;
       expect(joinButton.disabled).toBe(true);
     });
 
-    it('should navigate back to title screen when back button is clicked', () => {
-      uiMenu.showJoinGameScreen();
+    it('should navigate back to title screen when back button is clicked', async () => {
+      await uiMenu.showJoinGameScreen();
 
       const backButton = document.getElementById('btn-back') as HTMLButtonElement;
       backButton.click();

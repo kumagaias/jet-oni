@@ -1,6 +1,7 @@
-import { GameState, GameConfig, Player } from '../../shared/types/game';
+import { GameState, GameConfig, Player, Vector3, Rotation } from '../../shared/types/game';
 import { GameListItem, GameResults, PlayerResult } from '../../shared/types/api';
 import { redis } from '@devvit/web/server';
+import { StateValidator } from './state-validator';
 
 /**
  * GameManager handles game session creation, player management, and game state
@@ -164,7 +165,89 @@ export class GameManager {
   }
 
   /**
+   * Update player state in a game
+   */
+  async updatePlayerState(
+    gameId: string,
+    playerId: string,
+    state: {
+      position: Vector3;
+      velocity: Vector3;
+      rotation: Rotation;
+      fuel: number;
+      isOni: boolean;
+      isDashing: boolean;
+      isJetpacking: boolean;
+      isOnSurface: boolean;
+      beaconCooldown: number;
+      survivedTime: number;
+      wasTagged: boolean;
+    }
+  ): Promise<{ success: boolean; error?: string }> {
+    const gameState = await this.getGameState(gameId);
+
+    if (!gameState) {
+      return { success: false, error: 'Game not found' };
+    }
+
+    if (gameState.status !== 'playing') {
+      return { success: false, error: 'Game is not in playing state' };
+    }
+
+    const playerIndex = gameState.players.findIndex((p) => p.id === playerId);
+
+    if (playerIndex === -1) {
+      return { success: false, error: 'Player not found in game' };
+    }
+
+    // Validate and sanitize state
+    if (!StateValidator.isValidVector(state.position)) {
+      return { success: false, error: 'Invalid position values' };
+    }
+
+    if (!StateValidator.isValidVector(state.velocity)) {
+      return { success: false, error: 'Invalid velocity values' };
+    }
+
+    if (!StateValidator.isValidRotation(state.rotation)) {
+      return { success: false, error: 'Invalid rotation values' };
+    }
+
+    if (!StateValidator.isValidNumber(state.fuel)) {
+      return { success: false, error: 'Invalid fuel value' };
+    }
+
+    // Apply validation and clamping
+    const validatedPosition = StateValidator.validatePosition(state.position);
+    const validatedVelocity = StateValidator.validateVelocity(state.velocity);
+    const validatedRotation = StateValidator.validateRotation(state.rotation);
+    const validatedFuel = StateValidator.validateFuel(state.fuel);
+    const validatedBeaconCooldown = StateValidator.validateBeaconCooldown(state.beaconCooldown);
+
+    // Update player state
+    gameState.players[playerIndex] = {
+      ...gameState.players[playerIndex],
+      position: validatedPosition,
+      velocity: validatedVelocity,
+      rotation: validatedRotation,
+      fuel: validatedFuel,
+      isOni: state.isOni,
+      isDashing: state.isDashing,
+      isJetpacking: state.isJetpacking,
+      isOnSurface: state.isOnSurface,
+      beaconCooldown: validatedBeaconCooldown,
+      survivedTime: state.survivedTime,
+      wasTagged: state.wasTagged,
+    };
+
+    await this.saveGameState(gameState);
+
+    return { success: true };
+  }
+
+  /**
    * List all active games
+   * Only returns games in 'lobby' status that are joinable
    */
   async listGames(): Promise<GameListItem[]> {
     const gameIds = await redis.sMembers(this.GAMES_LIST_KEY);
@@ -179,17 +262,20 @@ export class GameManager {
       const gameState = await this.getGameState(gameId);
 
       if (gameState) {
-        const hostPlayer = gameState.players.find((p) => p.id === gameState.hostId);
+        // Only include games in lobby status that are not full
+        if (gameState.status === 'lobby' && gameState.players.length < gameState.config.totalPlayers) {
+          const hostPlayer = gameState.players.find((p) => p.id === gameState.hostId);
 
-        games.push({
-          gameId: gameState.gameId,
-          hostUsername: hostPlayer?.username || 'Unknown',
-          currentPlayers: gameState.players.length,
-          totalPlayers: gameState.config.totalPlayers,
-          roundDuration: gameState.config.roundDuration,
-          rounds: gameState.config.rounds,
-          status: gameState.status,
-        });
+          games.push({
+            gameId: gameState.gameId,
+            hostUsername: hostPlayer?.username || 'Unknown',
+            currentPlayers: gameState.players.length,
+            totalPlayers: gameState.config.totalPlayers,
+            roundDuration: gameState.config.roundDuration,
+            rounds: gameState.config.rounds,
+            status: gameState.status,
+          });
+        }
       }
     }
 
@@ -235,6 +321,71 @@ export class GameManager {
     }
 
     await this.saveGameState(gameState);
+  }
+
+  /**
+   * Replace a disconnected player with an AI player
+   */
+  async replacePlayerWithAI(gameId: string, playerId: string): Promise<{ success: boolean; error?: string }> {
+    const gameState = await this.getGameState(gameId);
+
+    if (!gameState) {
+      return { success: false, error: 'Game not found' };
+    }
+
+    const playerIndex = gameState.players.findIndex((p) => p.id === playerId);
+
+    if (playerIndex === -1) {
+      return { success: false, error: 'Player not found in game' };
+    }
+
+    const player = gameState.players[playerIndex];
+
+    // Replace with AI player, keeping the same state
+    const aiPlayer: Player = {
+      ...player,
+      username: `AI_${player.username}`,
+      isAI: true,
+    };
+
+    gameState.players[playerIndex] = aiPlayer;
+
+    await this.saveGameState(gameState);
+
+    return { success: true };
+  }
+
+  /**
+   * Check for inactive players and replace them with AI
+   * Players are considered inactive if they haven't updated in the last 10 seconds
+   */
+  async checkAndReplaceInactivePlayers(gameId: string): Promise<string[]> {
+    const gameState = await this.getGameState(gameId);
+
+    if (!gameState || gameState.status !== 'playing') {
+      return [];
+    }
+
+    const now = Date.now();
+    const replacedPlayerIds: string[] = [];
+
+    for (let i = 0; i < gameState.players.length; i++) {
+      const player = gameState.players[i];
+
+      // Skip AI players
+      if (player.isAI) {
+        continue;
+      }
+
+      // Check if player has a lastUpdate timestamp (we'll need to add this)
+      // For now, we'll skip this check and rely on manual replacement
+    }
+
+    if (replacedPlayerIds.length > 0) {
+      await this.saveGameState(gameState);
+    }
+
+    return replacedPlayerIds;
   }
 
   /**

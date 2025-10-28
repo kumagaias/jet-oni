@@ -22,6 +22,8 @@ import { PlayerModel } from './player/player-model';
 import { I18n } from './i18n/i18n';
 import { UIManager } from './ui/ui-manager';
 import { UIMenu } from './ui/ui-menu';
+import { GameAPIClient } from './api/game-api-client';
+import { GameSyncManager } from './sync/game-sync-manager';
 import { en } from './i18n/translations/en';
 import { jp } from './i18n/translations/jp';
 import { InitResponse } from '../shared/types/api';
@@ -140,6 +142,9 @@ async function initGame(): Promise<void> {
       const aiController = new AIController(gameState);
       const aiPlayerModels: Map<string, PlayerModel> = new Map();
       
+      // Track remote player models (for multiplayer)
+      const remotePlayerModels: Map<string, PlayerModel> = new Map();
+      
       // Add AI players when in lobby (will be added when game is created)
       const addAIPlayers = (count: number) => {
         for (let i = 0; i < count; i++) {
@@ -235,6 +240,30 @@ async function initGame(): Promise<void> {
           console.log('Became ONI');
         }
         wasOni = localPlayer.isOni;
+        
+        // Update ONI screen overlay
+        let oniOverlay = document.getElementById('oni-overlay');
+        if (!oniOverlay) {
+          oniOverlay = document.createElement('div');
+          oniOverlay.id = 'oni-overlay';
+          oniOverlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            transition: background-color 0.5s ease;
+          `;
+          document.body.appendChild(oniOverlay);
+        }
+        
+        if (localPlayer.isOni) {
+          oniOverlay.style.backgroundColor = 'rgba(255, 0, 0, 0.15)';
+        } else {
+          oniOverlay.style.backgroundColor = 'transparent';
+        }
         
         // Check beacon item collection (ONI only)
         const collectedBeacon = beaconItem.checkCollection(localPlayer.position, localPlayer.isOni);
@@ -337,6 +366,24 @@ async function initGame(): Promise<void> {
         // Update camera
         playerCamera.update(deltaTime);
         
+        // Send player state to sync manager (if game is playing)
+        if (gameState.getGamePhase() === 'playing' && currentGameId) {
+          const localPlayer = gameState.getLocalPlayer();
+          gameSyncManager.sendPlayerState({
+            position: localPlayer.position,
+            velocity: localPlayer.velocity,
+            rotation: localPlayer.rotation,
+            fuel: localPlayer.fuel,
+            isOni: localPlayer.isOni,
+            isDashing: localPlayer.isDashing,
+            isJetpacking: localPlayer.isJetpacking,
+            isOnSurface: localPlayer.isOnSurface,
+          });
+        }
+        
+        // Update interpolation for remote players
+        gameSyncManager.updateInterpolation(deltaTime);
+        
         // Update debug info
         const beaconActive = Date.now() < beaconActiveUntil;
         const beaconTimeRemaining = beaconActive ? Math.ceil((beaconActiveUntil - Date.now()) / 1000) : 0;
@@ -360,8 +407,68 @@ async function initGame(): Promise<void> {
         `;
       });
       
+      // Initialize GameAPIClient
+      const gameApiClient = new GameAPIClient();
+      
+      // Initialize GameSyncManager
+      const gameSyncManager = new GameSyncManager(gameApiClient);
+      
+      // Register callback for remote player updates
+      gameSyncManager.onRemotePlayerUpdate((remotePlayers) => {
+        // Update or create models for remote players
+        for (const remotePlayer of remotePlayers) {
+          let model = remotePlayerModels.get(remotePlayer.id);
+          
+          if (!model) {
+            // Create new model for remote player
+            model = new PlayerModel(false);
+            gameEngine.addToScene(model.getModel());
+            remotePlayerModels.set(remotePlayer.id, model);
+            console.log(`Created model for remote player ${remotePlayer.username}`);
+          }
+          
+          // Update model position and state (interpolated position from GameSyncManager)
+          model.setPosition(
+            remotePlayer.position.x,
+            remotePlayer.position.y,
+            remotePlayer.position.z
+          );
+          model.setRotation(remotePlayer.rotation.yaw);
+          model.setIsOni(remotePlayer.isOni);
+          
+          // Update game state with remote player data
+          gameState.updateRemotePlayer({
+            id: remotePlayer.id,
+            username: remotePlayer.username,
+            position: remotePlayer.position,
+            velocity: remotePlayer.velocity,
+            rotation: remotePlayer.rotation,
+            fuel: remotePlayer.fuel,
+            isOni: remotePlayer.isOni,
+            isOnSurface: remotePlayer.isOnSurface,
+            isDashing: remotePlayer.isDashing,
+            isJetpacking: remotePlayer.isJetpacking,
+            survivedTime: remotePlayer.survivedTime,
+            wasTagged: remotePlayer.wasTagged,
+            beaconCooldown: remotePlayer.beaconCooldown,
+            isAI: false, // Remote players are not AI
+          });
+        }
+        
+        // Remove models for players that left
+        const remotePlayerIds = new Set(remotePlayers.map(p => p.id));
+        for (const [playerId, model] of remotePlayerModels) {
+          if (!remotePlayerIds.has(playerId)) {
+            gameEngine.removeFromScene(model.getModel());
+            remotePlayerModels.delete(playerId);
+            gameState.removePlayer(playerId);
+            console.log(`Removed model for remote player ${playerId}`);
+          }
+        }
+      });
+      
       // Initialize UI menu
-      const uiMenu = new UIMenu(uiManager, i18n, data.username || 'Player', gameEngine);
+      const uiMenu = new UIMenu(uiManager, i18n, data.username || 'Player', gameApiClient, gameEngine);
       
       // Initialize HUD (but keep it hidden until game starts)
       const { UIHud } = await import('./ui/ui-hud');
@@ -378,16 +485,32 @@ async function initGame(): Promise<void> {
         if (gameState.getGamePhase() === 'playing') {
           // No beacon cooldown in item-based system
           uiHud.update(0);
+          
+          // Check if game should end
+          if (gameState.shouldGameEnd()) {
+            console.log('Game should end - triggering gameEnd event');
+            window.dispatchEvent(new Event('gameEnd'));
+          }
         }
       });
       
+      // Track current game ID for sync
+      let currentGameId: string | null = null;
+      
       // Listen for game start event
-      window.addEventListener('gameStart', () => {
+      window.addEventListener('gameStart', ((e: CustomEvent) => {
         console.log('Game starting - showing HUD and controls');
         gameState.setGamePhase('playing');
         uiHud.show();
         uiHud.startTimer(300); // Start 5 minute timer
         uiControls.show();
+        
+        // Start game synchronization if gameId is provided
+        if (e.detail?.gameId) {
+          currentGameId = e.detail.gameId;
+          gameSyncManager.startSync(currentGameId, gameState.getLocalPlayer().id);
+          console.log(`Started game sync for game ${currentGameId}`);
+        }
         
         // Assign random ONI
         const allPlayers = gameState.getAllPlayers();
@@ -420,7 +543,7 @@ async function initGame(): Promise<void> {
         const buildings = cityGenerator.getBuildingData();
         beaconItem.placeItems(buildings);
         console.log('Beacon items placed on map');
-      });
+      }) as EventListener);
       
       // Listen for lobby event (when user creates a game)
       window.addEventListener('showLobby', ((e: CustomEvent) => {
@@ -437,6 +560,42 @@ async function initGame(): Promise<void> {
         // Show lobby with human player count only (not including AI)
         uiMenu.showLobbyScreen(currentPlayers, maxPlayers, isHost);
       }) as EventListener);
+      
+      // Listen for game end event
+      window.addEventListener('gameEnd', async () => {
+        console.log('Game ending - stopping sync');
+        
+        // Stop game synchronization
+        gameSyncManager.stopSync();
+        
+        // Call endGame API if we have a game ID
+        if (currentGameId) {
+          try {
+            const endGameResponse = await gameApiClient.endGame(currentGameId);
+            console.log('Game ended successfully:', endGameResponse);
+            
+            // Show results screen with game results
+            if (endGameResponse.success && endGameResponse.results) {
+              const { UIResults } = await import('./ui/ui-results');
+              const uiResults = new UIResults(i18n);
+              uiResults.show(endGameResponse.results);
+            }
+          } catch (error) {
+            console.error('Failed to end game:', error);
+            // Show error message but still transition to ended state
+          }
+        }
+        
+        // Reset game state
+        gameState.setGamePhase('ended');
+        currentGameId = null;
+        
+        // Hide HUD and controls
+        uiHud.hide();
+        uiControls.hide();
+        
+        console.log('Game sync stopped');
+      });
       
       uiMenu.showTitleScreen();
       

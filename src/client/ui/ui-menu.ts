@@ -550,55 +550,51 @@ export class UIMenu {
       ">
         <h2 style="
           color: #ff8800;
-          font-size: 24px;
-          margin-bottom: 20px;
+          font-size: 32px;
+          margin-bottom: 30px;
           font-weight: bold;
         ">${this.i18n.t('lobby.title')}</h2>
         
         <div style="
           background: #111;
-          border: 1px solid #333;
-          padding: 15px;
-          border-radius: 4px;
-          margin-bottom: 15px;
+          border: 2px solid #ff8800;
+          padding: 30px;
+          border-radius: 8px;
+          margin-bottom: 20px;
           text-align: center;
         ">
-          <p style="color: #aaa; font-size: 14px; margin-bottom: 10px;">
-            ${this.i18n.t('lobby.waiting')}
+          <p style="color: #ff8800; font-size: 48px; font-weight: bold; margin: 20px 0;">
+            ${currentPlayers} / ${maxPlayers}
           </p>
           
-          <p style="color: #ff8800; font-size: 24px; font-weight: bold; margin: 20px 0;">
-            ${this.i18n.t('lobby.players', { current: currentPlayers, max: maxPlayers })}
+          <p style="color: #aaa; font-size: 18px; margin-bottom: 10px;">
+            Players (AI not included)
           </p>
           
-          ${isHost ? `
-            <p style="color: #0f0; font-size: 16px; margin-top: 20px; animation: pulse 1.5s infinite;">
-              ${this.i18n.t('lobby.pressSpace')}
+          <div id="countdown-display" style="display: none; margin-top: 20px;">
+            <p style="color: #0f0; font-size: 36px; font-weight: bold; animation: pulse 1s infinite;">
+              Starting in <span id="countdown-number">3</span>...
             </p>
-          ` : `
-            <p style="color: #aaa; font-size: 14px; margin-top: 20px;">
-              ${this.i18n.t('lobby.ready')}
-            </p>
-          `}
+          </div>
           
-          ${currentPlayers < maxPlayers ? `
-            <p style="color: #666; font-size: 12px; margin-top: 15px; font-style: italic;">
-              ${this.i18n.t('lobby.addingAI')}
+          ${isHost && currentPlayers < maxPlayers ? `
+            <p style="color: #666; font-size: 14px; margin-top: 20px;">
+              Press SPACE to start early
             </p>
           ` : ''}
         </div>
         
         <button id="btn-back" style="
           width: 100%;
-          padding: 12px;
-          margin: 5px 0;
-          font-size: 14px;
+          padding: 15px;
+          font-size: 16px;
           cursor: pointer;
           font-family: monospace;
-          border: 1px solid #666;
+          border: 2px solid #666;
           background: #222;
           color: #aaa;
-        ">← ${this.i18n.t('menu.back').toUpperCase()}</button>
+          border-radius: 4px;
+        ">← BACK</button>
       </div>
       
       <style>
@@ -612,6 +608,27 @@ export class UIMenu {
     document.getElementById('btn-back')?.addEventListener('click', () => {
       this.showTitleScreen();
     });
+    
+    // Auto-start countdown when lobby is full
+    if (currentPlayers >= maxPlayers) {
+      const countdownDisplay = document.getElementById('countdown-display');
+      const countdownNumber = document.getElementById('countdown-number');
+      
+      if (countdownDisplay && countdownNumber) {
+        countdownDisplay.style.display = 'block';
+        
+        let countdown = 3;
+        const countdownInterval = setInterval(() => {
+          countdown--;
+          countdownNumber.textContent = countdown.toString();
+          
+          if (countdown <= 0) {
+            clearInterval(countdownInterval);
+            this.startGame();
+          }
+        }, 1000);
+      }
+    }
     
     // Listen for SPACE key to start game (host only)
     if (isHost) {

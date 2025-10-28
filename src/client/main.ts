@@ -389,6 +389,33 @@ async function initGame(): Promise<void> {
         uiHud.startTimer(300); // Start 5 minute timer
         uiControls.show();
         
+        // Assign random ONI
+        const allPlayers = gameState.getAllPlayers();
+        if (allPlayers.length > 0) {
+          const randomIndex = Math.floor(Math.random() * allPlayers.length);
+          const oniPlayer = allPlayers[randomIndex];
+          
+          if (oniPlayer) {
+            if (oniPlayer.id === gameState.getLocalPlayer().id) {
+              // Local player is ONI
+              gameState.setLocalPlayerIsOni(true);
+              console.log('You are ONI!');
+            } else {
+              // Remote/AI player is ONI
+              const remotePlayer = gameState.getPlayer(oniPlayer.id);
+              if (remotePlayer) {
+                remotePlayer.isOni = true;
+                // Update AI model color
+                const aiModel = aiPlayerModels.get(oniPlayer.id);
+                if (aiModel) {
+                  aiModel.setIsOni(true);
+                }
+                console.log(`${oniPlayer.username} is ONI!`);
+              }
+            }
+          }
+        }
+        
         // Place beacon items on the map
         const buildings = cityGenerator.getBuildingData();
         beaconItem.placeItems(buildings);

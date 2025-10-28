@@ -148,18 +148,19 @@ async function initGame(): Promise<void> {
             z: (Math.random() - 0.5) * 40,
           };
           
-          gameState.addPlayer({
+          gameState.updateRemotePlayer({
             id: aiId,
+            username: `AI-${i + 1}`,
             position: startPos,
             velocity: { x: 0, y: 0, z: 0 },
-            rotation: { yaw: Math.random() * Math.PI * 2, pitch: 0 },
             fuel: MAX_FUEL,
             isOni: false,
             isOnSurface: true,
             isDashing: false,
             isJetpacking: false,
-            isClimbing: false,
             survivedTime: 0,
+            wasTagged: false,
+            beaconCooldown: 0,
             isAI: true, // Mark as AI player
           });
           

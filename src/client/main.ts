@@ -16,7 +16,8 @@ import { PlayerCamera } from './player/player-camera';
 import { BeaconSystem } from './abilities/beacon-system';
 import { BeaconVisual } from './effects/beacon-visual';
 import { CarSystem } from './environment/car-system';
-import { AIBehavior } from './ai/ai-behavior';
+import { AIController } from './ai/ai-controller';
+import { PlayerModel } from './player/player-model';
 import { I18n } from './i18n/i18n';
 import { UIManager } from './ui/ui-manager';
 import { UIMenu } from './ui/ui-menu';
@@ -133,17 +134,25 @@ async function initGame(): Promise<void> {
       carSystem.init();
       console.log('Car system initialized');
       
-      // Initialize AI players
-      const aiPlayers: AIBehavior[] = [];
+      // Initialize AI system
+      const aiController = new AIController(gameState);
+      const aiPlayerModels: Map<string, PlayerModel> = new Map();
+      
       // Add AI players when in lobby (will be added when game is created)
       const addAIPlayers = (count: number) => {
         for (let i = 0; i < count; i++) {
           const aiId = `ai-${i}`;
+          const startPos = {
+            x: (Math.random() - 0.5) * 40,
+            y: 2,
+            z: (Math.random() - 0.5) * 40,
+          };
+          
           gameState.addPlayer({
             id: aiId,
-            position: { x: Math.random() * 20 - 10, y: 2, z: Math.random() * 20 - 10 },
+            position: startPos,
             velocity: { x: 0, y: 0, z: 0 },
-            rotation: { yaw: 0, pitch: 0 },
+            rotation: { yaw: Math.random() * Math.PI * 2, pitch: 0 },
             fuel: MAX_FUEL,
             isOni: false,
             isOnSurface: true,
@@ -151,11 +160,16 @@ async function initGame(): Promise<void> {
             isJetpacking: false,
             isClimbing: false,
             survivedTime: 0,
+            isAI: true, // Mark as AI player
           });
-          const aiBehavior = new AIBehavior(aiId, gameState);
-          aiPlayers.push(aiBehavior);
+          
+          // Create 3D model for AI player
+          const aiModel = new PlayerModel(false);
+          aiModel.setPosition(startPos.x, startPos.y, startPos.z);
+          gameEngine.addToScene(aiModel.getModel());
+          aiPlayerModels.set(aiId, aiModel);
         }
-        console.log(`Added ${count} AI players`);
+        console.log(`Added ${count} AI players with 3D models`);
       };
       
       // Create debug info element (initially hidden)
@@ -233,8 +247,16 @@ async function initGame(): Promise<void> {
         uiControls.update(gameState);
         
         // Update AI players
-        for (const ai of aiPlayers) {
-          ai.update(deltaTime);
+        aiController.update(deltaTime);
+        
+        // Update AI player models
+        for (const [aiId, aiModel] of aiPlayerModels) {
+          const aiPlayer = gameState.getPlayer(aiId);
+          if (aiPlayer) {
+            aiModel.setPosition(aiPlayer.position.x, aiPlayer.position.y, aiPlayer.position.z);
+            aiModel.setRotation(aiPlayer.rotation.yaw);
+            aiModel.setIsOni(aiPlayer.isOni);
+          }
         }
         
         // Update beacon visuals

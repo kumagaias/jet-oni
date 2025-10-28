@@ -19,7 +19,10 @@ const gameManager = new GameManager();
  */
 router.post(
   '/api/game/create',
-  async (req: Request<unknown, CreateGameResponse, CreateGameRequest>, res: Response<CreateGameResponse>): Promise<void> => {
+  async (
+    req: Request<unknown, CreateGameResponse, CreateGameRequest>,
+    res: Response<CreateGameResponse>
+  ): Promise<void> => {
     try {
       const { config } = req.body;
 
@@ -78,7 +81,10 @@ router.post(
  */
 router.post(
   '/api/game/join',
-  async (req: Request<unknown, JoinGameResponse, JoinGameRequest>, res: Response<JoinGameResponse>): Promise<void> => {
+  async (
+    req: Request<unknown, JoinGameResponse, JoinGameRequest>,
+    res: Response<JoinGameResponse>
+  ): Promise<void> => {
     try {
       const { gameId, username } = req.body;
 
@@ -121,7 +127,10 @@ router.post(
  */
 router.get(
   '/api/game/:id',
-  async (req: Request<{ id: string }, GetGameStateResponse>, res: Response<GetGameStateResponse>): Promise<void> => {
+  async (
+    req: Request<{ id: string }, GetGameStateResponse>,
+    res: Response<GetGameStateResponse>
+  ): Promise<void> => {
     try {
       const { id } = req.params;
 
@@ -163,7 +172,10 @@ router.get(
  */
 router.post(
   '/api/game/:id/end',
-  async (req: Request<{ id: string }, EndGameResponse>, res: Response<EndGameResponse>): Promise<void> => {
+  async (
+    req: Request<{ id: string }, EndGameResponse>,
+    res: Response<EndGameResponse>
+  ): Promise<void> => {
     try {
       const { id } = req.params;
 
@@ -205,7 +217,10 @@ router.post(
  */
 router.get(
   '/api/games',
-  async (_req: Request<unknown, GameListResponse>, res: Response<GameListResponse>): Promise<void> => {
+  async (
+    _req: Request<unknown, GameListResponse>,
+    res: Response<GameListResponse>
+  ): Promise<void> => {
     try {
       const games = await gameManager.listGames();
 

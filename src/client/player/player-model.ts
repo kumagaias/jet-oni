@@ -1,0 +1,159 @@
+import * as THREE from 'three';
+
+/**
+ * PlayerModel creates a 3D model for players
+ */
+export class PlayerModel {
+  private model: THREE.Group;
+  private isOni: boolean;
+
+  constructor(isOni: boolean = false) {
+    this.isOni = isOni;
+    this.model = this.createPlayerModel();
+  }
+
+  /**
+   * Create a simple player model
+   */
+  private createPlayerModel(): THREE.Group {
+    const playerGroup = new THREE.Group();
+
+    // Body
+    const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.3, 1.5, 8);
+    const bodyMaterial = new THREE.MeshStandardMaterial({
+      color: this.isOni ? 0xff0000 : 0x00ff00,
+      roughness: 0.7,
+      metalness: 0.3,
+    });
+    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    body.position.y = 0.75;
+    body.castShadow = true;
+    playerGroup.add(body);
+
+    // Head
+    const headGeometry = new THREE.SphereGeometry(0.25, 8, 8);
+    const headMaterial = new THREE.MeshStandardMaterial({
+      color: 0xffdbac,
+      roughness: 0.8,
+      metalness: 0.2,
+    });
+    const head = new THREE.Mesh(headGeometry, headMaterial);
+    head.position.y = 1.75;
+    head.castShadow = true;
+    playerGroup.add(head);
+
+    // Arms
+    const armGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.8, 6);
+    const armMaterial = new THREE.MeshStandardMaterial({
+      color: this.isOni ? 0xcc0000 : 0x00cc00,
+      roughness: 0.7,
+      metalness: 0.3,
+    });
+
+    const leftArm = new THREE.Mesh(armGeometry, armMaterial);
+    leftArm.position.set(-0.4, 1, 0);
+    leftArm.castShadow = true;
+    playerGroup.add(leftArm);
+
+    const rightArm = new THREE.Mesh(armGeometry, armMaterial);
+    rightArm.position.set(0.4, 1, 0);
+    rightArm.castShadow = true;
+    playerGroup.add(rightArm);
+
+    // Legs
+    const legGeometry = new THREE.CylinderGeometry(0.12, 0.12, 0.8, 6);
+    const legMaterial = new THREE.MeshStandardMaterial({
+      color: 0x2c3e50,
+      roughness: 0.8,
+      metalness: 0.2,
+    });
+
+    const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+    leftLeg.position.set(-0.15, 0.4, 0);
+    leftLeg.castShadow = true;
+    playerGroup.add(leftLeg);
+
+    const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+    rightLeg.position.set(0.15, 0.4, 0);
+    rightLeg.castShadow = true;
+    playerGroup.add(rightLeg);
+
+    // Marker above head
+    const markerGeometry = new THREE.ConeGeometry(0.2, 0.4, 8);
+    const markerMaterial = new THREE.MeshStandardMaterial({
+      color: this.isOni ? 0xff0000 : 0x00ff00,
+      transparent: true,
+      opacity: 0.8,
+      emissive: this.isOni ? 0xff0000 : 0x00ff00,
+      emissiveIntensity: 0.5,
+    });
+    const marker = new THREE.Mesh(markerGeometry, markerMaterial);
+    marker.position.y = 2.5;
+    marker.rotation.x = Math.PI; // Point downward
+    playerGroup.add(marker);
+
+    return playerGroup;
+  }
+
+  /**
+   * Get the 3D model
+   */
+  public getModel(): THREE.Group {
+    return this.model;
+  }
+
+  /**
+   * Update player color based on ONI status
+   */
+  public setIsOni(isOni: boolean): void {
+    if (this.isOni === isOni) return;
+    
+    this.isOni = isOni;
+    const color = isOni ? 0xff0000 : 0x00ff00;
+    const darkColor = isOni ? 0xcc0000 : 0x00cc00;
+
+    // Update body color
+    const body = this.model.children[0] as THREE.Mesh;
+    (body.material as THREE.MeshStandardMaterial).color.setHex(color);
+
+    // Update arm colors
+    const leftArm = this.model.children[2] as THREE.Mesh;
+    const rightArm = this.model.children[3] as THREE.Mesh;
+    (leftArm.material as THREE.MeshStandardMaterial).color.setHex(darkColor);
+    (rightArm.material as THREE.MeshStandardMaterial).color.setHex(darkColor);
+
+    // Update marker
+    const marker = this.model.children[6] as THREE.Mesh;
+    const markerMat = marker.material as THREE.MeshStandardMaterial;
+    markerMat.color.setHex(color);
+    markerMat.emissive.setHex(color);
+  }
+
+  /**
+   * Update position
+   */
+  public setPosition(x: number, y: number, z: number): void {
+    this.model.position.set(x, y, z);
+  }
+
+  /**
+   * Update rotation
+   */
+  public setRotation(yaw: number): void {
+    this.model.rotation.y = yaw;
+  }
+
+  /**
+   * Dispose of the model
+   */
+  public dispose(): void {
+    this.model.traverse((object) => {
+      if (object instanceof THREE.Mesh) {
+        object.geometry.dispose();
+        if (object.material instanceof THREE.Material) {
+          object.material.dispose();
+        }
+      }
+    });
+  }
+}

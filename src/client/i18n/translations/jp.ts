@@ -7,7 +7,7 @@ import type { Translations } from '../i18n';
 export const jp: Translations = {
   // メニュー画面
   menu: {
-    title: 'ジェットオニ',
+    title: 'ジェット鬼',
     subtitle: '3D鬼ごっこゲーム',
     createGame: 'ゲーム作成',
     joinGame: 'ゲーム参加',

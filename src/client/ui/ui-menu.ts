@@ -71,80 +71,92 @@ export class UIMenu {
     
     overlay.innerHTML = `
       <div style="
-        background: rgba(0, 0, 0, 0.85);
-        border: 2px solid #666;
-        border-radius: 8px;
-        padding: 30px;
-        max-width: 500px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        max-width: 600px;
         font-family: monospace;
       ">
         <h1 style="
           color: #ff8800;
-          font-size: 36px;
-          margin-bottom: 30px;
+          font-size: 48px;
+          margin-bottom: 40px;
           font-weight: bold;
-          letter-spacing: 2px;
+          letter-spacing: 3px;
           text-align: center;
+          text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.8);
         ">${this.i18n.t('menu.title')}</h1>
         
-        <div style="margin-bottom: 20px; text-align: center;">
+        <div style="margin-bottom: 30px; text-align: center;">
           <button id="lang-en" style="
-            padding: 8px 16px;
-            margin: 3px;
-            font-size: 14px;
+            padding: 10px 20px;
+            margin: 5px;
+            font-size: 16px;
             cursor: pointer;
             font-family: monospace;
-            border: 1px solid #666;
+            border: 2px solid #666;
             background: #222;
             color: #aaa;
+            border-radius: 4px;
           ">EN</button>
           <button id="lang-jp" style="
-            padding: 8px 16px;
-            margin: 3px;
-            font-size: 14px;
+            padding: 10px 20px;
+            margin: 5px;
+            font-size: 16px;
             cursor: pointer;
             font-family: monospace;
-            border: 1px solid #666;
+            border: 2px solid #666;
             background: #222;
             color: #aaa;
+            border-radius: 4px;
           ">JP</button>
         </div>
         
         <button id="btn-create-game" style="
           width: 100%;
-          padding: 12px;
-          margin: 5px 0;
-          font-size: 14px;
+          padding: 20px;
+          margin: 10px 0;
+          font-size: 20px;
           cursor: pointer;
           font-family: monospace;
-          border: 1px solid #ff8800;
+          border: 3px solid #ff8800;
           background: #331a00;
           color: #ff8800;
           font-weight: bold;
+          border-radius: 8px;
+          transition: transform 0.1s;
         ">▶ ${this.i18n.t('menu.createGame').toUpperCase()}</button>
         
         <button id="btn-join-game" style="
           width: 100%;
-          padding: 12px;
-          margin: 5px 0;
-          font-size: 14px;
+          padding: 18px;
+          margin: 10px 0;
+          font-size: 18px;
           cursor: pointer;
           font-family: monospace;
-          border: 1px solid #666;
+          border: 3px solid #666;
           background: #222;
           color: #aaa;
+          border-radius: 8px;
+          font-weight: bold;
+          transition: transform 0.1s;
           ">▶ ${this.i18n.t('menu.joinGame').toUpperCase()}</button>
         
         <button id="btn-stats" style="
           width: 100%;
-          padding: 12px;
-          margin: 5px 0;
-          font-size: 14px;
+          padding: 18px;
+          margin: 10px 0;
+          font-size: 18px;
           cursor: pointer;
           font-family: monospace;
-          border: 1px solid #666;
+          border: 3px solid #666;
           background: #222;
           color: #aaa;
+          border-radius: 8px;
+          font-weight: bold;
+          transition: transform 0.1s;
         ">▶ ${this.i18n.t('menu.statistics').toUpperCase()}</button>
       </div>
     `;

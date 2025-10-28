@@ -338,9 +338,8 @@ async function initGame(): Promise<void> {
         playerCamera.update(deltaTime);
         
         // Update debug info
-        const now = Date.now();
-        const beaconActive = now < beaconActiveUntil;
-        const beaconTimeRemaining = beaconActive ? Math.ceil((beaconActiveUntil - now) / 1000) : 0;
+        const beaconActive = Date.now() < beaconActiveUntil;
+        const beaconTimeRemaining = beaconActive ? Math.ceil((beaconActiveUntil - Date.now()) / 1000) : 0;
         const beaconItemsCount = beaconItem.getPlacedItems().length;
         
         debugInfo.innerHTML = `

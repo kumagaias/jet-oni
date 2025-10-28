@@ -227,8 +227,14 @@ export class UIHud {
   private updateTimer(): void {
     if (!this.timerElement) return;
 
-    const elapsed = (Date.now() - this.gameStartTime) / 1000;
-    const remaining = Math.max(0, this.gameDuration - elapsed);
+    // If game hasn't started yet, show initial duration
+    let remaining: number;
+    if (this.gameStartTime === 0) {
+      remaining = this.gameDuration;
+    } else {
+      const elapsed = (Date.now() - this.gameStartTime) / 1000;
+      remaining = Math.max(0, this.gameDuration - elapsed);
+    }
     
     const minutes = Math.floor(remaining / 60);
     const seconds = Math.floor(remaining % 60);

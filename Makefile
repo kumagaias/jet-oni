@@ -1,7 +1,12 @@
 .PHONY: test deploy deploy-quick build clean pr install dev security-check gitleaks
 
-# Run all tests
+# Run all tests (includes linting and type checking)
 test:
+	@echo "Running linter..."
+	npm run lint
+	@echo "Running type check..."
+	npx tsc --noEmit
+	@echo "Running tests..."
 	npm test
 
 # Run security checks

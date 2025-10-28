@@ -31,6 +31,9 @@ export class PlayerController {
     currentLadder: null,
     climbProgress: 0,
   };
+  private lastMouseX = 0;
+  private lastMouseY = 0;
+  private usePointerLockFallback = false;
 
   constructor(gameState: GameState) {
     this.gameState = gameState;
@@ -89,25 +92,32 @@ export class PlayerController {
 
     // Enable mouse look on canvas click
     canvas.addEventListener('click', () => {
-      this.isPointerLocked = true;
-      
       // Try to request pointer lock (will fail in Devvit, but that's okay)
       if (document.pointerLockElement !== canvas) {
         canvas.requestPointerLock().catch(() => {
           // Pointer lock not available in Devvit sandbox, use fallback
           console.log('Pointer lock not available, using fallback mode');
+          // Enable fallback mode
+          this.isPointerLocked = true;
         });
+      } else {
+        this.isPointerLocked = true;
       }
     });
 
     // Handle pointer lock change
     document.addEventListener('pointerlockchange', () => {
       this.isPointerLocked = document.pointerLockElement === canvas;
+      if (this.isPointerLocked) {
+        console.log('Pointer lock enabled');
+      }
     });
 
     // Handle pointer lock error (expected in Devvit)
     document.addEventListener('pointerlockerror', () => {
       console.log('Pointer lock not supported in this environment');
+      // Enable fallback mode anyway
+      this.isPointerLocked = true;
     });
   }
 
@@ -198,9 +208,26 @@ export class PlayerController {
   private handleMouseMove(event: MouseEvent): void {
     if (!this.isPointerLocked || !this.gameState.isPlaying()) return;
 
-    // Use movementX/Y if available (pointer lock), otherwise use regular mouse position
-    const deltaX = event.movementX || 0;
-    const deltaY = event.movementY || 0;
+    let deltaX = 0;
+    let deltaY = 0;
+
+    // Use movementX/Y if available (pointer lock)
+    if (event.movementX !== undefined && event.movementX !== 0) {
+      deltaX = event.movementX;
+      deltaY = event.movementY;
+      this.usePointerLockFallback = false;
+    } else {
+      // Fallback: calculate delta from mouse position
+      if (this.usePointerLockFallback) {
+        deltaX = event.clientX - this.lastMouseX;
+        deltaY = event.clientY - this.lastMouseY;
+      } else {
+        // First time in fallback mode, just record position
+        this.usePointerLockFallback = true;
+      }
+      this.lastMouseX = event.clientX;
+      this.lastMouseY = event.clientY;
+    }
 
     // Update mouse delta
     this.inputState.mouseX = deltaX;

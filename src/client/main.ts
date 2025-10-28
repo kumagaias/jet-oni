@@ -7,12 +7,14 @@ import { GameEngine } from './game/game-engine';
 import { GameState } from './game/game-state';
 import { CityGenerator } from './environment/city-generator';
 import { PlayerController } from './player/player-controller';
+import { PlayerPhysics } from './player/player-physics';
 import { I18n } from './i18n/i18n';
 import { UIManager } from './ui/ui-manager';
 import { UIMenu } from './ui/ui-menu';
 import { en } from './i18n/translations/en';
 import { jp } from './i18n/translations/jp';
 import { InitResponse } from '../shared/types/api';
+import { MAX_FUEL } from '../shared/constants';
 
 // Create translations object
 const translations = { en, jp };
@@ -49,6 +51,9 @@ async function initGame(): Promise<void> {
       // Set game to playing state immediately for testing
       gameState.setGamePhase('playing');
       
+      // Set player as ONI for testing jetpack
+      gameState.setLocalPlayerIsOni(true);
+      
       // Generate city environment
       console.log('Generating city...');
       const cityGenerator = new CityGenerator();
@@ -56,28 +61,80 @@ async function initGame(): Promise<void> {
       gameEngine.addToScene(city);
       console.log('City generated');
       
+      // Initialize player physics
+      const playerPhysics = new PlayerPhysics();
+      // Register buildings for collision detection (if needed)
+      // playerPhysics.registerBuildings(cityGenerator.getBuildings());
+      
       // Initialize player controller
       const playerController = new PlayerController(gameState);
       playerController.init();
+      
+      // Create debug info element (initially hidden)
+      const debugInfo = document.createElement('div');
+      debugInfo.id = 'debug-info';
+      debugInfo.style.cssText = `
+        position: fixed;
+        top: 10px;
+        left: 10px;
+        background: rgba(0, 0, 0, 0.7);
+        color: #ff8800;
+        padding: 10px;
+        font-family: monospace;
+        font-size: 12px;
+        border: 1px solid #ff8800;
+        border-radius: 4px;
+        z-index: 1000;
+        pointer-events: none;
+        display: none;
+      `;
+      document.body.appendChild(debugInfo);
       
       // Setup game loop
       gameEngine.onUpdate((deltaTime: number) => {
         // Update player controller
         playerController.update(deltaTime);
         
-        // Update camera position to follow player
+        // Apply physics to player
         const localPlayer = gameState.getLocalPlayer();
+        const physicsResult = playerPhysics.applyPhysics(
+          localPlayer.position,
+          localPlayer.velocity,
+          deltaTime,
+          localPlayer.isJetpacking
+        );
+        
+        // Update player state with physics results
+        gameState.setLocalPlayerPosition(physicsResult.position);
+        gameState.setLocalPlayerVelocity(physicsResult.velocity);
+        gameState.setLocalPlayerOnSurface(physicsResult.isOnSurface);
+        
+        // Update camera position to follow player
         const camera = gameEngine.getCamera();
         camera.position.set(
-          localPlayer.position.x,
-          localPlayer.position.y + 1.7, // Eye height
-          localPlayer.position.z
+          physicsResult.position.x,
+          physicsResult.position.y + 1.7, // Eye height
+          physicsResult.position.z
         );
         
         // Apply player rotation to camera
         camera.rotation.order = 'YXZ';
         camera.rotation.y = localPlayer.rotation.yaw;
         camera.rotation.x = localPlayer.rotation.pitch;
+        
+        // Update debug info
+        debugInfo.innerHTML = `
+          <strong>[DEBUG MODE]</strong><br>
+          Role: ${localPlayer.isOni ? 'ONI' : 'RUNNER'}<br>
+          Fuel: ${Math.round(localPlayer.fuel)}/${MAX_FUEL}<br>
+          Position: (${Math.round(localPlayer.position.x)}, ${Math.round(localPlayer.position.y)}, ${Math.round(localPlayer.position.z)})<br>
+          Velocity Y: ${localPlayer.velocity.y.toFixed(2)}<br>
+          On Surface: ${localPlayer.isOnSurface ? 'Yes' : 'No'}<br>
+          Jetpacking: ${localPlayer.isJetpacking ? 'Yes' : 'No'}<br>
+          Dashing: ${localPlayer.isDashing ? 'Yes' : 'No'}<br>
+          <br>
+          <strong>F3:</strong> Toggle ONI/Runner
+        `;
       });
       
       // Initialize UI menu

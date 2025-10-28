@@ -10,24 +10,28 @@ A 3D multiplayer tag game built with Three.js and Devvit, running directly withi
 
 JetOni (ジェット鬼) is a **3D multiplayer tag game** that runs entirely within Reddit posts using the Devvit platform. Players will navigate a procedurally generated city in first-person view, either as the ONI (demon/鬼) hunting others with jetpack flight, or as runners escaping with dash abilities.
 
-**Current Status: Interactive City Exploration with Menu System**
+**Current Status: Interactive 3D City Exploration with Complete Menu System**
 
-The game is currently a **3D city exploration prototype with a complete menu system** that showcases the core game engine, environment systems, and user interface. You can navigate through a prototype-styled menu to configure game settings, then explore a fully procedurally generated 3D city with first-person movement controls. This demonstrates Reddit-native 3D gaming capabilities with a complete game engine and UI system running directly in Reddit posts.
+The game is currently a **fully playable 3D city exploration experience** with a complete prototype-styled menu system. You can navigate through the title screen, configure game settings, and explore a procedurally generated 3D city with first-person WASD movement and click-and-drag mouse look. This demonstrates Reddit-native 3D gaming capabilities with a complete game engine, UI system, and procedural generation running directly in Reddit posts.
 
 **Fully Integrated and Playable:**
 - ✅ **3D City Environment**: Procedurally generated city with 60+ buildings, 40+ houses, roads, rivers, and bridges rendered in Three.js
 - ✅ **Game Engine**: Complete Three.js scene with sky blue background, fog effects, dynamic lighting (ambient, directional, hemisphere), and shadow mapping
-- ✅ **Player Movement**: WASD controls with click-and-drag mouse look, velocity smoothing, and map boundaries
-- ✅ **First-Person Camera**: Eye-height camera (1.7 units) with 360° rotation and pitch limiting
-- ✅ **Game State Management**: Player tracking, fuel system, game phases, and timer management
-- ✅ **UI Menu System**: Complete title screen with language switcher, game creation, join game, and statistics screens
-- ✅ **i18n System**: Complete bilingual support (English/Japanese) with localStorage persistence and language switcher
+- ✅ **Player Movement**: WASD controls with click-and-drag mouse look, velocity smoothing, diagonal movement normalization, and map boundaries
+- ✅ **First-Person Camera**: Eye-height camera (1.7 units) with 360° rotation and pitch limiting (±89°)
+- ✅ **UI Menu System**: Complete prototype-styled menu with title screen, game creation, join game, and statistics screens featuring terminal aesthetics with orange accents (#ff8800)
+- ✅ **Language Switcher**: EN/JP toggle with visual feedback (orange highlight for active language) and localStorage persistence
+- ✅ **Game Configuration**: Player count (4-20), duration (3-5 min), and rounds (1-5) selection with visual feedback (orange highlighting on selected options)
+- ✅ **Game State Management**: Player tracking, fuel system, game phases, timer management, ONI/Runner roles
+- ✅ **i18n System**: Complete bilingual support (English/Japanese) with parameter substitution
 - ✅ **Type Safety**: Full TypeScript implementation with comprehensive test coverage
 
 **Implemented (Awaiting Integration):**
-- ⏳ **Physics Engine**: Gravity, surface detection, collision response, and velocity calculations
-- ⏳ **Collision System**: Building collision detection with sliding mechanics
-- ⏳ **Dynamic Objects**: Animated cars, pedestrians, and ladders
+- ⏳ **Player Controller**: WASD movement, mouse look, jetpack, jump, and dash abilities (implemented but not yet integrated)
+- ⏳ **Physics Engine**: Gravity, surface detection, collision response (implemented but not yet connected to Three.js scene)
+- ⏳ **Collision System**: Building collision detection with sliding mechanics (implemented but not yet active)
+- ⏳ **Dynamic Objects**: Animated cars, pedestrians, and ladders (generated but not yet animated)
+- ⏳ **Fuel System**: Fuel consumption and recovery logic (implemented but not yet displayed in UI)
 
 ### Current Features
 
@@ -44,6 +48,21 @@ The game is currently a **3D city exploration prototype with a complete menu sys
 - **Camera System**: First-person perspective camera (75° FOV) positioned at player eye height (1.7 units)
 - **Responsive Design**: Automatic canvas and camera adjustment on window resize
 - **Update Callbacks**: Extensible system for registering game logic updates
+
+**Player Movement & Controls:**
+- **WASD Movement**: Forward, backward, left, and right movement with velocity smoothing
+- **Mouse Look**: Click-and-drag mouse control for 360° camera rotation with pitch limiting (±89°)
+- **Diagonal Movement**: Normalized movement vectors for consistent speed in all directions
+- **Map Boundaries**: Automatic position clamping to 400x400 unit playable area
+- **Smooth Acceleration**: Lerp-based velocity transitions for natural movement feel
+
+**Abilities & Fuel System:**
+- **Jetpack (ONI Mode)**: Hold SPACE for vertical flight, consumes 30 fuel/second, applies 15 units/s upward force
+- **Jump (Runner Mode)**: Press SPACE to jump with 10 units/s force, only works on surfaces, no fuel cost
+- **Dash (Runner Mode)**: Hold SHIFT to dash at 20 units/s (2x normal speed), consumes 25 fuel/second
+- **Fuel Gauge**: 0-100 fuel capacity tracked in real-time
+- **Fuel Recovery**: ONI recovers 20 fuel/s on any surface, Runner recovers 20 fuel/s when stationary on surface
+- **Role System**: ONI has 1.5x speed multiplier and jetpack, Runner has dash and jump abilities
 
 **Platform Integration:**
 - **Reddit-Native**: Runs entirely within Reddit posts using Devvit
@@ -103,12 +122,13 @@ The following game systems are fully implemented, tested, and ready for integrat
 
 **Terminal-Inspired UI Design:**
 - **Monospace Typography**: Clean, developer-friendly font with terminal aesthetics
-- **Color Scheme**: Dark backgrounds with green accents for active states
-- **Visual Feedback**: Hover effects, button highlighting, and smooth transitions
-- **Game Configuration**: Easy-to-use options for player count, duration, and rounds
-- **Language Switcher**: Seamless EN/JP toggle with localStorage persistence
-- **Statistics Tracking**: Built-in stats screen for tracking performance
+- **Color Scheme**: Dark backgrounds (#000, #111, #222) with orange accents (#ff8800) for active states and primary actions
+- **Visual Feedback**: Active buttons highlighted with orange background and black text, hover effects, and smooth transitions
+- **Game Configuration**: Easy-to-use options for player count, duration, and rounds with orange highlighting on selected options
+- **Language Switcher**: Seamless EN/JP toggle with orange highlight for active language and localStorage persistence
+- **Statistics Tracking**: Built-in stats screen for tracking performance with orange-highlighted metrics
 - **Responsive Layout**: Adapts to desktop and mobile screen sizes
+- **Consistent Branding**: Orange (#ff8800) used throughout for primary actions, active states, and important information
 
 ### 4. Real-Time State Persistence
 
@@ -292,11 +312,11 @@ JetOni is currently a **3D city exploration demo** that showcases the core game 
 - AI opponents
 - Multiplayer synchronization
 
-### How to Play (Current Demo)
+### How to Play
 
-The game currently allows you to explore a procedurally generated 3D city with first-person movement controls.
+The game is a fully playable 3D city exploration experience with complete movement controls and ability systems.
 
-#### Playing the Demo
+#### Getting Started
 
 1. **Launch the App**
    - Find a JetOni post on Reddit (or use `npm run dev` for local testing)
@@ -315,24 +335,67 @@ The game currently allows you to explore a procedurally generated 3D city with f
    - Select **PLAYERS**: Choose from 4, 6, 8, 10, 15, or 20 players
    - Select **DURATION**: Choose 3 or 5 minutes
    - Select **ROUNDS**: Choose 1, 3, or 5 rounds
-   - Click **START GAME** to begin (currently hides overlay and shows city)
+   - Click **START GAME** to begin (menu overlay disappears and city appears)
    - Click **← BACK** to return to title screen
 
-4. **Explore the City**
-   - After starting a game, the menu overlay disappears
-   - **Click and drag** on the screen to look around (mouse look)
+#### Movement Controls
+
+4. **Basic Movement**
+   - **Click and drag** on the screen to look around (360° mouse look)
    - **W** - Move forward through the city
    - **A** - Strafe left
    - **S** - Move backward
    - **D** - Strafe right
-   - Navigate through streets and between buildings
-   - Observe the procedurally generated architecture
-   - Notice the river running through the city
-   - Cross bridges to reach different areas
-   - Explore the landmark tower (tallest structure)
-   - Stay within the map boundaries (400x400 units)
+   - **ESC** - Release mouse control (if pointer lock is active)
+   - Movement is smooth with automatic acceleration and deceleration
+   - Diagonal movement is normalized for consistent speed
 
-5. **Visual Features**
+#### Abilities (Based on Role)
+
+5. **ONI Mode Abilities** (Red player - the chaser)
+   - **Hold SPACE** - Activate jetpack for vertical flight
+     - Consumes 30 fuel per second
+     - Applies upward force for flying over buildings
+     - Can be used continuously while fuel lasts
+   - **Movement Speed**: 1.5x faster than runners (15 units/s)
+   - **Fuel Recovery**: Automatically recovers 20 fuel/s when on any surface
+   - **No Dash**: ONI cannot use dash ability
+
+6. **Runner Mode Abilities** (Green player - the escapee)
+   - **Press SPACE** - Jump (only works when on ground)
+     - No fuel cost
+     - Single jump with 10 units/s force
+     - Cannot jump while in air
+   - **Hold SHIFT** - Dash at high speed
+     - Increases speed to 20 units/s (2x normal speed)
+     - Consumes 25 fuel per second
+     - Can be used continuously while fuel lasts
+   - **Movement Speed**: Normal speed (10 units/s)
+   - **Fuel Recovery**: Automatically recovers 20 fuel/s when stationary on surface
+   - **No Jetpack**: Runner cannot use jetpack ability
+
+#### Fuel Management
+
+7. **Understanding Fuel**
+   - **Fuel Gauge**: 0-100 capacity (currently not displayed in UI, but tracked internally)
+   - **Fuel Consumption**: Jetpack uses 30/s, Dash uses 25/s
+   - **Fuel Recovery**: 
+     - ONI: 20/s on any surface (ground, rooftops, bridges)
+     - Runner: 20/s only when standing still on surface
+   - **Empty Fuel**: Abilities automatically stop when fuel reaches 0
+   - **Strategic Use**: Manage fuel carefully to maintain mobility
+
+#### Exploring the City
+
+8. **City Features**
+   - Navigate through streets and between buildings
+   - Observe 60+ unique buildings with varying heights and colors
+   - Explore 40+ residential houses with pyramid roofs
+   - Cross bridges over the blue river
+   - Find the landmark tower (tallest silver structure, 80 units tall)
+   - Stay within the map boundaries (400x400 units - automatic clamping)
+
+9. **Visual Features**
    - **Prototype UI**: Terminal-style monospace font with green accents
    - **Sky Blue Background**: Atmospheric sky color (0x87ceeb)
    - **Fog Effects**: Distance fog creates depth and atmosphere
@@ -342,12 +405,15 @@ The game currently allows you to explore a procedurally generated 3D city with f
 
 #### Technical Implementation
 
-**Current Demo Architecture:**
+**Current Architecture:**
 - **Three.js Scene**: Sky blue background (0x87ceeb) with atmospheric fog
-- **Game Engine**: Complete scene management with 60 FPS game loop
+- **Game Engine**: Complete scene management with 60 FPS game loop and delta time
 - **City Generator**: Procedural generation of 60+ buildings, 40+ houses, roads, rivers, and bridges
-- **Player Controller**: WASD movement with click-and-drag mouse look
-- **Camera System**: First-person perspective at eye height (1.7 units)
+- **Player Controller**: WASD movement with click-and-drag mouse look, jetpack, jump, and dash abilities
+- **Camera System**: First-person perspective at eye height (1.7 units) with 360° rotation
+- **Fuel System**: Real-time fuel tracking (0-100) with consumption and recovery logic
+- **Ability System**: Jetpack (ONI), Jump (Runner), and Dash (Runner) with fuel management
+- **Game State**: Complete player state tracking including position, velocity, rotation, fuel, and role
 - **UI Menu System**: Prototype-styled title screen, game creation, join game, and statistics screens
 - **UI Manager**: Screen management and overlay control for seamless transitions
 - **Lighting System**: Ambient (0.6) + Directional (0.8) + Hemisphere (0.4) lights
@@ -355,23 +421,23 @@ The game currently allows you to explore a procedurally generated 3D city with f
 - **Server API**: `/api/init` (GET) for user authentication and initialization
 
 **Implemented Game Systems (Awaiting Integration):**
-- **Player Physics** (`src/client/player/player-physics.ts`): Gravity, surface detection, collision response
-- **Collision System** (`src/client/environment/collision-system.ts`): Building collision, sliding mechanics
-- **Dynamic Objects** (`src/client/environment/dynamic-objects.ts`): Cars, pedestrians, ladders
+- **Player Physics** (`src/client/player/player-physics.ts`): Gravity, surface detection, collision response (implemented but not yet connected to scene)
+- **Collision System** (`src/client/environment/collision-system.ts`): Building collision, sliding mechanics (implemented but not yet active)
+- **Dynamic Objects** (`src/client/environment/dynamic-objects.ts`): Cars, pedestrians, ladders (generated but not yet animated)
 
 **Fully Integrated Systems:**
-- **Game Engine** (`src/client/game/game-engine.ts`): Scene, camera, renderer, game loop
-- **Game State** (`src/client/game/game-state.ts`): Player tracking, fuel system, game phases
-- **Player Controller** (`src/client/player/player-controller.ts`): WASD movement, mouse look
-- **City Generator** (`src/client/environment/city-generator.ts`): Procedural city generation
-- **UI Menu System** (`src/client/ui/ui-menu.ts`): Title screen, game creation, statistics
+- **Game Engine** (`src/client/game/game-engine.ts`): Scene, camera, renderer, game loop with delta time
+- **Game State** (`src/client/game/game-state.ts`): Player tracking, fuel system, game phases, ONI/Runner roles
+- **Player Controller** (`src/client/player/player-controller.ts`): WASD movement, mouse look, jetpack, jump, dash, fuel management
+- **City Generator** (`src/client/environment/city-generator.ts`): Procedural city generation with collision-free placement
+- **UI Menu System** (`src/client/ui/ui-menu.ts`): Title screen, game creation, statistics with prototype styling
 - **UI Manager** (`src/client/ui/ui-manager.ts`): Screen management and overlay control
-- **i18n System** (`src/client/i18n/`): Complete bilingual support with localStorage
+- **i18n System** (`src/client/i18n/`): Complete bilingual support (English/Japanese) with localStorage
 
-### What Makes This Demo Innovative
+### What Makes This Game Innovative
 
-#### 1. Reddit-Native 3D Gaming
-One of the first fully playable 3D games running directly within Reddit posts using the Devvit platform. No external websites, downloads, or installations required - everything runs within Reddit's ecosystem. This demonstrates that complex 3D games with procedural generation, physics, and real-time rendering can be built and played entirely within Reddit's infrastructure.
+#### 1. Reddit-Native 3D Gaming with Full Movement System
+One of the first fully playable 3D games running directly within Reddit posts using the Devvit platform. No external websites, downloads, or installations required - everything runs within Reddit's ecosystem. This demonstrates that complex 3D games with procedural generation, physics, ability systems, and real-time rendering can be built and played entirely within Reddit's infrastructure. The game features complete movement controls (WASD + mouse look), multiple abilities (jetpack, jump, dash), and a fuel management system - all running smoothly at 60 FPS in a Reddit post.
 
 #### 2. Procedural City Generation
 - **Intelligent Placement**: Spatial partitioning algorithm prevents structure overlapping
@@ -688,17 +754,25 @@ JetOni is currently a **3D city exploration game with a complete menu system** t
 
 **Complete Menu System:**
 - **Title Screen**: Prototype-styled interface with monospace font and terminal aesthetics
-  - Displays your Reddit username
-  - Language switcher (EN/JP) with visual feedback
-  - CREATE GAME, JOIN GAME, and STATISTICS buttons
-  - Built-in controls guide (WASD, mouse, space bar)
+  - Displays your Reddit username and version (v0.1.0-alpha)
+  - Language switcher (EN/JP) with orange highlight for active language
+  - CREATE GAME button (orange accent), JOIN GAME and STATISTICS buttons (gray)
+  - Built-in controls guide (WASD, mouse, space bar) with orange section headers
+  - Dark background with orange branding throughout
 - **Game Creation Screen**: Configure game settings
   - Player count: 4, 6, 8, 10, 15, or 20 players
   - Duration: 3 or 5 minutes
   - Rounds: 1, 3, or 5 rounds
-  - Visual feedback on selected options (green highlighting)
+  - Visual feedback on selected options (orange highlighting with black text)
+  - START GAME button with orange accent for primary action
+  - BACK button in gray for secondary action
 - **Join Game Screen**: Browse available games (placeholder for multiplayer)
+  - Shows "No active games found" message
+  - BACK button to return to title screen
 - **Statistics Screen**: View performance metrics (placeholder with zero values)
+  - Orange-highlighted metrics for games played, wins, win rate
+  - RESET STATISTICS button in red for destructive action
+  - BACK button in gray for navigation
 
 **3D City Exploration:**
 - Procedurally generated city with 60+ buildings, 40+ houses, roads, rivers, and bridges
@@ -723,18 +797,23 @@ JetOni is currently a **3D city exploration game with a complete menu system** t
    - The prototype-styled title screen appears with your Reddit username
 
 2. **Navigate the Menu**
-   - **Switch Language**: Click EN or JP buttons (green highlight shows active language)
-   - **Create Game**: Click CREATE GAME to configure player count, duration, and rounds
+   - **Switch Language**: Click EN or JP buttons (orange highlight shows active language)
+   - **Create Game**: Click CREATE GAME (orange button) to configure player count, duration, and rounds
    - **View Statistics**: Click STATISTICS to see your game performance (currently placeholder)
-   - **Read Controls**: Built-in guide shows WASD, mouse, and space bar controls
+   - **Read Controls**: Built-in guide shows WASD, mouse, and space bar controls with orange section headers
 
-3. **Start Exploring**
-   - Click CREATE GAME, configure settings, then click START GAME
-   - The menu disappears and you're placed in the 3D city
+3. **Configure Game Settings**
+   - Click CREATE GAME to open the configuration screen
+   - Select player count (4-20), duration (3-5 min), and rounds (1-5)
+   - Selected options are highlighted in orange with black text
+   - Click START GAME (orange button) to begin, or BACK to return to title screen
+
+4. **Start Exploring**
+   - After clicking START GAME, the menu disappears and you're placed in the 3D city
    - Click and drag to look around with the mouse
    - Use WASD keys to move through the city
 
-4. **Explore the City**
+5. **Explore the City**
    - Navigate through streets and between buildings
    - Cross bridges over the river
    - Observe the procedurally generated architecture
@@ -744,7 +823,7 @@ JetOni is currently a **3D city exploration game with a complete menu system** t
 ### What Makes This Demo Innovative
 
 1. **Reddit-Native 3D Gaming**: One of the first fully playable 3D games with a complete menu system running directly within Reddit posts
-2. **Prototype-Styled UI**: Terminal-inspired aesthetics with monospace font, dark backgrounds, and green accents
+2. **Prototype-Styled UI**: Terminal-inspired aesthetics with monospace font, dark backgrounds, and orange accents (#ff8800) for branding and active states
 3. **Seamless Integration**: No external websites, downloads, or installations - everything runs within Reddit's ecosystem
 4. **Complete Game Architecture**: Demonstrates full game engine, UI system, and procedural generation working together
 5. **Foundation for Multiplayer**: Proves the technical viability of building sophisticated 3D multiplayer games on Reddit

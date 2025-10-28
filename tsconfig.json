@@ -3,7 +3,9 @@
   "files": [],
   "references": [
     { "path": "./src/client" },
+    { "path": "./src/client/tsconfig.test.json" },
     { "path": "./src/shared" },
-    { "path": "./src/server" }
+    { "path": "./src/server" },
+    { "path": "./src/server/tsconfig.test.json" }
   ]
 }

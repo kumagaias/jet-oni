@@ -1,0 +1,13 @@
+// TypeScript config for server test files
+{
+  "extends": "../../tools/tsconfig-base.json",
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    "types": ["node", "vitest/globals"],
+    "rootDir": ".",
+    "outDir": "../../dist/types/server-test",
+    "tsBuildInfoFile": "../../dist/tsconfig.server-test.tsbuildinfo"
+  },
+  "include": ["**/*.test.ts"],
+  "references": [{ "path": "../shared" }]
+}

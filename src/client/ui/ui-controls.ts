@@ -19,8 +19,10 @@ export class UIControls {
   private buttonState: ControlButtonState;
   private isMobile: boolean;
   private i18n: I18n;
+  private gameState: GameState;
 
-  constructor(i18n: I18n) {
+  constructor(gameState: GameState, i18n: I18n) {
+    this.gameState = gameState;
     this.i18n = i18n;
     this.buttonState = {
       dash: false,
@@ -30,6 +32,9 @@ export class UIControls {
     
     // Detect if mobile device
     this.isMobile = this.detectMobile();
+    
+    // Initialize controls
+    this.init();
   }
 
   /**
@@ -71,7 +76,7 @@ export class UIControls {
 
     // Create dash/jetpack button (bottom)
     this.dashButton = this.createAbilityButton(
-      'DASH',
+      '🚀',
       'rgba(0, 150, 255, 0.5)',
       '#0096ff',
       () => {
@@ -87,7 +92,7 @@ export class UIControls {
 
     // Create beacon button (top)
     this.beaconButton = this.createAbilityButton(
-      'BEACON',
+      '📡',
       'rgba(255, 0, 0, 0.5)',
       '#ff0000',
       () => {
@@ -126,7 +131,7 @@ export class UIControls {
       justify-content: center;
       color: white;
       font-family: monospace;
-      font-size: 11px;
+      font-size: 32px;
       font-weight: bold;
       pointer-events: auto;
       user-select: none;
@@ -203,7 +208,7 @@ export class UIControls {
     if (this.beaconButton) {
       if (localPlayer.isOni) {
         this.beaconButton.style.display = 'flex';
-        this.beaconButton.textContent = 'BEACON';
+        this.beaconButton.textContent = '📡';
       } else {
         this.beaconButton.style.display = 'none';
       }

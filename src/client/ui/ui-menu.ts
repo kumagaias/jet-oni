@@ -9,17 +9,52 @@ export class UIMenu {
   private uiManager: UIManager;
   private i18n: I18n;
   private username: string;
+  private gameEngine: any; // GameEngine instance
 
-  constructor(uiManager: UIManager, i18n: I18n, username: string) {
+  constructor(uiManager: UIManager, i18n: I18n, username: string, gameEngine?: any) {
     this.uiManager = uiManager;
     this.i18n = i18n;
     this.username = username;
+    this.gameEngine = gameEngine;
+  }
+
+  /**
+   * Set game engine reference
+   */
+  public setGameEngine(gameEngine: any): void {
+    this.gameEngine = gameEngine;
+  }
+
+  /**
+   * Start the game (called when user clicks start)
+   */
+  public startGame(): void {
+    this.uiManager.hideOverlay();
+    
+    // Resume game engine
+    if (this.gameEngine) {
+      this.gameEngine.resume();
+    }
+    
+    // Dispatch custom event to notify game start
+    window.dispatchEvent(new CustomEvent('gameStart'));
+    
+    // Show debug info when game starts
+    const debugInfo = document.getElementById('debug-info');
+    if (debugInfo) {
+      debugInfo.style.display = 'block';
+    }
   }
 
   /**
    * Show title screen
    */
   public showTitleScreen(): void {
+    // Pause game engine when showing menu
+    if (this.gameEngine) {
+      this.gameEngine.pause();
+    }
+    
     const overlay = this.uiManager.getOverlay();
     
     overlay.innerHTML = `
@@ -353,14 +388,7 @@ export class UIMenu {
     // Start game button
     document.getElementById('btn-start-game')?.addEventListener('click', () => {
       console.log('Starting game with options:', selectedOptions);
-      // TODO: Implement game start logic
-      this.uiManager.hideOverlay();
-      
-      // Show debug info when game starts
-      const debugInfo = document.getElementById('debug-info');
-      if (debugInfo) {
-        debugInfo.style.display = 'block';
-      }
+      this.startGame();
     });
     
     // Back button

@@ -176,6 +176,24 @@ export class GameEngine {
   }
 
   /**
+   * Pause the game loop (keeps rendering but stops updates)
+   */
+  public pause(): void {
+    this.isRunning = false;
+  }
+
+  /**
+   * Resume the game loop
+   */
+  public resume(): void {
+    if (!this.isRunning) {
+      this.isRunning = true;
+      this.lastTime = 0; // Reset time to avoid large delta
+      this.animationFrameId = requestAnimationFrame(this.gameLoop);
+    }
+  }
+
+  /**
    * Add an object to the scene
    */
   public addToScene(object: THREE.Object3D): void {

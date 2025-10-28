@@ -252,10 +252,37 @@ async function initGame(): Promise<void> {
       });
       
       // Initialize UI menu
-      const uiMenu = new UIMenu(uiManager, i18n, data.username || 'Player');
+      const uiMenu = new UIMenu(uiManager, i18n, data.username || 'Player', gameEngine);
+      
+      // Initialize HUD (but keep it hidden until game starts)
+      const { UIHud } = await import('./ui/ui-hud');
+      const uiHud = new UIHud(gameState, i18n);
+      uiHud.hide(); // Hide until game starts
+      
+      // Initialize UI controls for mobile
+      const { UIControls } = await import('./ui/ui-controls');
+      const uiControls = new UIControls(gameState, i18n);
+      uiControls.hide(); // Hide until game starts
+      
+      // Add HUD update to game loop
+      gameEngine.onUpdate((deltaTime: number) => {
+        if (gameState.getGamePhase() === 'playing') {
+          const beaconCooldown = beaconSystem.getRemainingCooldown();
+          uiHud.update(beaconCooldown);
+        }
+      });
+      
+      // Listen for game start event
+      window.addEventListener('gameStart', () => {
+        console.log('Game starting - showing HUD and controls');
+        gameState.setGamePhase('playing');
+        uiHud.show();
+        uiControls.show();
+      });
+      
       uiMenu.showTitleScreen();
       
-      // Start game loop
+      // Start game loop (will be paused by showTitleScreen)
       gameEngine.start();
       console.log('Game started');
       

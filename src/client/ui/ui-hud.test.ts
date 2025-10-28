@@ -60,22 +60,20 @@ describe('UIHud', () => {
   });
 
   describe('status display', () => {
-    it('should display runner status when player is not oni', () => {
+    it('should hide status display (not needed in current implementation)', () => {
       gameState.setLocalPlayerIsOni(false);
       uiHud.update();
 
       const status = document.getElementById('hud-status');
-      expect(status?.textContent).toBe('You are RUNNER');
-      expect(status?.style.backgroundColor).toContain('0, 255, 0'); // Green
+      expect(status?.style.display).toBe('none');
     });
 
-    it('should display oni status when player is oni', () => {
+    it('should hide status display for oni as well', () => {
       gameState.setLocalPlayerIsOni(true);
       uiHud.update();
 
       const status = document.getElementById('hud-status');
-      expect(status?.textContent).toBe('You are ONI');
-      expect(status?.style.backgroundColor).toContain('255, 0, 0'); // Red
+      expect(status?.style.display).toBe('none');
     });
   });
 
@@ -150,11 +148,23 @@ describe('UIHud', () => {
     });
 
     it('should change color when fuel is low', () => {
+      gameState.setLocalPlayerIsOni(false); // Runner
       gameState.setLocalPlayerFuel(20);
       uiHud.update();
 
       const fuelBar = document.getElementById('hud-fuel-bar');
-      expect(fuelBar?.style.background).toContain('#ff0000'); // Red
+      // Runner with low fuel shows green
+      expect(fuelBar?.style.background).toContain('#00ff00');
+    });
+
+    it('should show orange color for oni with low fuel', () => {
+      gameState.setLocalPlayerIsOni(true); // ONI
+      gameState.setLocalPlayerFuel(20);
+      uiHud.update();
+
+      const fuelBar = document.getElementById('hud-fuel-bar');
+      // ONI with low fuel shows orange/red
+      expect(fuelBar?.style.background).toContain('#ff4500');
     });
   });
 

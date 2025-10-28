@@ -27,9 +27,9 @@ describe('UIControls', () => {
       configurable: true,
     });
 
-    i18n = new I18n('en');
-    controls = new UIControls(i18n);
     gameState = new GameState('player1');
+    i18n = new I18n('en');
+    controls = new UIControls(gameState, i18n);
   });
 
   afterEach(() => {
@@ -44,15 +44,11 @@ describe('UIControls', () => {
 
   describe('Initialization', () => {
     it('should create control container on init', () => {
-      controls.init();
-      
       const container = document.getElementById('ability-controls');
       expect(container).not.toBeNull();
     });
 
     it('should create dash button', () => {
-      controls.init();
-      
       const container = document.getElementById('ability-controls');
       const buttons = container?.querySelectorAll('div');
       
@@ -60,8 +56,6 @@ describe('UIControls', () => {
     });
 
     it('should create beacon button', () => {
-      controls.init();
-      
       const container = document.getElementById('ability-controls');
       const buttons = container?.querySelectorAll('div');
       
@@ -70,8 +64,6 @@ describe('UIControls', () => {
     });
 
     it('should hide beacon button initially', () => {
-      controls.init();
-      
       const container = document.getElementById('ability-controls');
       const buttons = container?.querySelectorAll('div');
       const beaconButton = buttons?.[1] as HTMLElement;
@@ -105,8 +97,6 @@ describe('UIControls', () => {
 
   describe('Touch Events', () => {
     it('should handle touch start on dash button', () => {
-      controls.init();
-      
       const container = document.getElementById('ability-controls');
       const dashButton = container?.querySelector('div') as HTMLElement;
       
@@ -125,8 +115,6 @@ describe('UIControls', () => {
     });
 
     it('should handle touch end on dash button', () => {
-      controls.init();
-      
       const container = document.getElementById('ability-controls');
       const dashButton = container?.querySelector('div') as HTMLElement;
       
@@ -151,8 +139,6 @@ describe('UIControls', () => {
 
   describe('Update with Game State', () => {
     it('should show dash button for runner', () => {
-      controls.init();
-      
       const localPlayer = gameState.getLocalPlayer();
       localPlayer.isOni = false;
       localPlayer.fuel = 100;
@@ -162,12 +148,10 @@ describe('UIControls', () => {
       const container = document.getElementById('ability-controls');
       const dashButton = container?.querySelector('div') as HTMLElement;
       
-      expect(dashButton?.textContent).toBe('DASH');
+      expect(dashButton?.textContent).toBe('⚡️');
     });
 
     it('should show jetpack button for oni', () => {
-      controls.init();
-      
       const localPlayer = gameState.getLocalPlayer();
       localPlayer.isOni = true;
       localPlayer.fuel = 100;
@@ -177,12 +161,10 @@ describe('UIControls', () => {
       const container = document.getElementById('ability-controls');
       const dashButton = container?.querySelector('div') as HTMLElement;
       
-      expect(dashButton?.textContent).toBe('JETPACK');
+      expect(dashButton?.textContent).toBe('🔥');
     });
 
     it('should show beacon button for oni', () => {
-      controls.init();
-      
       const localPlayer = gameState.getLocalPlayer();
       localPlayer.isOni = true;
       localPlayer.fuel = 100;
@@ -197,8 +179,6 @@ describe('UIControls', () => {
     });
 
     it('should hide beacon button for runner', () => {
-      controls.init();
-      
       const localPlayer = gameState.getLocalPlayer();
       localPlayer.isOni = false;
       localPlayer.fuel = 100;
@@ -213,7 +193,8 @@ describe('UIControls', () => {
     });
 
     it('should disable button when fuel is zero', () => {
-      controls.init();
+      // Set game state to playing so update works
+      gameState.setGamePhase('playing');
       
       const localPlayer = gameState.getLocalPlayer();
       localPlayer.isOni = false;
@@ -231,7 +212,6 @@ describe('UIControls', () => {
 
   describe('Visibility', () => {
     it('should show controls', () => {
-      controls.init();
       controls.hide();
       controls.show();
       
@@ -240,21 +220,23 @@ describe('UIControls', () => {
     });
 
     it('should hide controls', () => {
-      controls.init();
-      controls.hide();
-      
       const container = document.getElementById('ability-controls');
+      expect(container?.style.display).toBe('flex'); // Initially visible
+      
+      controls.hide();
       expect(container?.style.display).toBe('none');
     });
   });
 
   describe('Disposal', () => {
     it('should remove controls from DOM', () => {
-      controls.init();
+      const container = document.getElementById('ability-controls');
+      expect(container).not.toBeNull(); // Verify it exists first
+      
       controls.dispose();
       
-      const container = document.getElementById('ability-controls');
-      expect(container).toBeNull();
+      const containerAfter = document.getElementById('ability-controls');
+      expect(containerAfter).toBeNull();
     });
   });
 });

@@ -61,14 +61,13 @@ export class UIHud {
       transition: background-color 0.3s ease, color 0.3s ease;
     `;
 
-    // Timer display
+    // Timer display (top left)
     this.timerElement = document.createElement('div');
     this.timerElement.id = 'hud-timer';
     this.timerElement.style.cssText = `
       position: absolute;
       top: 20px;
-      left: 50%;
-      transform: translateX(-50%);
+      left: 20px;
       font-size: 32px;
       font-weight: bold;
       color: #ffffff;
@@ -81,7 +80,7 @@ export class UIHud {
     `;
     this.timerElement.textContent = '5:00';
 
-    // Player count display
+    // Player count display (top right)
     this.playerCountElement = document.createElement('div');
     this.playerCountElement.id = 'hud-player-count';
     this.playerCountElement.style.cssText = `

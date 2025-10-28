@@ -434,7 +434,8 @@ async function initGame(): Promise<void> {
           addAIPlayers(aiCount);
         }
         
-        uiMenu.showLobbyScreen(currentPlayers + aiCount, maxPlayers, isHost);
+        // Show lobby with human player count only (not including AI)
+        uiMenu.showLobbyScreen(currentPlayers, maxPlayers, isHost);
       }) as EventListener);
       
       uiMenu.showTitleScreen();

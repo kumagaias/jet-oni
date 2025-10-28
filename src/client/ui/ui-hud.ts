@@ -141,22 +141,14 @@ export class UIHud {
       transition: width 0.2s ease;
     `;
 
-    // Fuel text
+    // Fuel text (hidden)
     this.fuelText = document.createElement('div');
     this.fuelText.id = 'hud-fuel-text';
     this.fuelText.style.cssText = `
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      font-size: 12px;
-      font-weight: bold;
-      color: #ffffff;
-      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+      display: none;
     `;
 
     fuelBarBg.appendChild(this.fuelBar);
-    fuelBarBg.appendChild(this.fuelText);
     this.fuelContainer.appendChild(this.fuelLabel);
     this.fuelContainer.appendChild(fuelBarBg);
 
@@ -286,7 +278,6 @@ export class UIHud {
     const localPlayer = this.gameState.getLocalPlayer();
     const fuelPercent = (fuel / MAX_FUEL) * 100;
     this.fuelBar.style.width = `${fuelPercent}%`;
-    this.fuelText.textContent = `${Math.round(fuel)}`;
 
     // Update label based on role
     if (localPlayer.isOni) {

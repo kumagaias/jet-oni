@@ -1,4 +1,4 @@
-import { Vector3, GameStatus, Player, GameConfig } from '../../shared/types/game';
+import { Vector3, GameStatus, Player, GameConfig, Rotation } from '../../shared/types/game';
 import {
   MAX_FUEL,
   PLAYER_SPEED,
@@ -14,7 +14,7 @@ export interface LocalPlayerState {
   id: string;
   position: Vector3;
   velocity: Vector3;
-  rotation: { yaw: number; pitch: number };
+  rotation: Rotation;
   fuel: number;
   isOni: boolean;
   isOnSurface: boolean;

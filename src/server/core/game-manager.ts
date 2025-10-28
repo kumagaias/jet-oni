@@ -216,6 +216,7 @@ export class GameManager {
         isAI: true,
         position: { x: 0, y: 0, z: 0 },
         velocity: { x: 0, y: 0, z: 0 },
+        rotation: { yaw: 0, pitch: 0 },
         fuel: 100,
         survivedTime: 0,
         wasTagged: false,

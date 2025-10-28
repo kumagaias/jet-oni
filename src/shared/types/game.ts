@@ -16,6 +16,11 @@ export interface GameConfig {
   rounds: number;
 }
 
+export interface Rotation {
+  yaw: number;
+  pitch: number;
+}
+
 export interface Player {
   id: string;
   username: string;
@@ -23,6 +28,7 @@ export interface Player {
   isAI: boolean;
   position: Vector3;
   velocity: Vector3;
+  rotation: Rotation;
   fuel: number;
   survivedTime: number;
   wasTagged: boolean;

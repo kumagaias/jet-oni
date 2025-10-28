@@ -153,6 +153,7 @@ async function initGame(): Promise<void> {
             username: `AI-${i + 1}`,
             position: startPos,
             velocity: { x: 0, y: 0, z: 0 },
+            rotation: { yaw: 0, pitch: 0 },
             fuel: MAX_FUEL,
             isOni: false,
             isOnSurface: true,

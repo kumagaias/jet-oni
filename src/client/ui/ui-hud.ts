@@ -11,6 +11,7 @@ export class UIHud {
   private statusElement: HTMLElement | null = null;
   private playerCountElement: HTMLElement | null = null;
   private fuelContainer: HTMLElement | null = null;
+  private fuelLabel: HTMLElement | null = null;
   private fuelBar: HTMLElement | null = null;
   private fuelText: HTMLElement | null = null;
   private beaconElement: HTMLElement | null = null;
@@ -85,8 +86,8 @@ export class UIHud {
     `;
 
     // Fuel label
-    const fuelLabel = document.createElement('div');
-    fuelLabel.style.cssText = `
+    this.fuelLabel = document.createElement('div');
+    this.fuelLabel.style.cssText = `
       font-size: 14px;
       font-weight: bold;
       color: #ffffff;
@@ -94,7 +95,7 @@ export class UIHud {
       margin-bottom: 5px;
       text-align: center;
     `;
-    fuelLabel.textContent = this.i18n.t('hud.fuel');
+    this.fuelLabel.textContent = this.i18n.t('hud.fuel');
 
     // Fuel bar background
     const fuelBarBg = document.createElement('div');
@@ -134,7 +135,7 @@ export class UIHud {
 
     fuelBarBg.appendChild(this.fuelBar);
     fuelBarBg.appendChild(this.fuelText);
-    this.fuelContainer.appendChild(fuelLabel);
+    this.fuelContainer.appendChild(this.fuelLabel);
     this.fuelContainer.appendChild(fuelBarBg);
 
     // Beacon status (for ONI only)
@@ -191,15 +192,8 @@ export class UIHud {
   private updateStatus(isOni: boolean): void {
     if (!this.statusElement) return;
 
-    if (isOni) {
-      this.statusElement.textContent = this.i18n.t('hud.status.oni');
-      this.statusElement.style.backgroundColor = 'rgba(255, 0, 0, 0.7)';
-      this.statusElement.style.color = '#ffffff';
-    } else {
-      this.statusElement.textContent = this.i18n.t('hud.status.runner');
-      this.statusElement.style.backgroundColor = 'rgba(0, 255, 0, 0.7)';
-      this.statusElement.style.color = '#ffffff';
-    }
+    // Hide status element (not needed)
+    this.statusElement.style.display = 'none';
   }
 
   /**
@@ -221,15 +215,17 @@ export class UIHud {
    * Update fuel gauge
    */
   private updateFuel(fuel: number): void {
-    if (!this.fuelBar || !this.fuelText) return;
+    if (!this.fuelBar || !this.fuelText || !this.fuelLabel) return;
 
     const localPlayer = this.gameState.getLocalPlayer();
     const fuelPercent = (fuel / MAX_FUEL) * 100;
     this.fuelBar.style.width = `${fuelPercent}%`;
     this.fuelText.textContent = `${Math.round(fuel)}`;
 
-    // Change color based on role (ONI = orange, RUNNER = green)
+    // Update label based on role
     if (localPlayer.isOni) {
+      this.fuelLabel.textContent = 'ONI';
+      this.fuelLabel.style.color = '#ffa500';
       // ONI - Orange gradient
       if (fuel < 25) {
         this.fuelBar.style.background = '#ff4500';
@@ -239,6 +235,8 @@ export class UIHud {
         this.fuelBar.style.background = 'linear-gradient(90deg, #ffa500, #ff8c00)';
       }
     } else {
+      this.fuelLabel.textContent = 'RUNNER';
+      this.fuelLabel.style.color = '#00ff00';
       // RUNNER - Green gradient
       if (fuel < 25) {
         this.fuelBar.style.background = '#00ff00';

@@ -22,7 +22,7 @@ export class PlayerController {
   private gameState: GameState;
   private inputState: InputState;
   private isPointerLocked = false;
-  private mouseSensitivity = 0.002;
+  private mouseSensitivity = 0.004; // Increased from 0.002
   private wasJumping = false;
   private mobileControls: MobileControls | null = null;
   private ladderSystem: LadderSystem | null = null;

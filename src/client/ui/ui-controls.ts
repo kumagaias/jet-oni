@@ -188,11 +188,11 @@ export class UIControls {
     if (this.dashButton) {
       if (localPlayer.isOni) {
         // Oni mode - show as jetpack
-        this.dashButton.textContent = 'JETPACK';
+        this.dashButton.textContent = '🔥';
         this.updateButtonColor(this.dashButton, 'rgba(255, 100, 0, 0.5)', '#ff6400');
       } else {
         // Runner mode - show as dash
-        this.dashButton.textContent = 'DASH';
+        this.dashButton.textContent = '⚡️';
         this.updateButtonColor(this.dashButton, 'rgba(0, 150, 255, 0.5)', '#0096ff');
       }
 

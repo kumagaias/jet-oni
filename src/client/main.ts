@@ -152,6 +152,17 @@ async function initGame(): Promise<void> {
       `;
       document.body.appendChild(debugInfo);
       
+      // Toggle debug mode with F12
+      let debugMode = false;
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'F12') {
+          e.preventDefault();
+          debugMode = !debugMode;
+          debugInfo.style.display = debugMode ? 'block' : 'none';
+          console.log(`Debug mode: ${debugMode ? 'ON' : 'OFF'}`);
+        }
+      });
+      
       // Track previous ONI state to detect changes
       let wasOni = gameState.getLocalPlayer().isOni;
       

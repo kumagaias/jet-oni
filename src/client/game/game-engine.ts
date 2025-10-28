@@ -12,6 +12,7 @@ export class GameEngine {
   private canvas: HTMLCanvasElement;
   private animationFrameId: number | null = null;
   private isRunning = false;
+  private isPaused = false;
   private lastTime = 0;
   private updateCallbacks: Array<(deltaTime: number) => void> = [];
   private performanceOptimizer: PerformanceOptimizer;
@@ -134,19 +135,22 @@ export class GameEngine {
     // Update FPS tracking
     this.performanceOptimizer.updateFPS(currentTime);
 
-    // Call all update callbacks
-    for (const callback of this.updateCallbacks) {
-      callback(cappedDeltaTime);
+    // Only run update callbacks if not paused
+    if (!this.isPaused) {
+      // Call all update callbacks
+      for (const callback of this.updateCallbacks) {
+        callback(cappedDeltaTime);
+      }
+
+      // Update shadows periodically instead of every frame
+      this.shadowUpdateCounter++;
+      if (this.shadowUpdateCounter >= this.shadowUpdateInterval) {
+        this.renderer.shadowMap.needsUpdate = true;
+        this.shadowUpdateCounter = 0;
+      }
     }
 
-    // Update shadows periodically instead of every frame
-    this.shadowUpdateCounter++;
-    if (this.shadowUpdateCounter >= this.shadowUpdateInterval) {
-      this.renderer.shadowMap.needsUpdate = true;
-      this.shadowUpdateCounter = 0;
-    }
-
-    // Render the scene
+    // Always render the scene (even when paused)
     this.renderer.render(this.scene, this.camera);
 
     // Continue the loop
@@ -179,18 +183,15 @@ export class GameEngine {
    * Pause the game loop (keeps rendering but stops updates)
    */
   public pause(): void {
-    this.isRunning = false;
+    this.isPaused = true;
   }
 
   /**
    * Resume the game loop
    */
   public resume(): void {
-    if (!this.isRunning) {
-      this.isRunning = true;
-      this.lastTime = 0; // Reset time to avoid large delta
-      this.animationFrameId = requestAnimationFrame(this.gameLoop);
-    }
+    this.isPaused = false;
+    this.lastTime = 0; // Reset time to avoid large delta
   }
 
   /**

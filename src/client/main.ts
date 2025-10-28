@@ -236,6 +236,30 @@ async function initGame(): Promise<void> {
         }
         wasOni = localPlayer.isOni;
         
+        // Update ONI screen overlay
+        let oniOverlay = document.getElementById('oni-overlay');
+        if (!oniOverlay) {
+          oniOverlay = document.createElement('div');
+          oniOverlay.id = 'oni-overlay';
+          oniOverlay.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            transition: background-color 0.5s ease;
+          `;
+          document.body.appendChild(oniOverlay);
+        }
+        
+        if (localPlayer.isOni) {
+          oniOverlay.style.backgroundColor = 'rgba(255, 0, 0, 0.15)';
+        } else {
+          oniOverlay.style.backgroundColor = 'transparent';
+        }
+        
         // Check beacon item collection (ONI only)
         const collectedBeacon = beaconItem.checkCollection(localPlayer.position, localPlayer.isOni);
         if (collectedBeacon) {

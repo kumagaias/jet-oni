@@ -544,57 +544,73 @@ export class UIMenu {
         background: rgba(0, 0, 0, 0.85);
         border: 2px solid #666;
         border-radius: 8px;
-        padding: 30px;
-        max-width: 500px;
+        padding: 20px;
+        max-width: 400px;
         font-family: monospace;
       ">
         <h2 style="
           color: #ff8800;
-          font-size: 32px;
-          margin-bottom: 30px;
+          font-size: 24px;
+          margin-bottom: 20px;
           font-weight: bold;
+          text-align: center;
         ">${this.i18n.t('lobby.title')}</h2>
         
         <div style="
           background: #111;
           border: 2px solid #ff8800;
-          padding: 30px;
+          padding: 20px;
           border-radius: 8px;
-          margin-bottom: 20px;
+          margin-bottom: 15px;
           text-align: center;
         ">
-          <p style="color: #ff8800; font-size: 48px; font-weight: bold; margin: 20px 0;">
+          <p style="color: #ff8800; font-size: 36px; font-weight: bold; margin: 10px 0;">
             ${currentPlayers} / ${maxPlayers}
           </p>
           
-          <p style="color: #aaa; font-size: 18px; margin-bottom: 10px;">
-            Players (AI not included)
+          <p style="color: #aaa; font-size: 14px; margin-bottom: 15px;">
+            Players
           </p>
           
-          <div id="countdown-display" style="display: none; margin-top: 20px;">
-            <p style="color: #0f0; font-size: 36px; font-weight: bold; animation: pulse 1s infinite;">
+          <div id="countdown-display" style="display: none; margin-top: 15px;">
+            <p style="color: #0f0; font-size: 28px; font-weight: bold; animation: pulse 1s infinite;">
               Starting in <span id="countdown-number">3</span>...
             </p>
           </div>
           
-          ${isHost && currentPlayers < maxPlayers ? `
-            <p style="color: #666; font-size: 14px; margin-top: 20px;">
-              Press SPACE to start early
-            </p>
-          ` : ''}
+          <p id="waiting-message" style="color: #666; font-size: 14px; margin-top: 15px; animation: pulse 2s infinite;">
+            Waiting for players...
+          </p>
         </div>
         
-        <button id="btn-back" style="
-          width: 100%;
-          padding: 15px;
-          font-size: 16px;
-          cursor: pointer;
-          font-family: monospace;
-          border: 2px solid #666;
-          background: #222;
-          color: #aaa;
-          border-radius: 4px;
-        ">← BACK</button>
+        <div style="display: flex; gap: 10px;">
+          <button id="btn-back" style="
+            flex: 1;
+            padding: 12px;
+            font-size: 14px;
+            cursor: pointer;
+            font-family: monospace;
+            border: 2px solid #666;
+            background: #222;
+            color: #aaa;
+            border-radius: 4px;
+          ">← BACK</button>
+          
+          ${isHost ? `
+            <button id="btn-start" style="
+              flex: 1;
+              padding: 12px;
+              font-size: 14px;
+              cursor: pointer;
+              font-family: monospace;
+              border: 2px solid #0f0;
+              background: #0a0;
+              color: #fff;
+              border-radius: 4px;
+              font-weight: bold;
+            ">START</button>
+          ` : ''}
+        </div>
       </div>
       
       <style>
@@ -609,13 +625,20 @@ export class UIMenu {
       this.showTitleScreen();
     });
     
+    // Start button (host only)
+    document.getElementById('btn-start')?.addEventListener('click', () => {
+      this.startGame();
+    });
+    
     // Auto-start countdown when lobby is full
     if (currentPlayers >= maxPlayers) {
       const countdownDisplay = document.getElementById('countdown-display');
       const countdownNumber = document.getElementById('countdown-number');
+      const waitingMessage = document.getElementById('waiting-message');
       
-      if (countdownDisplay && countdownNumber) {
+      if (countdownDisplay && countdownNumber && waitingMessage) {
         countdownDisplay.style.display = 'block';
+        waitingMessage.style.display = 'none';
         
         let countdown = 3;
         const countdownInterval = setInterval(() => {
@@ -630,18 +653,6 @@ export class UIMenu {
       }
     }
     
-    // Listen for SPACE key to start game (host only)
-    if (isHost) {
-      const spaceKeyHandler = (e: KeyboardEvent) => {
-        if (e.code === 'Space') {
-          e.preventDefault();
-          console.log('Host pressed SPACE - starting game');
-          this.startGame();
-          window.removeEventListener('keydown', spaceKeyHandler);
-        }
-      };
-      window.addEventListener('keydown', spaceKeyHandler);
-    }
   }
 
   /**

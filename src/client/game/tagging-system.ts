@@ -1,5 +1,4 @@
 import { GameState } from './game-state';
-import { Player } from '../../shared/types/game';
 import { TAG_DISTANCE, BEACON_INITIAL_DELAY } from '../../shared/constants';
 import { BeaconSystem } from '../abilities/beacon-system';
 

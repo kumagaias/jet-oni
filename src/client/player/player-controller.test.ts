@@ -9,6 +9,9 @@ import {
   MAX_FUEL,
   JETPACK_FORCE,
   JUMP_FORCE,
+  DASH_SPEED,
+  PLAYER_SPEED,
+  ONI_SPEED_MULTIPLIER,
 } from '../../shared/constants';
 
 describe('PlayerController', () => {
@@ -144,7 +147,7 @@ describe('PlayerController', () => {
     });
   });
 
-  describe('Dash Fuel Consumption', () => {
+  describe('Dash Ability (Runner)', () => {
     beforeEach(() => {
       // Set player as Runner
       gameState.setLocalPlayerIsOni(false);
@@ -180,6 +183,61 @@ describe('PlayerController', () => {
 
       const player = gameState.getLocalPlayer();
       expect(player.isDashing).toBe(false);
+    });
+
+    it('should set dashing state to true when active', () => {
+      // Simulate dash input
+      const keydownEvent = new KeyboardEvent('keydown', { code: 'ShiftLeft' });
+      window.dispatchEvent(keydownEvent);
+
+      // Update controller
+      controller.update(0.1);
+
+      const player = gameState.getLocalPlayer();
+      expect(player.isDashing).toBe(true);
+    });
+
+    it('should set dashing state to false when not active', () => {
+      // Update controller without dash input
+      controller.update(0.1);
+
+      const player = gameState.getLocalPlayer();
+      expect(player.isDashing).toBe(false);
+    });
+  });
+
+  describe('Dash Restriction (ONI)', () => {
+    beforeEach(() => {
+      // Set player as ONI
+      gameState.setLocalPlayerIsOni(true);
+      gameState.setLocalPlayerFuel(100);
+    });
+
+    it('should not dash when player is ONI', () => {
+      // Simulate dash input
+      const keydownEvent = new KeyboardEvent('keydown', { code: 'ShiftLeft' });
+      window.dispatchEvent(keydownEvent);
+
+      // Update controller
+      controller.update(0.1);
+
+      const player = gameState.getLocalPlayer();
+      expect(player.isDashing).toBe(false);
+    });
+
+    it('should not consume fuel when ONI tries to dash', () => {
+      const initialFuel = gameState.getLocalPlayer().fuel;
+
+      // Simulate dash input
+      const keydownEvent = new KeyboardEvent('keydown', { code: 'ShiftLeft' });
+      window.dispatchEvent(keydownEvent);
+
+      // Update controller
+      const deltaTime = 1; // 1 second
+      controller.update(deltaTime);
+
+      const newFuel = gameState.getLocalPlayer().fuel;
+      expect(newFuel).toBe(initialFuel);
     });
   });
 

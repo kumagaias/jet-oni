@@ -16,6 +16,7 @@ import { PlayerCamera } from './player/player-camera';
 import { BeaconSystem } from './abilities/beacon-system';
 import { BeaconVisual } from './effects/beacon-visual';
 import { CarSystem } from './environment/car-system';
+import { AIBehavior } from './ai/ai-behavior';
 import { I18n } from './i18n/i18n';
 import { UIManager } from './ui/ui-manager';
 import { UIMenu } from './ui/ui-menu';
@@ -132,6 +133,31 @@ async function initGame(): Promise<void> {
       carSystem.init();
       console.log('Car system initialized');
       
+      // Initialize AI players
+      const aiPlayers: AIBehavior[] = [];
+      // Add AI players when in lobby (will be added when game is created)
+      const addAIPlayers = (count: number) => {
+        for (let i = 0; i < count; i++) {
+          const aiId = `ai-${i}`;
+          gameState.addPlayer({
+            id: aiId,
+            position: { x: Math.random() * 20 - 10, y: 2, z: Math.random() * 20 - 10 },
+            velocity: { x: 0, y: 0, z: 0 },
+            rotation: { yaw: 0, pitch: 0 },
+            fuel: MAX_FUEL,
+            isOni: false,
+            isOnSurface: true,
+            isDashing: false,
+            isJetpacking: false,
+            isClimbing: false,
+            survivedTime: 0,
+          });
+          const aiBehavior = new AIBehavior(aiId, gameState);
+          aiPlayers.push(aiBehavior);
+        }
+        console.log(`Added ${count} AI players`);
+      };
+      
       // Create debug info element (initially hidden)
       const debugInfo = document.createElement('div');
       debugInfo.id = 'debug-info';
@@ -205,6 +231,11 @@ async function initGame(): Promise<void> {
         
         // Update UI controls
         uiControls.update(gameState);
+        
+        // Update AI players
+        for (const ai of aiPlayers) {
+          ai.update(deltaTime);
+        }
         
         // Update beacon visuals
         const isBeaconActive = beaconSystem.isBeaconActive();
@@ -313,7 +344,14 @@ async function initGame(): Promise<void> {
         console.log('Showing lobby');
         gameState.setGamePhase('lobby');
         const { currentPlayers, maxPlayers, isHost } = e.detail;
-        uiMenu.showLobbyScreen(currentPlayers, maxPlayers, isHost);
+        
+        // Add AI players to fill remaining slots
+        const aiCount = maxPlayers - currentPlayers;
+        if (aiCount > 0) {
+          addAIPlayers(aiCount);
+        }
+        
+        uiMenu.showLobbyScreen(currentPlayers + aiCount, maxPlayers, isHost);
       }) as EventListener);
       
       uiMenu.showTitleScreen();

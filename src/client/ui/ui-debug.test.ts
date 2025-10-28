@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { UIDebug } from './ui-debug';
 import { GameState } from '../game/game-state';
 import { I18n } from '../i18n/i18n';

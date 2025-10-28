@@ -6,7 +6,10 @@
     "entrypoints": {
       "default": {
         "entry": "index.html",
-        "permissions": ["pointer-lock"]
+        "permissions": ["pointer-lock"],
+        "splash": {
+          "image": "cover.jpg"
+        }
       }
     }
   },

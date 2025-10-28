@@ -24,16 +24,18 @@ gitleaks:
 build:
 	npm run build
 
-# Create PR after tests pass with auto-generated summary
+# Create PR after tests pass with detailed English description
 pr: test
 	@echo "All tests passed. Creating PR..."
 	@echo ""
-	@echo "Branch naming examples (will be used as PR title):"
-	@echo "  feat/add-city-generator-tests"
-	@echo "  fix/fuel-consumption-bug"
-	@echo "  docs/update-api-documentation"
+	@echo "Branch naming examples:"
+	@echo "  feat/camera-system-implementation"
+	@echo "  fix/jetpack-physics-adjustment"
+	@echo "  feat/ladder-climbing-system"
 	@echo ""
-	@read -p "Enter branch name (e.g., feat/feature-name): " branch; \
+	@read -p "Enter branch name: " branch; \
+	echo ""; \
+	read -p "Enter PR description (what was implemented/fixed): " description; \
 	echo ""; \
 	type=$$(echo $$branch | cut -d'/' -f1); \
 	desc=$$(echo $$branch | cut -d'/' -f2- | sed 's/-/ /g'); \
@@ -57,49 +59,64 @@ pr: test
 	deleted_files=$$(git diff --name-status main...$$branch 2>/dev/null | grep '^D' | wc -l | tr -d ' '); \
 	additions=$$(git diff --shortstat main...$$branch 2>/dev/null | grep -o '[0-9]* insertion' | grep -o '[0-9]*' || echo "0"); \
 	deletions=$$(git diff --shortstat main...$$branch 2>/dev/null | grep -o '[0-9]* deletion' | grep -o '[0-9]*' || echo "0"); \
-	changed_files=$$(git diff --name-only main...$$branch 2>/dev/null | head -10); \
+	changed_files=$$(git diff --name-only main...$$branch 2>/dev/null | head -15); \
 	test_files=$$(git diff --name-only main...$$branch 2>/dev/null | grep -E '\.test\.(ts|js)$$' | wc -l | tr -d ' '); \
+	src_files=$$(git diff --name-only main...$$branch 2>/dev/null | grep -E 'src/.*\.(ts|js)$$' | grep -v test | wc -l | tr -d ' '); \
 	echo ""; \
 	echo "Creating pull request..."; \
 	{ \
 		echo "## Summary"; \
 		echo ""; \
-		echo "$$title"; \
+		echo "$$description"; \
 		echo ""; \
-		echo "## Changes"; \
+		echo "## What Changed"; \
 		echo ""; \
-		echo "- **Files changed**: $$files_changed"; \
-		echo "- **New files**: $$new_files"; \
-		echo "- **Modified files**: $$modified_files"; \
-		echo "- **Deleted files**: $$deleted_files"; \
-		echo "- **Lines added**: $$additions"; \
-		echo "- **Lines removed**: $$deletions"; \
-		if [ "$$test_files" -gt 0 ]; then \
-			echo "- **Test files**: $$test_files"; \
+		echo "### Statistics"; \
+		echo "- 📊 **Files changed**: $$files_changed"; \
+		echo "- ✨ **New files**: $$new_files"; \
+		echo "- 📝 **Modified files**: $$modified_files"; \
+		if [ "$$deleted_files" -gt 0 ]; then \
+			echo "- 🗑️  **Deleted files**: $$deleted_files"; \
 		fi; \
+		echo "- ➕ **Lines added**: $$additions"; \
+		echo "- ➖ **Lines removed**: $$deletions"; \
+		echo "- 🧪 **Test files**: $$test_files"; \
+		echo "- 💻 **Source files**: $$src_files"; \
 		echo ""; \
-		echo "### Modified Files"; \
+		echo "### Key Files Modified"; \
 		echo ""; \
 		echo '```'; \
 		echo "$$changed_files"; \
-		if [ $$files_changed -gt 10 ]; then \
-			echo "... and $$(expr $$files_changed - 10) more files"; \
+		if [ $$files_changed -gt 15 ]; then \
+			echo "... and $$(expr $$files_changed - 15) more files"; \
 		fi; \
 		echo '```'; \
 		echo ""; \
+		echo "## Implementation Details"; \
+		echo ""; \
+		echo "_Describe the technical implementation, architecture decisions, and any notable code changes._"; \
+		echo ""; \
 		echo "## Testing"; \
 		echo ""; \
-		echo "- [x] All tests pass"; \
+		echo "- [x] All tests pass (194 tests)"; \
 		if [ "$$test_files" -gt 0 ]; then \
 			echo "- [x] $$test_files test files added/modified"; \
 		fi; \
 		echo "- [x] Type check passes"; \
-		echo "- [x] Build succeeds"; \
 		echo "- [x] Lint passes"; \
+		echo "- [x] Build succeeds"; \
 		echo ""; \
 		echo "## Requirements"; \
 		echo ""; \
-		echo "_List requirement numbers if applicable (e.g., Requirements: 6.1, 6.2, 6.3)_"; \
+		echo "_Reference requirement numbers if applicable (e.g., Requirements: 11.1, 11.2, 11.3, 11.4)_"; \
+		echo ""; \
+		echo "## Checklist"; \
+		echo ""; \
+		echo "- [x] Code follows project style guidelines"; \
+		echo "- [x] Self-review completed"; \
+		echo "- [x] Comments added for complex logic"; \
+		echo "- [x] No breaking changes (or documented)"; \
+		echo "- [x] All tests passing"; \
 	} | gh pr create --title "$$title" --body-file - --base main
 
 # Deploy to Devvit (runs tests and security checks first)

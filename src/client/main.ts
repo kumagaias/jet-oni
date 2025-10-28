@@ -15,6 +15,7 @@ import { PlayerPhysics, BuildingData } from './player/player-physics';
 import { PlayerCamera } from './player/player-camera';
 import { BeaconSystem } from './abilities/beacon-system';
 import { BeaconVisual } from './effects/beacon-visual';
+import { CarSystem } from './environment/car-system';
 import { I18n } from './i18n/i18n';
 import { UIManager } from './ui/ui-manager';
 import { UIMenu } from './ui/ui-menu';
@@ -126,6 +127,11 @@ async function initGame(): Promise<void> {
       // Initialize beacon visual
       const beaconVisual = new BeaconVisual(gameEngine.getScene());
       
+      // Initialize car system
+      const carSystem = new CarSystem(gameEngine.getScene());
+      carSystem.init();
+      console.log('Car system initialized');
+      
       // Create debug info element (initially hidden)
       const debugInfo = document.createElement('div');
       debugInfo.id = 'debug-info';
@@ -180,6 +186,12 @@ async function initGame(): Promise<void> {
         // Update dynamic objects (cars, pedestrians)
         dynamicObjects.update(deltaTime);
         
+        // Update car system
+        carSystem.update(deltaTime);
+        
+        // Update collision system with car positions
+        collisionSystem.updateDynamicObjects(carSystem.getDynamicObjects());
+        
         // Apply physics to player (skip if climbing)
         if (!localPlayer.isClimbing) {
           const physicsResult = playerPhysics.applyPhysics(
@@ -189,7 +201,20 @@ async function initGame(): Promise<void> {
             localPlayer.isJetpacking
           );
           
-          // Apply collision detection
+          // Check car collision first (for bounce effect)
+          const carCollision = carSystem.checkCarCollision(
+            physicsResult.position,
+            physicsResult.velocity
+          );
+          
+          // If car collision, apply bounce velocity
+          let finalVelocity = physicsResult.velocity;
+          if (carCollision.collided) {
+            finalVelocity = carCollision.newVelocity;
+            console.log('Car collision! Bouncing player');
+          }
+          
+          // Apply collision detection with buildings
           const collisionResult = collisionSystem.checkCollision(
             localPlayer.position,
             physicsResult.position
@@ -197,7 +222,7 @@ async function initGame(): Promise<void> {
           
           // Update player state with physics and collision results
           gameState.setLocalPlayerPosition(collisionResult.position);
-          gameState.setLocalPlayerVelocity(physicsResult.velocity);
+          gameState.setLocalPlayerVelocity(finalVelocity);
           gameState.setLocalPlayerOnSurface(physicsResult.isOnSurface);
         }
         

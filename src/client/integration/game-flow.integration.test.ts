@@ -56,25 +56,23 @@ describe('Game Flow Integration', () => {
 
     it('should handle player movement throughout game', () => {
       gameState.setGamePhase('playing');
-      
-      const initialPosition = gameState.getLocalPlayer().position;
-      
+
       // Simulate forward movement
       const deltaTime = 0.016;
       for (let i = 0; i < 60; i++) {
         playerController.update(deltaTime);
-        
+
         const result = playerPhysics.applyPhysics(
           gameState.getLocalPlayer().position,
           gameState.getLocalPlayer().velocity,
           deltaTime,
           false
         );
-        
+
         gameState.setLocalPlayerPosition(result.position);
         gameState.setLocalPlayerVelocity(result.velocity);
       }
-      
+
       // Position should be updated (even if no input, physics applies)
       const finalPosition = gameState.getLocalPlayer().position;
       expect(finalPosition).toBeDefined();
@@ -82,10 +80,10 @@ describe('Game Flow Integration', () => {
 
     it('should handle tagging mechanics', () => {
       gameState.setGamePhase('playing');
-      
+
       // Set local player as ONI
       gameState.setLocalPlayerIsOni(true);
-      
+
       // Add a runner player
       gameState.updateRemotePlayer({
         id: 'player2',
@@ -98,15 +96,15 @@ describe('Game Flow Integration', () => {
         isOnSurface: true,
         isDashing: false,
         isJetpacking: false,
-        isClimbing: false,
         survivedTime: 0,
         wasTagged: false,
         isAI: false,
+        beaconCooldown: 0,
       });
-      
+
       // Check tagging
       const tagEvent = taggingSystem.update(0.016);
-      
+
       // Should potentially detect nearby player (may be null due to cooldown)
       expect(tagEvent === null || typeof tagEvent === 'object').toBe(true);
     });
@@ -118,16 +116,15 @@ describe('Game Flow Integration', () => {
         roundDuration: 300,
         rounds: 1,
       });
-      
+
       // Set up game end callback
-      let gameEnded = false;
       gameEndManager.setOnGameEnd(() => {
-        gameEnded = true;
+        // Game ended callback
       });
-      
+
       // Update game end manager
       gameEndManager.update();
-      
+
       // Game should check end conditions
       expect(gameState.isPlaying()).toBe(true);
     });
@@ -141,26 +138,25 @@ describe('Game Flow Integration', () => {
     it('should handle jetpack ability for ONI', () => {
       gameState.setLocalPlayerIsOni(true);
       gameState.setLocalPlayerFuel(100);
-      
+
       const initialFuel = gameState.getLocalPlayer().fuel;
-      const initialY = gameState.getLocalPlayer().position.y;
-      
+
       // Simulate jetpack usage
       const deltaTime = 0.016;
       for (let i = 0; i < 60; i++) {
         playerController.update(deltaTime);
-        
+
         const result = playerPhysics.applyPhysics(
           gameState.getLocalPlayer().position,
           gameState.getLocalPlayer().velocity,
           deltaTime,
           gameState.getLocalPlayer().isJetpacking
         );
-        
+
         gameState.setLocalPlayerPosition(result.position);
         gameState.setLocalPlayerVelocity(result.velocity);
       }
-      
+
       // Fuel should be consumed (or position changed)
       const finalFuel = gameState.getLocalPlayer().fuel;
       expect(finalFuel).toBeLessThanOrEqual(initialFuel);
@@ -169,15 +165,13 @@ describe('Game Flow Integration', () => {
     it('should handle dash ability for Runner', () => {
       gameState.setLocalPlayerIsOni(false);
       gameState.setLocalPlayerFuel(100);
-      
-      const initialFuel = gameState.getLocalPlayer().fuel;
-      
+
       // Simulate dash usage
       const deltaTime = 0.016;
       for (let i = 0; i < 60; i++) {
         playerController.update(deltaTime);
       }
-      
+
       // Fuel should be available
       const finalFuel = gameState.getLocalPlayer().fuel;
       expect(finalFuel).toBeGreaterThanOrEqual(0);
@@ -187,15 +181,15 @@ describe('Game Flow Integration', () => {
       gameState.setLocalPlayerIsOni(true);
       gameState.setLocalPlayerFuel(50);
       gameState.setLocalPlayerOnSurface(true);
-      
+
       const initialFuel = gameState.getLocalPlayer().fuel;
-      
+
       // Simulate time on surface
       const deltaTime = 0.016;
       for (let i = 0; i < 60; i++) {
         playerController.update(deltaTime);
       }
-      
+
       // Fuel should recover
       const finalFuel = gameState.getLocalPlayer().fuel;
       expect(finalFuel).toBeGreaterThanOrEqual(initialFuel);
@@ -211,7 +205,7 @@ describe('Game Flow Integration', () => {
     it('should track game statistics', () => {
       // Record a game
       statsManager.updateStats(true, 120);
-      
+
       const stats = statsManager.loadStats();
       expect(stats.gamesPlayed).toBe(1);
       expect(stats.wins).toBe(1);
@@ -222,12 +216,12 @@ describe('Game Flow Integration', () => {
       statsManager.updateStats(true, 100);
       statsManager.updateStats(false, 50);
       statsManager.updateStats(true, 150);
-      
+
       const stats = statsManager.loadStats();
       expect(stats.gamesPlayed).toBe(3);
       expect(stats.wins).toBe(2);
       expect(stats.losses).toBe(1);
-      
+
       const winRate = statsManager.getWinRate();
       expect(winRate).toBeCloseTo(66.67, 1);
     });
@@ -236,7 +230,7 @@ describe('Game Flow Integration', () => {
       statsManager.updateStats(true, 100);
       statsManager.updateStats(true, 200);
       statsManager.updateStats(true, 150);
-      
+
       const stats = statsManager.loadStats();
       expect(stats.longestSurvival).toBe(200);
     });
@@ -247,7 +241,7 @@ describe('Game Flow Integration', () => {
       gameState.setGamePhase('playing');
       gameState.setLocalPlayerPosition({ x: 0, y: 10, z: 0 });
       gameState.setLocalPlayerVelocity({ x: 0, y: 0, z: 0 });
-      
+
       // Simulate falling
       const deltaTime = 0.016;
       for (let i = 0; i < 120; i++) {
@@ -257,17 +251,17 @@ describe('Game Flow Integration', () => {
           deltaTime,
           false
         );
-        
+
         gameState.setLocalPlayerPosition(result.position);
         gameState.setLocalPlayerVelocity(result.velocity);
         gameState.setLocalPlayerOnSurface(result.isOnSurface);
-        
+
         // Stop if landed
         if (result.isOnSurface) {
           break;
         }
       }
-      
+
       // Should land on ground
       expect(gameState.getLocalPlayer().isOnSurface).toBe(true);
       expect(gameState.getLocalPlayer().position.y).toBeLessThanOrEqual(1);
@@ -277,7 +271,7 @@ describe('Game Flow Integration', () => {
       gameState.setGamePhase('playing');
       gameState.setLocalPlayerPosition({ x: 0, y: 0, z: 0 });
       gameState.setLocalPlayerVelocity({ x: 100, y: 0, z: 100 });
-      
+
       // Simulate movement beyond boundaries
       const deltaTime = 0.016;
       for (let i = 0; i < 120; i++) {
@@ -287,11 +281,11 @@ describe('Game Flow Integration', () => {
           deltaTime,
           false
         );
-        
+
         gameState.setLocalPlayerPosition(result.position);
         gameState.setLocalPlayerVelocity(result.velocity);
       }
-      
+
       // Position should be clamped to map boundaries
       const position = gameState.getLocalPlayer().position;
       expect(Math.abs(position.x)).toBeLessThanOrEqual(200);
@@ -302,7 +296,7 @@ describe('Game Flow Integration', () => {
   describe('Multi-Player Interaction', () => {
     it('should handle multiple players in game', () => {
       gameState.setGamePhase('playing');
-      
+
       // Add multiple players
       for (let i = 0; i < 5; i++) {
         gameState.updateRemotePlayer({
@@ -316,13 +310,13 @@ describe('Game Flow Integration', () => {
           isOnSurface: true,
           isDashing: false,
           isJetpacking: false,
-          isClimbing: false,
           survivedTime: 0,
           wasTagged: false,
           isAI: false,
+          beaconCooldown: 0,
         });
       }
-      
+
       const players = gameState.getAllPlayers();
       expect(players.length).toBe(6); // 5 remote + 1 local
     });
@@ -330,7 +324,7 @@ describe('Game Flow Integration', () => {
     it('should track ONI and Runner counts', () => {
       gameState.setGamePhase('playing');
       gameState.setLocalPlayerIsOni(true);
-      
+
       // Add runners
       for (let i = 0; i < 3; i++) {
         gameState.updateRemotePlayer({
@@ -344,17 +338,17 @@ describe('Game Flow Integration', () => {
           isOnSurface: true,
           isDashing: false,
           isJetpacking: false,
-          isClimbing: false,
           survivedTime: 0,
           wasTagged: false,
           isAI: false,
+          beaconCooldown: 0,
         });
       }
-      
+
       const allPlayers = gameState.getAllPlayers();
       const oniCount = allPlayers.filter((p) => p.isOni).length;
       const runnerCount = allPlayers.filter((p) => !p.isOni).length;
-      
+
       expect(oniCount).toBe(1);
       expect(runnerCount).toBe(3);
     });

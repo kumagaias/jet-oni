@@ -289,7 +289,8 @@ async function initGame(): Promise<void> {
         }
         
         // Update beacon visuals (show player locations when beacon is active)
-        const isBeaconActive = Date.now() < beaconActiveUntil;
+        const now = Date.now();
+        const isBeaconActive = now < beaconActiveUntil;
         beaconVisual.update(gameState.getAllPlayers(), isBeaconActive, localPlayer.id);
         beaconVisual.animate(deltaTime);
         
@@ -340,7 +341,9 @@ async function initGame(): Promise<void> {
         playerCamera.update(deltaTime);
         
         // Update debug info
-        const beaconActive = Date.now() < beaconActiveUntil;
+        const now = Date.now();
+        const beaconActive = now < beaconActiveUntil;
+        const beaconTimeRemaining = beaconActive ? Math.ceil((beaconActiveUntil - now) / 1000) : 0;
         const beaconItemsCount = beaconItem.getPlacedItems().length;
         
         debugInfo.innerHTML = `
@@ -353,7 +356,8 @@ async function initGame(): Promise<void> {
           Jetpacking: ${localPlayer.isJetpacking ? 'Yes' : 'No'}<br>
           Dashing: ${localPlayer.isDashing ? 'Yes' : 'No'}<br>
           Climbing: ${localPlayer.isClimbing ? 'Yes' : 'No'}<br>
-          ${localPlayer.isOni ? `<br>Beacon: ${beaconActive ? 'ACTIVE' : 'Collect items'}<br>` : ''}
+          <br>
+          Beacon: ${beaconActive ? `ACTIVE (${beaconTimeRemaining}s)` : 'Inactive'}<br>
           ${localPlayer.isOni ? `Beacon Items: ${beaconItemsCount}<br>` : ''}
           <br>
           <strong>F3:</strong> Toggle ONI/Runner${localPlayer.isOni ? '<br><strong>Collect beacon items to activate</strong>' : ''}

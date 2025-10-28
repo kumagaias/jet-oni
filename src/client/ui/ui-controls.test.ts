@@ -28,7 +28,17 @@ describe('UIControls', () => {
     });
 
     gameState = new GameState('player1');
-    i18n = new I18n('en');
+    
+    // Create i18n with proper translation set
+    const translations = {
+      en: {
+        test: 'Test'
+      },
+      jp: {
+        test: 'テスト'
+      }
+    };
+    i18n = new I18n(translations, 'en');
     controls = new UIControls(gameState, i18n);
   });
 
@@ -164,7 +174,10 @@ describe('UIControls', () => {
       expect(dashButton?.textContent).toBe('🔥');
     });
 
-    it('should show beacon button for oni', () => {
+    it('should hide beacon button (beacon is now item-based)', () => {
+      // Set game state to playing so update works
+      gameState.setGamePhase('playing');
+      
       const localPlayer = gameState.getLocalPlayer();
       localPlayer.isOni = true;
       localPlayer.fuel = 100;
@@ -175,7 +188,8 @@ describe('UIControls', () => {
       const buttons = container?.querySelectorAll('div');
       const beaconButton = buttons?.[1] as HTMLElement;
       
-      expect(beaconButton?.style.display).toBe('flex');
+      // Beacon button should be hidden (beacon is now item-based)
+      expect(beaconButton?.style.display).toBe('none');
     });
 
     it('should hide beacon button for runner', () => {

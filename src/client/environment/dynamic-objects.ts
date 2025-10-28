@@ -38,6 +38,7 @@ export class DynamicObjects {
   private ladders: THREE.Group;
   private carConfigs: CarConfig[] = [];
   private pedestrianConfigs: PedestrianConfig[] = [];
+  private buildings: THREE.Group | null = null;
 
   constructor() {
     this.cars = new THREE.Group();
@@ -48,8 +49,10 @@ export class DynamicObjects {
   /**
    * Initialize all dynamic objects
    */
-  public initialize(): THREE.Group {
+  public initialize(buildings?: THREE.Group): THREE.Group {
     const dynamicGroup = new THREE.Group();
+
+    this.buildings = buildings || null;
 
     this.generateCars();
     dynamicGroup.add(this.cars);
@@ -103,10 +106,13 @@ export class DynamicObjects {
       car.position.copy(position);
 
       // Rotate car to face direction
+      // Car body is 2 wide x 4 deep, so depth (Z) is the front
       if (direction.x !== 0) {
-        car.rotation.y = direction.x > 0 ? 0 : Math.PI;
+        // Moving along X axis, rotate 90 degrees
+        car.rotation.y = direction.x > 0 ? -Math.PI / 2 : Math.PI / 2;
       } else {
-        car.rotation.y = direction.z > 0 ? Math.PI / 2 : -Math.PI / 2;
+        // Moving along Z axis, no rotation needed (or 180)
+        car.rotation.y = direction.z > 0 ? 0 : Math.PI;
       }
 
       this.cars.add(car);
@@ -284,19 +290,74 @@ export class DynamicObjects {
    * Generate ladders on buildings
    */
   private generateLadders(): void {
+    if (!this.buildings) {
+      console.warn('No buildings provided, generating standalone ladders');
+      // Fallback to standalone ladders
+      const ladderCount = 15;
+      for (let i = 0; i < ladderCount; i++) {
+        const position = new THREE.Vector3(
+          (Math.random() - 0.5) * MAP_SIZE * 1.5,
+          0,
+          (Math.random() - 0.5) * MAP_SIZE * 1.5
+        );
+        const height = 10 + Math.random() * 20;
+        const ladder = this.createLadder(height);
+        ladder.position.copy(position);
+        this.ladders.add(ladder);
+      }
+      return;
+    }
+
     const ladderCount = 15;
+    const buildingMeshes: THREE.Mesh[] = [];
 
-    for (let i = 0; i < ladderCount; i++) {
-      const position = new THREE.Vector3(
-        (Math.random() - 0.5) * MAP_SIZE * 1.5,
+    // Collect all building meshes
+    this.buildings.traverse((object) => {
+      if (object instanceof THREE.Mesh && object.geometry instanceof THREE.BoxGeometry) {
+        const params = object.geometry.parameters;
+        // Only attach ladders to tall buildings (height > 10)
+        if (params.height > 10) {
+          buildingMeshes.push(object);
+        }
+      }
+    });
+
+    if (buildingMeshes.length === 0) {
+      console.warn('No suitable buildings found for ladders');
+      return;
+    }
+
+    // Attach ladders to random buildings
+    for (let i = 0; i < ladderCount && i < buildingMeshes.length; i++) {
+      const building = buildingMeshes[Math.floor(Math.random() * buildingMeshes.length)];
+      const params = building.geometry.parameters as { width: number; height: number; depth: number };
+      
+      // Choose a random side (0=front, 1=back, 2=left, 3=right)
+      const side = Math.floor(Math.random() * 4);
+      let offsetX = 0;
+      let offsetZ = 0;
+      
+      switch (side) {
+        case 0: // Front
+          offsetZ = params.depth / 2 + 0.3;
+          break;
+        case 1: // Back
+          offsetZ = -params.depth / 2 - 0.3;
+          break;
+        case 2: // Left
+          offsetX = -params.width / 2 - 0.3;
+          break;
+        case 3: // Right
+          offsetX = params.width / 2 + 0.3;
+          break;
+      }
+
+      const ladder = this.createLadder(params.height);
+      ladder.position.set(
+        building.position.x + offsetX,
         0,
-        (Math.random() - 0.5) * MAP_SIZE * 1.5
+        building.position.z + offsetZ
       );
-
-      const height = 10 + Math.random() * 20;
-
-      const ladder = this.createLadder(height);
-      ladder.position.copy(position);
 
       this.ladders.add(ladder);
     }

@@ -24,7 +24,7 @@ gitleaks:
 build:
 	npm run build
 
-# Create PR after tests pass
+# Create PR after tests pass with auto-generated summary
 pr: test
 	@echo "All tests passed. Creating PR..."
 	@echo ""
@@ -50,8 +50,57 @@ pr: test
 	fi; \
 	git push -u origin $$branch; \
 	echo ""; \
+	echo "Generating PR description..."; \
+	files_changed=$$(git diff --name-only main...$$branch 2>/dev/null | wc -l | tr -d ' '); \
+	new_files=$$(git diff --name-status main...$$branch 2>/dev/null | grep '^A' | wc -l | tr -d ' '); \
+	modified_files=$$(git diff --name-status main...$$branch 2>/dev/null | grep '^M' | wc -l | tr -d ' '); \
+	deleted_files=$$(git diff --name-status main...$$branch 2>/dev/null | grep '^D' | wc -l | tr -d ' '); \
+	additions=$$(git diff --shortstat main...$$branch 2>/dev/null | grep -o '[0-9]* insertion' | grep -o '[0-9]*' || echo "0"); \
+	deletions=$$(git diff --shortstat main...$$branch 2>/dev/null | grep -o '[0-9]* deletion' | grep -o '[0-9]*' || echo "0"); \
+	changed_files=$$(git diff --name-only main...$$branch 2>/dev/null | head -10); \
+	test_files=$$(git diff --name-only main...$$branch 2>/dev/null | grep -E '\.test\.(ts|js)$$' | wc -l | tr -d ' '); \
+	echo ""; \
 	echo "Creating pull request..."; \
-	printf "## Summary\n\n$$title\n\n## Testing\n\n- [x] All tests pass\n- [x] Type check passes\n- [x] Build succeeds\n" | gh pr create --title "$$title" --body-file - --base main
+	{ \
+		echo "## Summary"; \
+		echo ""; \
+		echo "$$title"; \
+		echo ""; \
+		echo "## Changes"; \
+		echo ""; \
+		echo "- **Files changed**: $$files_changed"; \
+		echo "- **New files**: $$new_files"; \
+		echo "- **Modified files**: $$modified_files"; \
+		echo "- **Deleted files**: $$deleted_files"; \
+		echo "- **Lines added**: $$additions"; \
+		echo "- **Lines removed**: $$deletions"; \
+		if [ "$$test_files" -gt 0 ]; then \
+			echo "- **Test files**: $$test_files"; \
+		fi; \
+		echo ""; \
+		echo "### Modified Files"; \
+		echo ""; \
+		echo '```'; \
+		echo "$$changed_files"; \
+		if [ $$files_changed -gt 10 ]; then \
+			echo "... and $$(expr $$files_changed - 10) more files"; \
+		fi; \
+		echo '```'; \
+		echo ""; \
+		echo "## Testing"; \
+		echo ""; \
+		echo "- [x] All tests pass"; \
+		if [ "$$test_files" -gt 0 ]; then \
+			echo "- [x] $$test_files test files added/modified"; \
+		fi; \
+		echo "- [x] Type check passes"; \
+		echo "- [x] Build succeeds"; \
+		echo "- [x] Lint passes"; \
+		echo ""; \
+		echo "## Requirements"; \
+		echo ""; \
+		echo "_List requirement numbers if applicable (e.g., Requirements: 6.1, 6.2, 6.3)_"; \
+	} | gh pr create --title "$$title" --body-file - --base main
 
 # Deploy to Devvit (runs tests and security checks first)
 deploy: test security-check

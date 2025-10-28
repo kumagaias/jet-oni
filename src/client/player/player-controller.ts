@@ -1,6 +1,7 @@
 import { GameState } from '../game/game-state';
 import { InputState } from '../../shared/types/game';
 import { MobileControls, MobileInputState } from '../ui/mobile-controls';
+import { LadderSystem, LadderClimbState } from '../environment/ladder-system';
 import {
   PLAYER_SPEED,
   DASH_SPEED,
@@ -24,6 +25,12 @@ export class PlayerController {
   private mouseSensitivity = 0.002;
   private wasJumping = false;
   private mobileControls: MobileControls | null = null;
+  private ladderSystem: LadderSystem | null = null;
+  private ladderClimbState: LadderClimbState = {
+    isClimbing: false,
+    currentLadder: null,
+    climbProgress: 0,
+  };
 
   constructor(gameState: GameState) {
     this.gameState = gameState;
@@ -246,6 +253,13 @@ export class PlayerController {
   }
 
   /**
+   * Set ladder system for climbing
+   */
+  public setLadderSystem(ladderSystem: LadderSystem): void {
+    this.ladderSystem = ladderSystem;
+  }
+
+  /**
    * Update player movement based on input
    */
   public update(deltaTime: number): void {
@@ -257,6 +271,14 @@ export class PlayerController {
     if (this.mobileControls?.shouldShowMobileControls()) {
       this.mobileControls.update();
       this.applyMobileInput();
+    }
+    
+    // Handle ladder climbing
+    if (this.handleLadderClimbing(deltaTime)) {
+      // If climbing, skip normal movement
+      this.inputState.mouseX = 0;
+      this.inputState.mouseY = 0;
+      return;
     }
     
     // Handle jetpack and jump abilities
@@ -410,6 +432,11 @@ export class PlayerController {
       this.gameState.setLocalPlayerDashing(false);
     }
 
+    // Reduce horizontal speed when jetpacking
+    if (player.isJetpacking) {
+      speed *= 0.5; // 50% speed when jetpacking
+    }
+
     return speed;
   }
 
@@ -431,16 +458,38 @@ export class PlayerController {
    */
   private calculateMoveDirection(): { x: number; z: number } {
     const player = this.gameState.getLocalPlayer();
+    
+    // Get camera forward direction from yaw
+    const yaw = player.rotation.yaw;
+    
+    // Calculate forward/backward direction (camera's forward is -Z in local space)
+    const forwardX = -Math.sin(yaw);
+    const forwardZ = -Math.cos(yaw);
+    
+    // Calculate right direction (perpendicular to forward)
+    const rightX = Math.cos(yaw);
+    const rightZ = -Math.sin(yaw);
+    
+    // Combine input directions
     let x = 0;
     let z = 0;
-
-    // Calculate forward/backward movement
-    if (this.inputState.forward) z -= 1;
-    if (this.inputState.backward) z += 1;
-
-    // Calculate left/right movement
-    if (this.inputState.left) x -= 1;
-    if (this.inputState.right) x += 1;
+    
+    if (this.inputState.forward) {
+      x += forwardX;
+      z += forwardZ;
+    }
+    if (this.inputState.backward) {
+      x -= forwardX;
+      z -= forwardZ;
+    }
+    if (this.inputState.left) {
+      x -= rightX;
+      z -= rightZ;
+    }
+    if (this.inputState.right) {
+      x += rightX;
+      z += rightZ;
+    }
 
     // Normalize diagonal movement
     const length = Math.sqrt(x * x + z * z);
@@ -449,12 +498,96 @@ export class PlayerController {
       z /= length;
     }
 
-    // Rotate movement direction based on player yaw
-    const yaw = player.rotation.yaw;
-    const rotatedX = x * Math.cos(yaw) - z * Math.sin(yaw);
-    const rotatedZ = x * Math.sin(yaw) + z * Math.cos(yaw);
+    return { x, z };
+  }
 
-    return { x: rotatedX, z: rotatedZ };
+  /**
+   * Handle ladder climbing
+   */
+  private handleLadderClimbing(deltaTime: number): boolean {
+    if (!this.ladderSystem) return false;
+
+    const player = this.gameState.getLocalPlayer();
+
+    // Check if trying to start climbing
+    if (!this.ladderClimbState.isClimbing) {
+      // Try to start climbing if pressing forward near a ladder
+      if (this.inputState.forward && player.isOnSurface) {
+        const nearbyLadder = this.ladderSystem.canStartClimbing(
+          player.position,
+          player.isOnSurface
+        );
+
+        if (nearbyLadder) {
+          // Start climbing
+          const { position, progress } = this.ladderSystem.startClimbing(
+            player.position,
+            nearbyLadder
+          );
+
+          this.ladderClimbState.isClimbing = true;
+          this.ladderClimbState.currentLadder = nearbyLadder;
+          this.ladderClimbState.climbProgress = progress;
+
+          this.gameState.setLocalPlayerPosition(position);
+          this.gameState.setLocalPlayerVelocity({ x: 0, y: 0, z: 0 });
+          this.gameState.setLocalPlayerClimbing(true);
+
+          return true;
+        }
+      }
+      return false;
+    }
+
+    // Currently climbing
+    let climbInput = 0;
+    if (this.inputState.forward) climbInput = 1; // Climb up
+    if (this.inputState.backward) climbInput = -1; // Climb down
+
+    // Update climbing
+    const { position, progress, shouldExit } = this.ladderSystem.updateClimbing(
+      this.ladderClimbState,
+      climbInput,
+      deltaTime
+    );
+
+    this.ladderClimbState.climbProgress = progress;
+    this.gameState.setLocalPlayerPosition(position);
+
+    // Check for exit conditions
+    if (shouldExit || this.inputState.jump || this.inputState.left || this.inputState.right) {
+      // Exit climbing
+      const exitPosition = this.ladderSystem.exitClimbing(
+        this.ladderClimbState.currentLadder!,
+        this.ladderClimbState.climbProgress,
+        player.rotation.yaw
+      );
+
+      // If at the top (progress >= 0.95), place player on rooftop
+      if (this.ladderClimbState.climbProgress >= 0.95) {
+        exitPosition.y = this.ladderClimbState.currentLadder!.topPosition.y;
+      }
+
+      this.gameState.setLocalPlayerPosition(exitPosition);
+      this.gameState.setLocalPlayerVelocity({ x: 0, y: 0, z: 0 });
+      this.gameState.setLocalPlayerClimbing(false);
+      this.gameState.setLocalPlayerOnSurface(true); // Mark as on surface when exiting
+
+      this.ladderClimbState.isClimbing = false;
+      this.ladderClimbState.currentLadder = null;
+      this.ladderClimbState.climbProgress = 0;
+
+      return false;
+    }
+
+    return true;
+  }
+
+  /**
+   * Get ladder climb state
+   */
+  public getLadderClimbState(): LadderClimbState {
+    return this.ladderClimbState;
   }
 
   /**

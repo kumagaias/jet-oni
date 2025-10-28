@@ -68,8 +68,8 @@ describe('CityGenerator', () => {
       
       const bridgeAreas = occupiedAreas.filter(area => area.type === 'bridge');
       
-      // Should have 3 bridges
-      expect(bridgeAreas.length).toBe(3);
+      // Should have 5 bridges (one for each road crossing)
+      expect(bridgeAreas.length).toBe(5);
     });
 
     it('should generate a landmark', () => {

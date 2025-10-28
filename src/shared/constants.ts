@@ -15,7 +15,7 @@ export const RUNNER_FUEL_RECOVERY = 20; // per second on surface while stationar
 // Physics
 export const GRAVITY = 20;
 export const JUMP_FORCE = 10;
-export const JETPACK_FORCE = 30; // Must be greater than GRAVITY to fly upward
+export const JETPACK_FORCE = 21; // Must be greater than GRAVITY to fly upward
 
 // Tagging
 export const TAG_DISTANCE = 1.5; // units

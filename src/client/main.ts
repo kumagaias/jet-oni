@@ -8,6 +8,8 @@ import { GameState } from './game/game-state';
 import { CityGenerator } from './environment/city-generator';
 import { PlayerController } from './player/player-controller';
 import { PlayerPhysics } from './player/player-physics';
+import { BeaconSystem } from './abilities/beacon-system';
+import { BeaconVisual } from './effects/beacon-visual';
 import { I18n } from './i18n/i18n';
 import { UIManager } from './ui/ui-manager';
 import { UIMenu } from './ui/ui-menu';
@@ -70,6 +72,12 @@ async function initGame(): Promise<void> {
       const playerController = new PlayerController(gameState);
       playerController.init();
       
+      // Initialize beacon system
+      const beaconSystem = new BeaconSystem(gameState);
+      
+      // Initialize beacon visual
+      const beaconVisual = new BeaconVisual(gameEngine.getScene());
+      
       // Create debug info element (initially hidden)
       const debugInfo = document.createElement('div');
       debugInfo.id = 'debug-info';
@@ -90,13 +98,38 @@ async function initGame(): Promise<void> {
       `;
       document.body.appendChild(debugInfo);
       
+      // Track previous ONI state to detect changes
+      let wasOni = gameState.getLocalPlayer().isOni;
+      
       // Setup game loop
       gameEngine.onUpdate((deltaTime: number) => {
         // Update player controller
         playerController.update(deltaTime);
         
-        // Apply physics to player
+        // Check if player became ONI
         const localPlayer = gameState.getLocalPlayer();
+        if (localPlayer.isOni && !wasOni) {
+          beaconSystem.onBecameOni();
+          console.log('Became ONI - Beacon system initialized');
+        }
+        wasOni = localPlayer.isOni;
+        
+        // Update beacon system
+        beaconSystem.update();
+        
+        // Handle beacon input
+        const inputState = playerController.getInputState();
+        if (inputState.beacon && beaconSystem.isAvailable()) {
+          beaconSystem.activate();
+          console.log('Beacon activated!');
+        }
+        
+        // Update beacon visuals
+        const isBeaconActive = beaconSystem.isBeaconActive();
+        beaconVisual.update(gameState.getAllPlayers(), isBeaconActive, localPlayer.id);
+        beaconVisual.animate(deltaTime);
+        
+        // Apply physics to player
         const physicsResult = playerPhysics.applyPhysics(
           localPlayer.position,
           localPlayer.velocity,
@@ -123,6 +156,10 @@ async function initGame(): Promise<void> {
         camera.rotation.x = localPlayer.rotation.pitch;
         
         // Update debug info
+        const beaconCooldown = beaconSystem.getRemainingCooldown();
+        const beaconActive = beaconSystem.isBeaconActive();
+        const beaconProgress = beaconSystem.getCooldownProgress();
+        
         debugInfo.innerHTML = `
           <strong>[DEBUG MODE]</strong><br>
           Role: ${localPlayer.isOni ? 'ONI' : 'RUNNER'}<br>
@@ -132,8 +169,10 @@ async function initGame(): Promise<void> {
           On Surface: ${localPlayer.isOnSurface ? 'Yes' : 'No'}<br>
           Jetpacking: ${localPlayer.isJetpacking ? 'Yes' : 'No'}<br>
           Dashing: ${localPlayer.isDashing ? 'Yes' : 'No'}<br>
+          ${localPlayer.isOni ? `<br>Beacon: ${beaconActive ? 'ACTIVE' : beaconCooldown > 0 ? `Cooldown ${Math.ceil(beaconCooldown)}s` : 'READY'}<br>` : ''}
+          ${localPlayer.isOni ? `Beacon Progress: ${Math.round(beaconProgress * 100)}%<br>` : ''}
           <br>
-          <strong>F3:</strong> Toggle ONI/Runner
+          <strong>F3:</strong> Toggle ONI/Runner${localPlayer.isOni ? '<br><strong>B:</strong> Activate Beacon' : ''}
         `;
       });
       

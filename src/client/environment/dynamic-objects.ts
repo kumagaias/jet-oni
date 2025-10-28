@@ -107,13 +107,9 @@ export class DynamicObjects {
 
       // Rotate car to face direction
       // Car body is 2 wide x 4 deep, so depth (Z) is the front
-      if (direction.x !== 0) {
-        // Moving along X axis, rotate 90 degrees
-        car.rotation.y = direction.x > 0 ? -Math.PI / 2 : Math.PI / 2;
-      } else {
-        // Moving along Z axis, no rotation needed (or 180)
-        car.rotation.y = direction.z > 0 ? 0 : Math.PI;
-      }
+      // Calculate rotation based on direction vector
+      const angle = Math.atan2(direction.x, direction.z);
+      car.rotation.y = angle;
 
       this.cars.add(car);
       this.carConfigs.push({ position, direction, speed, color });

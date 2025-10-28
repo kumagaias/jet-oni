@@ -229,9 +229,9 @@ export class CityGenerator {
     const bridgeThickness = 0.5;
     const bridgeColor = 0x8b7355; // Brown wood
 
-    // Create 3 bridges at different z positions
-    for (let i = -1; i <= 1; i++) {
-      const z = i * 80;
+    // Create bridges at road intersections (every 60 units)
+    for (let i = -2; i <= 2; i++) {
+      const z = i * 60; // Match road positions
       
       const geometry = new THREE.BoxGeometry(bridgeWidth, bridgeThickness, riverArea.width + 2);
       const material = new THREE.MeshStandardMaterial({

@@ -19,6 +19,7 @@ export interface LocalPlayerState {
   isOnSurface: boolean;
   isDashing: boolean;
   isJetpacking: boolean;
+  isClimbing: boolean;
   survivedTime: number;
 }
 
@@ -45,6 +46,7 @@ export class GameState {
       isOnSurface: true,
       isDashing: false,
       isJetpacking: false,
+      isClimbing: false,
       survivedTime: 0,
     };
   }
@@ -149,6 +151,13 @@ export class GameState {
    */
   public setLocalPlayerJetpacking(isJetpacking: boolean): void {
     this.localPlayer.isJetpacking = isJetpacking;
+  }
+
+  /**
+   * Set whether local player is climbing
+   */
+  public setLocalPlayerClimbing(isClimbing: boolean): void {
+    this.localPlayer.isClimbing = isClimbing;
   }
 
   /**
@@ -334,6 +343,7 @@ export class GameState {
     this.localPlayer.isOnSurface = true;
     this.localPlayer.isDashing = false;
     this.localPlayer.isJetpacking = false;
+    this.localPlayer.isClimbing = false;
     this.localPlayer.survivedTime = 0;
     this.gameStartTime = Date.now();
   }

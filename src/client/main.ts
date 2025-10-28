@@ -3,11 +3,16 @@
  * A 3D multiplayer tag game built with Three.js and Devvit
  */
 
+import * as THREE from 'three';
 import { GameEngine } from './game/game-engine';
 import { GameState } from './game/game-state';
 import { CityGenerator } from './environment/city-generator';
+import { DynamicObjects } from './environment/dynamic-objects';
+import { LadderSystem } from './environment/ladder-system';
+import { CollisionSystem } from './environment/collision-system';
 import { PlayerController } from './player/player-controller';
-import { PlayerPhysics } from './player/player-physics';
+import { PlayerPhysics, BuildingData } from './player/player-physics';
+import { PlayerCamera } from './player/player-camera';
 import { BeaconSystem } from './abilities/beacon-system';
 import { BeaconVisual } from './effects/beacon-visual';
 import { I18n } from './i18n/i18n';
@@ -63,13 +68,56 @@ async function initGame(): Promise<void> {
       gameEngine.addToScene(city);
       console.log('City generated');
       
+      // Generate dynamic objects (cars, pedestrians, ladders)
+      console.log('Generating dynamic objects...');
+      const dynamicObjects = new DynamicObjects();
+      const dynamicGroup = dynamicObjects.initialize(cityGenerator.getBuildings());
+      gameEngine.addToScene(dynamicGroup);
+      console.log('Dynamic objects generated');
+      
+      // Initialize ladder system
+      const ladderSystem = new LadderSystem();
+      ladderSystem.registerLadders(dynamicObjects.getLadders());
+      console.log(`Registered ${ladderSystem.getLadders().length} ladders`);
+      
+      // Initialize collision system
+      const collisionSystem = new CollisionSystem();
+      // Convert buildings to BuildingData format for collision
+      const buildingData: BuildingData[] = [];
+      cityGenerator.getBuildings().traverse((object) => {
+        if (object instanceof THREE.Mesh && object.geometry instanceof THREE.BoxGeometry) {
+          const params = object.geometry.parameters;
+          buildingData.push({
+            position: { x: object.position.x, y: object.position.y, z: object.position.z },
+            width: params.width,
+            height: params.height,
+            depth: params.depth,
+            shape: 'box',
+          });
+        } else if (object instanceof THREE.Mesh && object.geometry instanceof THREE.CylinderGeometry) {
+          const params = object.geometry.parameters;
+          buildingData.push({
+            position: { x: object.position.x, y: object.position.y, z: object.position.z },
+            width: params.radiusTop * 2,
+            height: params.height,
+            depth: params.radiusTop * 2,
+            shape: 'cylinder',
+          });
+        }
+      });
+      collisionSystem.registerBuildings(buildingData);
+      console.log(`Registered ${buildingData.length} buildings for collision`);
+      
       // Initialize player physics
       const playerPhysics = new PlayerPhysics();
-      // Register buildings for collision detection (if needed)
-      // playerPhysics.registerBuildings(cityGenerator.getBuildings());
+      playerPhysics.registerBuildings(buildingData);
+      
+      // Initialize player camera
+      const playerCamera = new PlayerCamera(gameEngine.getCamera(), gameState);
       
       // Initialize player controller
       const playerController = new PlayerController(gameState);
+      playerController.setLadderSystem(ladderSystem);
       playerController.init();
       
       // Initialize beacon system
@@ -129,31 +177,32 @@ async function initGame(): Promise<void> {
         beaconVisual.update(gameState.getAllPlayers(), isBeaconActive, localPlayer.id);
         beaconVisual.animate(deltaTime);
         
-        // Apply physics to player
-        const physicsResult = playerPhysics.applyPhysics(
-          localPlayer.position,
-          localPlayer.velocity,
-          deltaTime,
-          localPlayer.isJetpacking
-        );
+        // Update dynamic objects (cars, pedestrians)
+        dynamicObjects.update(deltaTime);
         
-        // Update player state with physics results
-        gameState.setLocalPlayerPosition(physicsResult.position);
-        gameState.setLocalPlayerVelocity(physicsResult.velocity);
-        gameState.setLocalPlayerOnSurface(physicsResult.isOnSurface);
+        // Apply physics to player (skip if climbing)
+        if (!localPlayer.isClimbing) {
+          const physicsResult = playerPhysics.applyPhysics(
+            localPlayer.position,
+            localPlayer.velocity,
+            deltaTime,
+            localPlayer.isJetpacking
+          );
+          
+          // Apply collision detection
+          const collisionResult = collisionSystem.checkCollision(
+            localPlayer.position,
+            physicsResult.position
+          );
+          
+          // Update player state with physics and collision results
+          gameState.setLocalPlayerPosition(collisionResult.position);
+          gameState.setLocalPlayerVelocity(physicsResult.velocity);
+          gameState.setLocalPlayerOnSurface(physicsResult.isOnSurface);
+        }
         
-        // Update camera position to follow player
-        const camera = gameEngine.getCamera();
-        camera.position.set(
-          physicsResult.position.x,
-          physicsResult.position.y + 1.7, // Eye height
-          physicsResult.position.z
-        );
-        
-        // Apply player rotation to camera
-        camera.rotation.order = 'YXZ';
-        camera.rotation.y = localPlayer.rotation.yaw;
-        camera.rotation.x = localPlayer.rotation.pitch;
+        // Update camera
+        playerCamera.update(deltaTime);
         
         // Update debug info
         const beaconCooldown = beaconSystem.getRemainingCooldown();
@@ -169,6 +218,7 @@ async function initGame(): Promise<void> {
           On Surface: ${localPlayer.isOnSurface ? 'Yes' : 'No'}<br>
           Jetpacking: ${localPlayer.isJetpacking ? 'Yes' : 'No'}<br>
           Dashing: ${localPlayer.isDashing ? 'Yes' : 'No'}<br>
+          Climbing: ${localPlayer.isClimbing ? 'Yes' : 'No'}<br>
           ${localPlayer.isOni ? `<br>Beacon: ${beaconActive ? 'ACTIVE' : beaconCooldown > 0 ? `Cooldown ${Math.ceil(beaconCooldown)}s` : 'READY'}<br>` : ''}
           ${localPlayer.isOni ? `Beacon Progress: ${Math.round(beaconProgress * 100)}%<br>` : ''}
           <br>

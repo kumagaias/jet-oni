@@ -32,7 +32,7 @@ export class UIMenu {
         font-family: monospace;
       ">
         <h1 style="
-          color: #00ff00;
+          color: #ff8800;
           font-size: 36px;
           margin-bottom: 10px;
           font-weight: bold;
@@ -85,9 +85,9 @@ export class UIMenu {
             font-size: 14px;
             cursor: pointer;
             font-family: monospace;
-            border: 1px solid #00ff00;
-            background: #003300;
-            color: #00ff00;
+            border: 1px solid #ff8800;
+            background: #331a00;
+            color: #ff8800;
             font-weight: bold;
           ">▶ CREATE GAME</button>
           
@@ -123,7 +123,7 @@ export class UIMenu {
           border-radius: 4px;
           text-align: left;
         ">
-          <p style="color: #00ff00; font-size: 12px; margin-bottom: 10px;">CONTROLS:</p>
+          <p style="color: #ff8800; font-size: 12px; margin-bottom: 10px;">CONTROLS:</p>
           <p style="color: #aaa; font-size: 11px; margin: 3px 0;">→ WASD: Move</p>
           <p style="color: #aaa; font-size: 11px; margin: 3px 0;">→ Mouse: Click & drag to look</p>
           <p style="color: #aaa; font-size: 11px; margin: 3px 0;">→ Space: Jump / Jetpack</p>
@@ -185,16 +185,16 @@ export class UIMenu {
     const jpButton = document.getElementById('lang-jp') as HTMLButtonElement;
     
     if (enButton) {
-      enButton.style.backgroundColor = currentLang === 'en' ? '#00ff00' : '#222';
+      enButton.style.backgroundColor = currentLang === 'en' ? '#ff8800' : '#222';
       enButton.style.color = currentLang === 'en' ? '#000' : '#aaa';
-      enButton.style.border = currentLang === 'en' ? '1px solid #00ff00' : '1px solid #666';
+      enButton.style.border = currentLang === 'en' ? '1px solid #ff8800' : '1px solid #666';
       enButton.style.fontWeight = currentLang === 'en' ? 'bold' : 'normal';
     }
     
     if (jpButton) {
-      jpButton.style.backgroundColor = currentLang === 'jp' ? '#00ff00' : '#222';
+      jpButton.style.backgroundColor = currentLang === 'jp' ? '#ff8800' : '#222';
       jpButton.style.color = currentLang === 'jp' ? '#000' : '#aaa';
-      jpButton.style.border = currentLang === 'jp' ? '1px solid #00ff00' : '1px solid #666';
+      jpButton.style.border = currentLang === 'jp' ? '1px solid #ff8800' : '1px solid #666';
       jpButton.style.fontWeight = currentLang === 'jp' ? 'bold' : 'normal';
     }
   }
@@ -215,7 +215,7 @@ export class UIMenu {
         font-family: monospace;
       ">
         <h2 style="
-          color: #00ff00;
+          color: #ff8800;
           font-size: 24px;
           margin-bottom: 20px;
           font-weight: bold;
@@ -290,9 +290,9 @@ export class UIMenu {
           font-size: 14px;
           cursor: pointer;
           font-family: monospace;
-          border: 1px solid #00ff00;
-          background: #003300;
-          color: #00ff00;
+          border: 1px solid #ff8800;
+          background: #331a00;
+          color: #ff8800;
           font-weight: bold;
         ">START GAME</button>
         
@@ -336,9 +336,9 @@ export class UIMenu {
         document.querySelectorAll(`[data-option="${option}"]`).forEach(b => {
           const button = b as HTMLButtonElement;
           if (button.dataset.value === value.toString()) {
-            button.style.backgroundColor = '#00ff00';
+            button.style.backgroundColor = '#ff8800';
             button.style.color = '#000';
-            button.style.border = '1px solid #00ff00';
+            button.style.border = '1px solid #ff8800';
             button.style.fontWeight = 'bold';
           } else {
             button.style.backgroundColor = '#222';
@@ -355,6 +355,12 @@ export class UIMenu {
       console.log('Starting game with options:', selectedOptions);
       // TODO: Implement game start logic
       this.uiManager.hideOverlay();
+      
+      // Show debug info when game starts
+      const debugInfo = document.getElementById('debug-info');
+      if (debugInfo) {
+        debugInfo.style.display = 'block';
+      }
     });
     
     // Back button
@@ -384,7 +390,7 @@ export class UIMenu {
         font-family: monospace;
       ">
         <h2 style="
-          color: #00ff00;
+          color: #ff8800;
           font-size: 24px;
           margin-bottom: 20px;
           font-weight: bold;
@@ -450,7 +456,7 @@ export class UIMenu {
         font-family: monospace;
       ">
         <h2 style="
-          color: #00ff00;
+          color: #ff8800;
           font-size: 24px;
           margin-bottom: 20px;
           font-weight: bold;
@@ -465,13 +471,13 @@ export class UIMenu {
         ">
           <div style="margin-bottom: 10px;">
             <p style="color: #aaa; font-size: 11px;">GAMES PLAYED:</p>
-            <p style="color: #00ff00; font-size: 18px; font-weight: bold;">${stats.gamesPlayed}</p>
+            <p style="color: #ff8800; font-size: 18px; font-weight: bold;">${stats.gamesPlayed}</p>
           </div>
           
           <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
             <div style="flex: 1;">
               <p style="color: #aaa; font-size: 11px;">WINS:</p>
-              <p style="color: #00ff00; font-size: 16px; font-weight: bold;">${stats.wins}</p>
+              <p style="color: #ff8800; font-size: 16px; font-weight: bold;">${stats.wins}</p>
             </div>
             <div style="flex: 1;">
               <p style="color: #aaa; font-size: 11px;">LOSSES:</p>
@@ -481,17 +487,17 @@ export class UIMenu {
           
           <div style="margin-bottom: 10px;">
             <p style="color: #aaa; font-size: 11px;">WIN RATE:</p>
-            <p style="color: #00ff00; font-size: 18px; font-weight: bold;">${stats.winRate}%</p>
+            <p style="color: #ff8800; font-size: 18px; font-weight: bold;">${stats.winRate}%</p>
           </div>
           
           <div style="border-top: 1px solid #333; padding-top: 10px; margin-top: 10px;">
             <p style="color: #aaa; font-size: 11px;">TOTAL SURVIVAL TIME:</p>
-            <p style="color: #00ff00; font-size: 16px; font-weight: bold;">${stats.totalSurvivalTime}s</p>
+            <p style="color: #ff8800; font-size: 16px; font-weight: bold;">${stats.totalSurvivalTime}s</p>
           </div>
           
           <div style="margin-top: 10px;">
             <p style="color: #aaa; font-size: 11px;">LONGEST SURVIVAL:</p>
-            <p style="color: #00ff00; font-size: 16px; font-weight: bold;">${stats.longestSurvival}s</p>
+            <p style="color: #ff8800; font-size: 16px; font-weight: bold;">${stats.longestSurvival}s</p>
           </div>
         </div>
         

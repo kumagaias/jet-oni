@@ -1,10 +1,17 @@
 import { GameState } from '../game/game-state';
 import { InputState } from '../../shared/types/game';
+import { MobileControls, MobileInputState } from '../ui/mobile-controls';
 import {
   PLAYER_SPEED,
   DASH_SPEED,
   CAMERA_PITCH_LIMIT,
   MAP_SIZE,
+  JETPACK_FUEL_CONSUMPTION,
+  JETPACK_FORCE,
+  JUMP_FORCE,
+  DASH_FUEL_CONSUMPTION,
+  ONI_FUEL_RECOVERY,
+  RUNNER_FUEL_RECOVERY,
 } from '../../shared/constants';
 
 /**
@@ -15,6 +22,8 @@ export class PlayerController {
   private inputState: InputState;
   private isPointerLocked = false;
   private mouseSensitivity = 0.002;
+  private wasJumping = false;
+  private mobileControls: MobileControls | null = null;
 
   constructor(gameState: GameState) {
     this.gameState = gameState;
@@ -30,6 +39,9 @@ export class PlayerController {
       mouseX: 0,
       mouseY: 0,
     };
+    
+    // Initialize mobile controls if on mobile device
+    this.mobileControls = new MobileControls();
   }
 
   /**
@@ -39,6 +51,11 @@ export class PlayerController {
     this.setupKeyboardListeners();
     this.setupMouseListeners();
     this.setupPointerLock();
+    
+    // Initialize mobile controls if needed
+    if (this.mobileControls?.shouldShowMobileControls()) {
+      this.mobileControls.init();
+    }
   }
 
   /**
@@ -98,6 +115,15 @@ export class PlayerController {
    * Handle keydown events
    */
   private handleKeyDown(event: KeyboardEvent): void {
+    // Debug mode: F3 to toggle ONI/Runner
+    if (event.code === 'F3') {
+      event.preventDefault();
+      const player = this.gameState.getLocalPlayer();
+      this.gameState.setLocalPlayerIsOni(!player.isOni);
+      console.log(`[DEBUG] Switched to ${player.isOni ? 'Runner' : 'ONI'}`);
+      return;
+    }
+
     // Ignore if not playing
     if (!this.gameState.isPlaying()) return;
 
@@ -226,7 +252,24 @@ export class PlayerController {
     if (!this.gameState.isPlaying()) return;
 
     const player = this.gameState.getLocalPlayer();
+    
+    // Update mobile controls
+    if (this.mobileControls?.shouldShowMobileControls()) {
+      this.mobileControls.update();
+      this.applyMobileInput();
+    }
+    
+    // Handle jetpack and jump abilities
+    this.handleAbilities(deltaTime);
+    
+    // Calculate speed (this also sets dashing state)
     const speed = this.calculateSpeed();
+    
+    // Handle dash fuel consumption
+    this.handleDashFuelConsumption(deltaTime);
+    
+    // Handle fuel recovery
+    this.handleFuelRecovery(deltaTime);
 
     // Calculate movement direction based on input and rotation
     const moveDirection = this.calculateMoveDirection();
@@ -248,20 +291,108 @@ export class PlayerController {
 
     this.gameState.setLocalPlayerVelocity(newVelocity);
 
-    // Update position
-    const newPosition = {
-      x: player.position.x + newVelocity.x * deltaTime,
-      y: player.position.y + newVelocity.y * deltaTime,
-      z: player.position.z + newVelocity.z * deltaTime,
-    };
-
-    // Clamp to map boundaries
-    const clampedPosition = this.gameState.clampPositionToBounds(newPosition);
-    this.gameState.setLocalPlayerPosition(clampedPosition);
+    // Note: Position update is now handled by PlayerPhysics in main.ts
 
     // Reset mouse delta
     this.inputState.mouseX = 0;
     this.inputState.mouseY = 0;
+  }
+
+  /**
+   * Apply mobile input to input state
+   */
+  private applyMobileInput(): void {
+    if (!this.mobileControls) return;
+
+    const mobileInput = this.mobileControls.getInputState();
+    
+    // Convert joystick to WASD (OR with keyboard input, don't override)
+    this.inputState.forward = this.inputState.forward || mobileInput.moveY < -0.3;
+    this.inputState.backward = this.inputState.backward || mobileInput.moveY > 0.3;
+    this.inputState.left = this.inputState.left || mobileInput.moveX < -0.3;
+    this.inputState.right = this.inputState.right || mobileInput.moveX > 0.3;
+    
+    // Apply look input (add to existing mouse input)
+    this.inputState.mouseX += mobileInput.lookX;
+    this.inputState.mouseY += mobileInput.lookY;
+    
+    // Update player rotation from mobile look input
+    if (mobileInput.lookX !== 0 || mobileInput.lookY !== 0) {
+      const player = this.gameState.getLocalPlayer();
+      const newYaw = player.rotation.yaw - mobileInput.lookX * this.mouseSensitivity;
+      const newPitch = Math.max(
+        -CAMERA_PITCH_LIMIT,
+        Math.min(CAMERA_PITCH_LIMIT, player.rotation.pitch - mobileInput.lookY * this.mouseSensitivity)
+      );
+      this.gameState.setLocalPlayerRotation(newYaw, newPitch);
+    }
+    
+    // Apply button inputs (OR with keyboard input)
+    this.inputState.jump = this.inputState.jump || mobileInput.jump;
+    this.inputState.jetpack = this.inputState.jetpack || mobileInput.jump;
+    this.inputState.dash = this.inputState.dash || mobileInput.dash;
+  }
+
+  /**
+   * Handle jetpack and jump abilities
+   */
+  private handleAbilities(deltaTime: number): void {
+    const player = this.gameState.getLocalPlayer();
+    
+    // Jetpack (ONI only, requires fuel)
+    if (player.isOni && this.inputState.jetpack && player.fuel > 0) {
+      // Consume fuel
+      const fuelConsumed = JETPACK_FUEL_CONSUMPTION * deltaTime;
+      this.gameState.setLocalPlayerFuel(player.fuel - fuelConsumed);
+      
+      // Apply upward acceleration (not instant velocity)
+      const newVelocity = {
+        ...player.velocity,
+        y: player.velocity.y + JETPACK_FORCE * deltaTime,
+      };
+      this.gameState.setLocalPlayerVelocity(newVelocity);
+      this.gameState.setLocalPlayerJetpacking(true);
+    } else {
+      this.gameState.setLocalPlayerJetpacking(false);
+    }
+    
+    // Jump (Runner only, on surface only, no fuel cost)
+    if (!player.isOni && this.inputState.jump && player.isOnSurface && !this.wasJumping) {
+      const newVelocity = {
+        ...player.velocity,
+        y: JUMP_FORCE,
+      };
+      this.gameState.setLocalPlayerVelocity(newVelocity);
+    }
+    
+    // Track jump state to prevent continuous jumping
+    this.wasJumping = this.inputState.jump;
+  }
+
+  /**
+   * Handle fuel recovery
+   */
+  private handleFuelRecovery(deltaTime: number): void {
+    const player = this.gameState.getLocalPlayer();
+    
+    // Only recover fuel on surface
+    if (!player.isOnSurface) return;
+    
+    // Don't recover fuel while using abilities
+    if (player.isJetpacking || player.isDashing) return;
+    
+    if (player.isOni) {
+      // ONI recovers fuel on surface
+      const fuelRecovered = ONI_FUEL_RECOVERY * deltaTime;
+      this.gameState.setLocalPlayerFuel(player.fuel + fuelRecovered);
+    } else {
+      // Runner recovers fuel on surface while stationary
+      const isStationary = Math.abs(player.velocity.x) < 0.1 && Math.abs(player.velocity.z) < 0.1;
+      if (isStationary) {
+        const fuelRecovered = RUNNER_FUEL_RECOVERY * deltaTime;
+        this.gameState.setLocalPlayerFuel(player.fuel + fuelRecovered);
+      }
+    }
   }
 
   /**
@@ -280,6 +411,19 @@ export class PlayerController {
     }
 
     return speed;
+  }
+
+  /**
+   * Handle dash fuel consumption
+   */
+  private handleDashFuelConsumption(deltaTime: number): void {
+    const player = this.gameState.getLocalPlayer();
+    
+    // Consume fuel when dashing (runner only)
+    if (this.inputState.dash && !player.isOni && player.fuel > 0) {
+      const fuelConsumed = DASH_FUEL_CONSUMPTION * deltaTime;
+      this.gameState.setLocalPlayerFuel(player.fuel - fuelConsumed);
+    }
   }
 
   /**
@@ -332,5 +476,8 @@ export class PlayerController {
     if (this.isPointerLocked) {
       document.exitPointerLock();
     }
+    
+    // Dispose mobile controls
+    this.mobileControls?.dispose();
   }
 }

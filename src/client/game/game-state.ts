@@ -302,6 +302,34 @@ export class GameState {
   }
 
   /**
+   * Set player position (for AI players)
+   */
+  public setPlayerPosition(playerId: string, position: Vector3): void {
+    if (playerId === this.localPlayer.id) {
+      this.setLocalPlayerPosition(position);
+    } else {
+      const player = this.remotePlayers.get(playerId);
+      if (player) {
+        player.position = { ...position };
+      }
+    }
+  }
+
+  /**
+   * Set player on surface state (for AI players)
+   */
+  public setPlayerOnSurface(playerId: string, isOnSurface: boolean): void {
+    if (playerId === this.localPlayer.id) {
+      this.setLocalPlayerOnSurface(isOnSurface);
+    } else {
+      const player = this.remotePlayers.get(playerId);
+      if (player) {
+        player.isOnSurface = isOnSurface;
+      }
+    }
+  }
+
+  /**
    * Get all players (local + remote)
    */
   public getAllPlayers(): Player[] {

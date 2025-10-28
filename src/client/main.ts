@@ -15,6 +15,7 @@ import { PlayerPhysics, BuildingData } from './player/player-physics';
 import { PlayerCamera } from './player/player-camera';
 import { BeaconSystem } from './abilities/beacon-system';
 import { BeaconVisual } from './effects/beacon-visual';
+import { BeaconItem } from './items/beacon-item';
 import { CarSystem } from './environment/car-system';
 import { AIController } from './ai/ai-controller';
 import { PlayerModel } from './player/player-model';
@@ -123,11 +124,15 @@ async function initGame(): Promise<void> {
       playerController.setLadderSystem(ladderSystem);
       playerController.init();
       
-      // Initialize beacon system
-      const beaconSystem = new BeaconSystem(gameState);
+      // Initialize beacon item system
+      const beaconItem = new BeaconItem(gameEngine.getScene());
       
-      // Initialize beacon visual
+      // Initialize beacon visual (for showing player locations when beacon is active)
       const beaconVisual = new BeaconVisual(gameEngine.getScene());
+      
+      // Track beacon state
+      let beaconActiveUntil = 0;
+      const BEACON_DURATION = 10; // seconds
       
       // Initialize car system
       const carSystem = new CarSystem(gameEngine.getScene());
@@ -230,20 +235,21 @@ async function initGame(): Promise<void> {
         // Check if player became ONI
         const localPlayer = gameState.getLocalPlayer();
         if (localPlayer.isOni && !wasOni) {
-          beaconSystem.onBecameOni();
-          console.log('Became ONI - Beacon system initialized');
+          console.log('Became ONI');
         }
         wasOni = localPlayer.isOni;
         
-        // Update beacon system
-        beaconSystem.update();
-        
-        // Handle beacon input
-        const inputState = playerController.getInputState();
-        if (inputState.beacon && beaconSystem.isAvailable()) {
-          beaconSystem.activate();
-          console.log('Beacon activated!');
+        // Check beacon item collection (ONI only)
+        const collectedBeacon = beaconItem.checkCollection(localPlayer.position, localPlayer.isOni);
+        if (collectedBeacon) {
+          beaconItem.collectItem(collectedBeacon.id);
+          // Activate beacon for 10 seconds
+          beaconActiveUntil = Date.now() + BEACON_DURATION * 1000;
+          console.log('Beacon collected! Activated for 10 seconds');
         }
+        
+        // Animate beacon items
+        beaconItem.animate(deltaTime);
         
         // Update UI controls
         uiControls.update(gameState);
@@ -251,18 +257,39 @@ async function initGame(): Promise<void> {
         // Update AI players
         aiController.update(deltaTime);
         
-        // Update AI player models
+        // Apply physics to AI players and update models
         for (const [aiId, aiModel] of aiPlayerModels) {
           const aiPlayer = gameState.getPlayer(aiId);
           if (aiPlayer) {
-            aiModel.setPosition(aiPlayer.position.x, aiPlayer.position.y, aiPlayer.position.z);
+            // Apply physics to AI player
+            const physicsResult = playerPhysics.applyPhysics(
+              aiPlayer.position,
+              aiPlayer.velocity,
+              deltaTime,
+              aiPlayer.isJetpacking
+            );
+            
+            // Apply collision detection
+            const collisionResult = collisionSystem.checkCollision(
+              physicsResult.position,
+              physicsResult.velocity,
+              0.5 // AI player radius
+            );
+            
+            // Update AI player position and state
+            gameState.setPlayerPosition(aiId, collisionResult.position);
+            gameState.setPlayerVelocity(aiId, collisionResult.velocity);
+            gameState.setPlayerOnSurface(aiId, collisionResult.isOnSurface);
+            
+            // Update AI player model
+            aiModel.setPosition(collisionResult.position.x, collisionResult.position.y, collisionResult.position.z);
             aiModel.setRotation(aiPlayer.rotation.yaw);
             aiModel.setIsOni(aiPlayer.isOni);
           }
         }
         
-        // Update beacon visuals
-        const isBeaconActive = beaconSystem.isBeaconActive();
+        // Update beacon visuals (show player locations when beacon is active)
+        const isBeaconActive = Date.now() < beaconActiveUntil;
         beaconVisual.update(gameState.getAllPlayers(), isBeaconActive, localPlayer.id);
         beaconVisual.animate(deltaTime);
         
@@ -313,9 +340,8 @@ async function initGame(): Promise<void> {
         playerCamera.update(deltaTime);
         
         // Update debug info
-        const beaconCooldown = beaconSystem.getRemainingCooldown();
-        const beaconActive = beaconSystem.isBeaconActive();
-        const beaconProgress = beaconSystem.getCooldownProgress();
+        const beaconActive = Date.now() < beaconActiveUntil;
+        const beaconItemsCount = beaconItem.getPlacedItems().length;
         
         debugInfo.innerHTML = `
           <strong>[DEBUG MODE]</strong><br>
@@ -327,10 +353,10 @@ async function initGame(): Promise<void> {
           Jetpacking: ${localPlayer.isJetpacking ? 'Yes' : 'No'}<br>
           Dashing: ${localPlayer.isDashing ? 'Yes' : 'No'}<br>
           Climbing: ${localPlayer.isClimbing ? 'Yes' : 'No'}<br>
-          ${localPlayer.isOni ? `<br>Beacon: ${beaconActive ? 'ACTIVE' : beaconCooldown > 0 ? `Cooldown ${Math.ceil(beaconCooldown)}s` : 'READY'}<br>` : ''}
-          ${localPlayer.isOni ? `Beacon Progress: ${Math.round(beaconProgress * 100)}%<br>` : ''}
+          ${localPlayer.isOni ? `<br>Beacon: ${beaconActive ? 'ACTIVE' : 'Collect items'}<br>` : ''}
+          ${localPlayer.isOni ? `Beacon Items: ${beaconItemsCount}<br>` : ''}
           <br>
-          <strong>F3:</strong> Toggle ONI/Runner${localPlayer.isOni ? '<br><strong>B:</strong> Activate Beacon' : ''}
+          <strong>F3:</strong> Toggle ONI/Runner${localPlayer.isOni ? '<br><strong>Collect beacon items to activate</strong>' : ''}
         `;
       });
       
@@ -350,8 +376,8 @@ async function initGame(): Promise<void> {
       // Add HUD update to game loop
       gameEngine.onUpdate((deltaTime: number) => {
         if (gameState.getGamePhase() === 'playing') {
-          const beaconCooldown = beaconSystem.getRemainingCooldown();
-          uiHud.update(beaconCooldown);
+          // No beacon cooldown in item-based system
+          uiHud.update(0);
         }
       });
       
@@ -361,6 +387,15 @@ async function initGame(): Promise<void> {
         gameState.setGamePhase('playing');
         uiHud.show();
         uiControls.show();
+        
+        // Place beacon items on the map
+        const buildings = cityGenerator.getBuildings().map(b => ({
+          position: b.position,
+          width: b.width,
+          depth: b.depth
+        }));
+        beaconItem.placeItems(buildings);
+        console.log('Beacon items placed on map');
       });
       
       // Listen for lobby event (when user creates a game)

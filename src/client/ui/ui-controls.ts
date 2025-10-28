@@ -204,14 +204,9 @@ export class UIControls {
       }
     }
 
-    // Update beacon button visibility
+    // Hide beacon button (beacon is now item-based, auto-collected)
     if (this.beaconButton) {
-      if (localPlayer.isOni) {
-        this.beaconButton.style.display = 'flex';
-        this.beaconButton.textContent = '📡';
-      } else {
-        this.beaconButton.style.display = 'none';
-      }
+      this.beaconButton.style.display = 'none';
     }
   }
 

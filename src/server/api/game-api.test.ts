@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
+import type { Express } from 'express';
 
 // Create mock functions
 const mockCreateGame = vi.fn();
@@ -21,8 +22,8 @@ vi.mock('../core/game-manager', () => {
 });
 
 describe('Game API Endpoints', () => {
-  let request: any;
-  let app: any;
+  let request: ReturnType<typeof supertest>;
+  let app: Express;
 
   beforeEach(async () => {
     // Reset mocks

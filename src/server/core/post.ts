@@ -8,13 +8,11 @@ export const createPost = async () => {
 
   return await reddit.submitCustomPost({
     splash: {
-      // Splash Screen Configuration
       appDisplayName: 'JetOni',
-      backgroundUri: 'default-splash.png',
-      buttonLabel: '🚀 Launch Game',
-      description: 'Chase or escape in a 3D city! Use jetpacks, dash abilities, and beacons in this thrilling multiplayer tag game.',
-      heading: 'Ready to Play?',
-      appIconUri: 'default-icon.png',
+      backgroundUri: 'cover.jpg',
+      buttonLabel: 'Play',
+      description: 'A 3D multiplayer tag game where you chase and escape in a futuristic city!',
+      heading: 'Chase or Escape!',
     },
     postData: {
       gameState: 'initial',

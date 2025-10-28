@@ -9,19 +9,19 @@ export class UIMenu {
   private uiManager: UIManager;
   private i18n: I18n;
   private username: string;
-  private gameEngine: any; // GameEngine instance
+  private gameEngine: { pause: () => void; resume: () => void } | null = null;
 
-  constructor(uiManager: UIManager, i18n: I18n, username: string, gameEngine?: any) {
+  constructor(uiManager: UIManager, i18n: I18n, username: string, gameEngine?: { pause: () => void; resume: () => void }) {
     this.uiManager = uiManager;
     this.i18n = i18n;
     this.username = username;
-    this.gameEngine = gameEngine;
+    this.gameEngine = gameEngine || null;
   }
 
   /**
    * Set game engine reference
    */
-  public setGameEngine(gameEngine: any): void {
+  public setGameEngine(gameEngine: { pause: () => void; resume: () => void }): void {
     this.gameEngine = gameEngine;
   }
 

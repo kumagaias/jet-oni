@@ -13,7 +13,7 @@ vi.mock('@devvit/redis', () => ({
 
 // Simple in-memory game manager for integration testing
 class TestGameManager {
-  private games: Map<string, any> = new Map();
+  private games: Map<string, { id: string; hostId: string; players: unknown[] }> = new Map();
   private nextGameId = 1;
 
   createGame(hostId: string, hostUsername: string, config: GameConfig) {
@@ -114,7 +114,7 @@ class TestGameManager {
       return false;
     }
 
-    const index = game.players.findIndex((p: any) => p.id === playerId);
+    const index = game.players.findIndex((p) => (p as { id: string }).id === playerId);
     if (index === -1) {
       return false;
     }

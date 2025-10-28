@@ -15,7 +15,7 @@ vi.mock('@devvit/web/server', () => ({
 
 describe('GameManager', () => {
   let gameManager: GameManager;
-  let mockRedis: any;
+  let mockRedis: typeof import('@devvit/web/server').redis;
 
   beforeEach(async () => {
     gameManager = new GameManager();
@@ -50,9 +50,9 @@ describe('GameManager', () => {
         rounds: 1,
       };
 
-      let savedGameState: any;
+      let savedGameState: { players: Array<{ isOni: boolean; isAI?: boolean }> };
       mockRedis.set.mockImplementation((key: string, data: string) => {
-        savedGameState = JSON.parse(data);
+        savedGameState = JSON.parse(data) as { players: Array<{ isOni: boolean; isAI?: boolean }> };
         return Promise.resolve(undefined);
       });
       mockRedis.sAdd.mockResolvedValue(1);
@@ -193,7 +193,7 @@ describe('GameManager', () => {
       expect(savedGameState.players).toHaveLength(2);
 
       // One player should be oni
-      const oniCount = savedGameState.players.filter((p: any) => p.isOni).length;
+      const oniCount = savedGameState.players.filter((p) => p.isOni).length;
       expect(oniCount).toBe(1);
     });
   });
@@ -404,11 +404,11 @@ describe('GameManager', () => {
       await gameManager.addAIPlayers('test_game');
 
       expect(savedGameState.players).toHaveLength(4);
-      const aiPlayers = savedGameState.players.filter((p: any) => p.isAI);
+      const aiPlayers = savedGameState.players.filter((p) => p.isAI);
       expect(aiPlayers).toHaveLength(3);
 
       // Should have assigned oni
-      const oniCount = savedGameState.players.filter((p: any) => p.isOni).length;
+      const oniCount = savedGameState.players.filter((p) => p.isOni).length;
       expect(oniCount).toBe(1);
     });
   });

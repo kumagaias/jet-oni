@@ -675,6 +675,22 @@ async function initGame(): Promise<void> {
               // Set callback to return to menu
               uiResults.setOnBackToMenu(() => {
                 uiResults.hide();
+                
+                // Reset game state
+                gameState.setGamePhase('lobby');
+                gameHasStarted = false;
+                
+                // Hide HUD and controls
+                uiHud.hide();
+                uiControls.hide();
+                
+                // Show canvas again
+                const canvas = document.getElementById('bg') as HTMLCanvasElement;
+                if (canvas) {
+                  canvas.style.display = 'block';
+                }
+                
+                // Show title screen
                 uiMenu.showTitleScreen();
               });
               

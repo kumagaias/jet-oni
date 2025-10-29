@@ -492,8 +492,6 @@ async function initGame(): Promise<void> {
       
       // Register callback for remote player updates
       realtimeSyncManager.onRemotePlayerUpdate((remotePlayers) => {
-        console.log(`[Remote Players] Received update for ${remotePlayers.length} players`);
-        
         // Update or create models for remote players
         for (const remotePlayer of remotePlayers) {
           let model = remotePlayerModels.get(remotePlayer.id);

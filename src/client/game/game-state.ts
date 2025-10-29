@@ -254,6 +254,7 @@ export class GameState {
         isAI: false,
         position: this.localPlayer.position,
         velocity: this.localPlayer.velocity,
+        rotation: this.localPlayer.rotation,
         fuel: this.localPlayer.fuel,
         survivedTime: this.localPlayer.survivedTime,
         wasTagged: false,
@@ -347,6 +348,7 @@ export class GameState {
       isAI: false,
       position: this.localPlayer.position,
       velocity: this.localPlayer.velocity,
+      rotation: this.localPlayer.rotation,
       fuel: this.localPlayer.fuel,
       survivedTime: this.localPlayer.survivedTime,
       wasTagged: false,
@@ -439,11 +441,21 @@ export class GameState {
 
   /**
    * Check if all players are oni (game over condition)
+   * Note: This only checks local and remote players visible to this client
+   * AI players on server may still be runners
    */
   public areAllPlayersOni(): boolean {
     if (!this.isPlaying()) {
       return false;
     }
+    
+    // Don't end game if there are less than 2 total players visible
+    // (AI players may exist on server)
+    const totalPlayers = 1 + this.remotePlayers.size;
+    if (totalPlayers < 2) {
+      return false; // Wait for server sync
+    }
+    
     return this.countRunnerPlayers() === 0;
   }
 

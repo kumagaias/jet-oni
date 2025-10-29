@@ -1,4 +1,5 @@
 import { Router, Request, Response } from 'express';
+import { reddit } from '@devvit/web/server';
 import { GameManager } from '../core/game-manager';
 import {
   CreateGameRequest,
@@ -6,8 +7,8 @@ import {
   JoinGameRequest,
   JoinGameResponse,
   GetGameStateResponse,
-  UpdatePlayerRequest,
-  UpdatePlayerResponse,
+  UpdatePlayerStateRequest,
+  UpdatePlayerStateResponse,
   EndGameResponse,
   GameListResponse,
 } from '../../shared/types/api';
@@ -61,7 +62,10 @@ router.post(
         return;
       }
 
-      const gameId = await gameManager.createGame(config);
+      // Get current username from Reddit
+      const username = await reddit.getCurrentUsername();
+      
+      const gameId = await gameManager.createGame(config, username || 'Host');
 
       res.json({
         success: true,
@@ -103,14 +107,14 @@ router.post(
       if (!result.success) {
         res.status(400).json({
           success: false,
-          error: result.error,
+          error: result.error || 'Failed to join game',
         });
         return;
       }
 
       res.json({
         success: true,
-        playerId: result.playerId,
+        playerId: result.playerId || '',
         gameState: result.gameState,
       });
     } catch (error) {
@@ -175,8 +179,8 @@ router.get(
 router.post(
   '/api/game/:id/update',
   async (
-    req: Request<{ id: string }, UpdatePlayerResponse, UpdatePlayerRequest>,
-    res: Response<UpdatePlayerResponse>
+    req: Request<{ id: string }, UpdatePlayerStateResponse, UpdatePlayerStateRequest>,
+    res: Response<UpdatePlayerStateResponse>
   ): Promise<void> => {
     try {
       const { id } = req.params;
@@ -401,6 +405,42 @@ router.post(
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to replace player',
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/game/:id/add-ai
+ * Add AI players to fill empty slots in a game
+ */
+router.post(
+  '/api/game/:id/add-ai',
+  async (
+    req: Request<{ id: string }, { success: boolean; error?: string }>,
+    res: Response<{ success: boolean; error?: string }>
+  ): Promise<void> => {
+    try {
+      const { id } = req.params;
+
+      if (!id) {
+        res.status(400).json({
+          success: false,
+          error: 'Game ID is required',
+        });
+        return;
+      }
+
+      await gameManager.addAIPlayers(id);
+
+      res.json({
+        success: true,
+      });
+    } catch (error) {
+      console.error('Error adding AI players:', error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to add AI players',
       });
     }
   }

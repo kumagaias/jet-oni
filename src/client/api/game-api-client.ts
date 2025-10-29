@@ -4,8 +4,8 @@ import type {
   JoinGameRequest,
   JoinGameResponse,
   GetGameStateResponse,
-  UpdatePlayerRequest,
-  UpdatePlayerResponse,
+  UpdatePlayerStateRequest,
+  UpdatePlayerStateResponse,
   EndGameRequest,
   EndGameResponse,
   GameListResponse,
@@ -102,15 +102,15 @@ export class GameAPIClient {
   async updatePlayerState(
     gameId: string,
     playerId: string,
-    state: Partial<UpdatePlayerRequest>
+    state: Partial<UpdatePlayerStateRequest>
   ): Promise<void> {
-    const request: UpdatePlayerRequest = {
+    const request: UpdatePlayerStateRequest = {
       gameId,
       playerId,
       ...state,
-    };
+    } as UpdatePlayerStateRequest;
     
-    const response = await this.post<UpdatePlayerResponse>(
+    const response = await this.post<UpdatePlayerStateResponse>(
       `/game/${gameId}/update`,
       request
     );
@@ -150,6 +150,23 @@ export class GameAPIClient {
     if (!response.success) {
       throw new GameAPIError(
         response.error || 'Failed to replace player with AI',
+        400
+      );
+    }
+  }
+
+  /**
+   * Add AI players to fill empty slots in a game
+   */
+  async addAIPlayers(gameId: string): Promise<void> {
+    const response = await this.post<{ success: boolean; error?: string }>(
+      `/game/${gameId}/add-ai`,
+      {}
+    );
+
+    if (!response.success) {
+      throw new GameAPIError(
+        response.error || 'Failed to add AI players',
         400
       );
     }

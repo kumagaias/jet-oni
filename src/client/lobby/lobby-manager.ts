@@ -5,11 +5,10 @@
 
 import type { GameAPIClient } from '../api/game-api-client.js';
 import type { GameState, Player } from '../../shared/types/game.js';
-import type { I18n } from '../i18n/i18n.js';
+
 
 export interface LobbyManagerConfig {
   gameApiClient: GameAPIClient;
-  i18n: I18n;
   pollInterval?: number;
   countdownDuration?: number;
 }
@@ -26,12 +25,10 @@ export interface LobbyEvent {
  */
 export class LobbyManager {
   private gameApiClient: GameAPIClient;
-  private i18n: I18n;
   private pollInterval: number;
   private countdownDuration: number;
   
   private gameId: string | null = null;
-  private playerId: string | null = null;
   private isHost: boolean = false;
   private gameState: GameState | null = null;
   
@@ -44,7 +41,6 @@ export class LobbyManager {
 
   constructor(config: LobbyManagerConfig) {
     this.gameApiClient = config.gameApiClient;
-    this.i18n = config.i18n;
     this.pollInterval = config.pollInterval ?? 1000; // 1 second
     this.countdownDuration = config.countdownDuration ?? 3; // 3 seconds
   }
@@ -52,9 +48,8 @@ export class LobbyManager {
   /**
    * Initialize lobby with game ID and player ID
    */
-  async initialize(gameId: string, playerId: string, isHost: boolean): Promise<void> {
+  async initialize(gameId: string, _playerId: string, isHost: boolean): Promise<void> {
     this.gameId = gameId;
-    this.playerId = playerId;
     this.isHost = isHost;
     
     // Fetch initial game state
@@ -71,7 +66,6 @@ export class LobbyManager {
     this.stopPolling();
     this.stopCountdown();
     this.gameId = null;
-    this.playerId = null;
     this.isHost = false;
     this.gameState = null;
     this.eventCallbacks.clear();
@@ -130,18 +124,31 @@ export class LobbyManager {
   /**
    * Start game early (host only)
    */
-  startGameEarly(): void {
+  async startGameEarly(): Promise<void> {
     if (!this.isHost) {
       console.warn('Only host can start game early');
       return;
     }
     
-    if (this.getPlayerCount() < 2) {
-      console.warn('Need at least 2 players to start game');
+    // Don't start if already counting down
+    if (this.isCountdownActive()) {
       return;
     }
     
-    this.triggerGameStart();
+    // Add AI players to fill empty slots before starting
+    if (this.gameId) {
+      try {
+        await this.gameApiClient.addAIPlayers(this.gameId);
+        // Refresh game state after adding AI players
+        await this.updateGameState();
+      } catch (error) {
+        console.error('Failed to add AI players:', error);
+      }
+    }
+    
+    // Start 5 second countdown
+    this.countdownDuration = 5;
+    this.startCountdown();
   }
 
   /**

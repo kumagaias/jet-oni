@@ -11,16 +11,34 @@ export class GameManager {
   /**
    * Create a new game session
    */
-  async createGame(config: GameConfig): Promise<string> {
+  async createGame(config: GameConfig, hostUsername?: string): Promise<string> {
     const gameId = this.generateGameId();
     const hostId = this.generatePlayerId();
+
+    // Create host player
+    const hostPlayer: Player = {
+      id: hostId,
+      username: hostUsername || 'Host',
+      isOni: false,
+      isAI: false,
+      position: { x: 0, y: 2, z: 0 },
+      velocity: { x: 0, y: 0, z: 0 },
+      rotation: { yaw: 0, pitch: 0 },
+      fuel: 100,
+      survivedTime: 0,
+      wasTagged: false,
+      isOnSurface: true,
+      isDashing: false,
+      isJetpacking: false,
+      beaconCooldown: 0,
+    };
 
     const gameState: GameState = {
       gameId,
       hostId,
       status: 'lobby',
       config,
-      players: [],
+      players: [hostPlayer], // Add host player to the game
       startTime: 0,
       endTime: 0,
       currentRound: 0,

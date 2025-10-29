@@ -117,8 +117,11 @@ export class UIMenu {
     // Update player list
     if (playerListElement) {
       const players = this.lobbyManager.getPlayers();
+      const maxPlayers = this.lobbyManager.getMaxPlayers();
+      const emptySlots = maxPlayers - players.length;
       
-      playerListElement.innerHTML = players.map((player, index) => {
+      // Create list items for actual players
+      const playerItems = players.map((player, index) => {
         const isCurrentPlayer = player.id === this.currentPlayerId;
         const isPlayerHost = index === 0; // First player is host
         
@@ -166,7 +169,52 @@ export class UIMenu {
             ` : ''}
           </div>
         `;
-      }).join('');
+      });
+      
+      // Create list items for empty slots (shown as AI players)
+      const emptySlotItems = Array.from({ length: emptySlots }, (_, index) => {
+        return `
+          <div class="player-list-item" style="
+            background: linear-gradient(135deg, #0a0a0a 0%, #151515 100%);
+            border: 2px solid #222;
+            padding: 10px 14px;
+            margin: 6px 0;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s ease;
+            opacity: 0.6;
+          ">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="
+                width: 8px;
+                height: 8px;
+                background: #666;
+                border-radius: 50%;
+                display: inline-block;
+              "></span>
+              <span style="
+                color: #666;
+                font-size: 13px;
+                font-style: italic;
+              ">
+                AI Player ${players.length + index + 1}
+              </span>
+            </div>
+            <span style="
+              background: #222;
+              color: #666;
+              padding: 3px 8px;
+              border-radius: 4px;
+              font-size: 10px;
+              font-weight: bold;
+            ">🤖 AI</span>
+          </div>
+        `;
+      });
+      
+      playerListElement.innerHTML = [...playerItems, ...emptySlotItems].join('');
     }
     
     // Show/hide countdown
@@ -560,7 +608,6 @@ export class UIMenu {
           // Initialize lobby manager
           this.lobbyManager = new LobbyManager({
             gameApiClient: this.gameApiClient,
-            i18n: this.i18n,
           });
           
           await this.lobbyManager.initialize(response.gameId, this.currentPlayerId, true);
@@ -914,7 +961,6 @@ export class UIMenu {
         // Initialize lobby manager
         this.lobbyManager = new LobbyManager({
           gameApiClient: this.gameApiClient,
-          i18n: this.i18n,
         });
         
         await this.lobbyManager.initialize(gameId, response.playerId, false);
@@ -1023,7 +1069,8 @@ export class UIMenu {
             }
             
             .player-list-item:hover {
-              transform: translateX(4px);
+              transform: scale(1.02);
+              box-shadow: 0 2px 8px rgba(255, 136, 0, 0.2);
             }
             
             #lobby-player-list::-webkit-scrollbar {
@@ -1046,9 +1093,46 @@ export class UIMenu {
           </style>
           
           <div id="countdown-display" style="display: none; margin-top: 15px;">
-            <p style="color: #0f0; font-size: 28px; font-weight: bold; animation: pulse 1s infinite;">
-              Starting in <span id="countdown-number">3</span>...
-            </p>
+            <div style="
+              background: linear-gradient(135deg, #ff8800 0%, #ff4400 100%);
+              border: 3px solid #fff;
+              border-radius: 50%;
+              width: 120px;
+              height: 120px;
+              margin: 0 auto;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              box-shadow: 0 0 30px rgba(255, 136, 0, 0.8), 0 0 60px rgba(255, 136, 0, 0.4);
+              animation: countdownPulse 1s infinite, countdownRotate 2s linear infinite;
+            ">
+              <span id="countdown-number" style="
+                color: #fff;
+                font-size: 64px;
+                font-weight: bold;
+                text-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+              ">5</span>
+            </div>
+            <p style="
+              color: #ff8800;
+              font-size: 24px;
+              font-weight: bold;
+              margin-top: 20px;
+              text-shadow: 0 0 10px rgba(255, 136, 0, 0.5);
+              animation: pulse 1s infinite;
+            ">GAME STARTING!</p>
+            
+            <style>
+              @keyframes countdownPulse {
+                0%, 100% { transform: scale(1); }
+                50% { transform: scale(1.1); }
+              }
+              
+              @keyframes countdownRotate {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+              }
+            </style>
           </div>
           
           <p id="waiting-message" style="color: #666; font-size: 14px; margin-top: 15px; animation: pulse 2s infinite;">
@@ -1106,7 +1190,7 @@ export class UIMenu {
     // Start button (host only)
     document.getElementById('btn-start')?.addEventListener('click', () => {
       if (this.lobbyManager) {
-        this.lobbyManager.startGameEarly();
+        void this.lobbyManager.startGameEarly();
       } else {
         this.startGame();
       }

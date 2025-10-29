@@ -23,6 +23,7 @@ export class PlayerController {
   private inputState: InputState;
   private isPointerLocked = false;
   private mouseSensitivity = 0.004; // Increased from 0.002
+  private keyboardRotationSpeed = 0.05; // Rotation speed for A/D keys
   private wasJumping = false;
   private mobileControls: MobileControls | null = null;
   private ladderSystem: LadderSystem | null = null;
@@ -152,9 +153,11 @@ export class PlayerController {
         this.inputState.backward = true;
         break;
       case 'KeyA':
+        // A key now rotates view left (handled in update)
         this.inputState.left = true;
         break;
       case 'KeyD':
+        // D key now rotates view right (handled in update)
         this.inputState.right = true;
         break;
       case 'Space':
@@ -293,6 +296,18 @@ export class PlayerController {
     if (!this.gameState.isPlaying()) return;
 
     const player = this.gameState.getLocalPlayer();
+    
+    // Handle keyboard rotation (A/D keys)
+    if (this.inputState.left) {
+      // Rotate left
+      const newYaw = player.rotation.yaw - this.keyboardRotationSpeed;
+      this.gameState.setLocalPlayerRotation({ yaw: newYaw, pitch: player.rotation.pitch });
+    }
+    if (this.inputState.right) {
+      // Rotate right
+      const newYaw = player.rotation.yaw + this.keyboardRotationSpeed;
+      this.gameState.setLocalPlayerRotation({ yaw: newYaw, pitch: player.rotation.pitch });
+    }
     
     // Update mobile controls
     if (this.mobileControls?.shouldShowMobileControls()) {
@@ -498,6 +513,7 @@ export class PlayerController {
     const rightZ = -Math.sin(yaw);
     
     // Combine input directions
+    // Note: A/D keys now only rotate view, not move left/right
     let x = 0;
     let z = 0;
     
@@ -509,14 +525,7 @@ export class PlayerController {
       x -= forwardX;
       z -= forwardZ;
     }
-    if (this.inputState.left) {
-      x -= rightX;
-      z -= rightZ;
-    }
-    if (this.inputState.right) {
-      x += rightX;
-      z += rightZ;
-    }
+    // A/D keys removed from movement - they only rotate view now
 
     // Normalize diagonal movement
     const length = Math.sqrt(x * x + z * z);

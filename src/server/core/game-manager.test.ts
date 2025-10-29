@@ -67,7 +67,9 @@ describe('GameManager', () => {
       expect(savedGameState).toBeDefined();
       expect(savedGameState.status).toBe('lobby');
       expect(savedGameState.config).toEqual(config);
-      expect(savedGameState.players).toEqual([]);
+      expect(savedGameState.players).toHaveLength(1); // Host player is automatically added
+      expect(savedGameState.players[0]?.username).toBe('Host');
+      expect(savedGameState.players[0]?.isAI).toBe(false);
       expect(savedGameState.currentRound).toBe(0);
       expect(savedGameState.timeRemaining).toBe(300);
     });

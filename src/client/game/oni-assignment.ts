@@ -7,18 +7,18 @@ import { MIN_ONI_COUNT, MIN_TOTAL_PLAYERS } from '../../shared/constants';
 export class OniAssignment {
   /**
    * Calculate the number of oni players based on total player count
-   * Minimum 2 oni, scales with player count
+   * Minimum 1 oni, scales with player count
    */
   public static calculateOniCount(totalPlayers: number): number {
     if (totalPlayers < MIN_TOTAL_PLAYERS) {
       throw new Error(`Minimum ${MIN_TOTAL_PLAYERS} players required`);
     }
 
-    // Scale oni count: 2 for 6-8 players, 3 for 9-12, 4 for 13-16, etc.
+    // Scale oni count: 1 for 4-7 players, 2 for 8-11, 3 for 12-15, etc.
     const oniCount = Math.max(MIN_ONI_COUNT, Math.floor(totalPlayers / 4));
     
-    // Ensure at least 2 runners remain
-    return Math.min(oniCount, totalPlayers - 2);
+    // Ensure at least 1 runner remains
+    return Math.min(oniCount, totalPlayers - 1);
   }
 
   /**
@@ -68,12 +68,12 @@ export class OniAssignment {
       return false;
     }
 
-    // Check minimum runner count (at least 2)
-    if (runnerCount < 2) {
+    // Check minimum runner count (at least 1)
+    if (runnerCount < 1) {
       return false;
     }
 
-    // Check total player count
+    // Check total player count (after AI players are added, should be at least MIN_TOTAL_PLAYERS)
     if (players.length < MIN_TOTAL_PLAYERS) {
       return false;
     }

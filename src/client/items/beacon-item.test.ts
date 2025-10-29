@@ -77,12 +77,15 @@ describe('BeaconItem', () => {
       });
     });
 
-    it('should clear previous items when placing new ones', () => {
+    it('should clear previous items when placing new ones', async () => {
       const buildings: { position: { x: number; y: number; z: number }; width: number; depth: number }[] = [];
 
       beaconItem.placeItems(buildings);
       const firstItems = beaconItem.getItems();
       expect(firstItems.length).toBe(2);
+
+      // Wait 1ms to ensure different timestamp
+      await new Promise(resolve => setTimeout(resolve, 1));
 
       beaconItem.placeItems(buildings);
       const secondItems = beaconItem.getItems();

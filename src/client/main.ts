@@ -13,7 +13,7 @@ import { CollisionSystem } from './environment/collision-system';
 import { PlayerController } from './player/player-controller';
 import { PlayerPhysics, BuildingData } from './player/player-physics';
 import { PlayerCamera } from './player/player-camera';
-import { BeaconSystem } from './abilities/beacon-system';
+
 import { BeaconVisual } from './effects/beacon-visual';
 import { BeaconItem } from './items/beacon-item';
 import { CarSystem } from './environment/car-system';
@@ -297,19 +297,21 @@ async function initGame(): Promise<void> {
             
             // Apply collision detection
             const collisionResult = collisionSystem.checkCollision(
+              aiPlayer.position,
               physicsResult.position,
-              physicsResult.velocity,
               0.5 // AI player radius
             );
             
             // Update AI player position and state
             gameState.setPlayerPosition(aiId, collisionResult.position);
-            gameState.setPlayerVelocity(aiId, collisionResult.velocity);
-            gameState.setPlayerOnSurface(aiId, collisionResult.isOnSurface);
+            gameState.setPlayerVelocity(aiId, physicsResult.velocity);
+            gameState.setPlayerOnSurface(aiId, physicsResult.isOnSurface);
             
             // Update AI player model
             aiModel.setPosition(collisionResult.position.x, collisionResult.position.y, collisionResult.position.z);
-            aiModel.setRotation(aiPlayer.rotation.yaw);
+            if (aiPlayer.rotation) {
+              aiModel.setRotation(aiPlayer.rotation.yaw);
+            }
             aiModel.setIsOni(aiPlayer.isOni);
           }
         }
@@ -367,7 +369,7 @@ async function initGame(): Promise<void> {
         playerCamera.update(deltaTime);
         
         // Send player state to sync manager (if game is playing)
-        if (gameState.getGamePhase() === 'playing' && currentGameId) {
+        if (gameState.getGamePhase() === 'playing' && currentGameId !== null) {
           const localPlayer = gameState.getLocalPlayer();
           gameSyncManager.sendPlayerState({
             position: localPlayer.position,
@@ -433,7 +435,9 @@ async function initGame(): Promise<void> {
             remotePlayer.position.y,
             remotePlayer.position.z
           );
-          model.setRotation(remotePlayer.rotation.yaw);
+          if (remotePlayer.rotation) {
+            model.setRotation(remotePlayer.rotation.yaw);
+          }
           model.setIsOni(remotePlayer.isOni);
           
           // Update game state with remote player data
@@ -481,7 +485,7 @@ async function initGame(): Promise<void> {
       uiControls.hide(); // Hide until game starts
       
       // Add HUD update to game loop
-      gameEngine.onUpdate((deltaTime: number) => {
+      gameEngine.onUpdate((_deltaTime: number) => {
         if (gameState.getGamePhase() === 'playing') {
           // No beacon cooldown in item-based system
           uiHud.update(0);
@@ -505,9 +509,17 @@ async function initGame(): Promise<void> {
         uiHud.startTimer(300); // Start 5 minute timer
         uiControls.show();
         
+        // Set random spawn position for local player
+        const spawnX = (Math.random() - 0.5) * 180; // Random X between -90 and 90
+        const spawnZ = (Math.random() - 0.5) * 180; // Random Z between -90 and 90
+        const localPlayer = gameState.getLocalPlayer();
+        localPlayer.position = { x: spawnX, y: 2, z: spawnZ };
+        localPlayer.velocity = { x: 0, y: 0, z: 0 };
+        console.log(`Spawned at (${spawnX.toFixed(1)}, 2, ${spawnZ.toFixed(1)})`);
+        
         // Start game synchronization if gameId is provided
         if (e.detail?.gameId) {
-          currentGameId = e.detail.gameId;
+          currentGameId = e.detail.gameId as string;
           gameSyncManager.startSync(currentGameId, gameState.getLocalPlayer().id);
           console.log(`Started game sync for game ${currentGameId}`);
         }
@@ -577,8 +589,20 @@ async function initGame(): Promise<void> {
             // Show results screen with game results
             if (endGameResponse.success && endGameResponse.results) {
               const { UIResults } = await import('./ui/ui-results');
-              const uiResults = new UIResults(i18n);
-              uiResults.show(endGameResponse.results);
+              const { GameResults } = await import('./game/game-results');
+              const gameResults = new GameResults();
+              
+              // Convert PlayerResult[] to Player[] for GameResults
+              const players = gameState.getAllPlayers().map(player => ({
+                ...player,
+                survivedTime: endGameResponse.results?.players.find(p => p.id === player.id)?.survivedTime || 0,
+                wasTagged: endGameResponse.results?.players.find(p => p.id === player.id)?.wasTagged || false,
+              }));
+              
+              gameResults.setResults(players, null);
+              const uiResults = new UIResults(gameResults, i18n);
+              uiResults.create();
+              uiResults.show(gameState.getLocalPlayer().id);
             }
           } catch (error) {
             console.error('Failed to end game:', error);

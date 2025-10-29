@@ -99,6 +99,25 @@ describe('Game Timer Integration', () => {
         rounds: 1,
       });
       gameState.setGamePhase('playing');
+      
+      // Add a remote player and make both oni
+      gameState.updateRemotePlayer({
+        id: 'player2',
+        username: 'Player 2',
+        isOni: true,
+        isAI: false,
+        position: { x: 10, y: 0, z: 10 },
+        velocity: { x: 0, y: 0, z: 0 },
+        rotation: { yaw: 0, pitch: 0 },
+        fuel: 100,
+        survivedTime: 0,
+        wasTagged: false,
+        isOnSurface: true,
+        isDashing: false,
+        isJetpacking: false,
+        beaconCooldown: 0,
+      });
+      
       gameState.setLocalPlayerIsOni(true);
 
       gameEndManager.update();
@@ -115,6 +134,25 @@ describe('Game Timer Integration', () => {
         rounds: 1,
       });
       gameState.setGamePhase('playing');
+      
+      // Add a remote player and make both oni
+      gameState.updateRemotePlayer({
+        id: 'player2',
+        username: 'Player 2',
+        isOni: true,
+        isAI: false,
+        position: { x: 10, y: 0, z: 10 },
+        velocity: { x: 0, y: 0, z: 0 },
+        rotation: { yaw: 0, pitch: 0 },
+        fuel: 100,
+        survivedTime: 0,
+        wasTagged: false,
+        isOnSurface: true,
+        isDashing: false,
+        isJetpacking: false,
+        beaconCooldown: 0,
+      });
+      
       gameState.setLocalPlayerIsOni(true);
 
       gameEndManager.update();

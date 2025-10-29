@@ -252,7 +252,9 @@ export class RealtimeSyncManager {
     // Messages are sent through the server-side realtime.send API
     // For client-to-client communication, we would need to implement
     // a server endpoint that receives the state and broadcasts it
-    console.log('Sending player state via Realtime:', message);
+    
+    // TODO: Implement actual message sending through server endpoint
+    // For now, this is a placeholder that demonstrates the throttling logic
   }
 
   /**

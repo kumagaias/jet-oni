@@ -1111,13 +1111,13 @@ export class UIMenu {
             }
           </style>
           
-          <div id="countdown-display" style="display: none; margin-top: 15px;">
+          <div id="countdown-display" style="display: none; margin-top: 10px;">
             <div style="
               background: linear-gradient(135deg, #ff8800 0%, #ff4400 100%);
               border: 3px solid #fff;
               border-radius: 50%;
-              width: 120px;
-              height: 120px;
+              width: 100px;
+              height: 100px;
               margin: 0 auto;
               display: flex;
               align-items: center;
@@ -1127,16 +1127,17 @@ export class UIMenu {
             ">
               <span id="countdown-number" style="
                 color: #fff;
-                font-size: 64px;
+                font-size: 48px;
                 font-weight: bold;
                 text-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
               ">10</span>
             </div>
             <p style="
               color: #ff8800;
-              font-size: 24px;
+              font-size: 18px;
               font-weight: bold;
-              margin-top: 20px;
+              margin-top: 10px;
+              margin-bottom: 5px;
               text-shadow: 0 0 10px rgba(255, 136, 0, 0.5);
               animation: pulse 1s infinite;
             ">GAME STARTING!</p>
@@ -1144,7 +1145,7 @@ export class UIMenu {
             <style>
               @keyframes countdownPulse {
                 0%, 100% { transform: scale(1); }
-                50% { transform: scale(1.1); }
+                50% { transform: scale(1.05); }
               }
             </style>
           </div>

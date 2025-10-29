@@ -79,7 +79,8 @@ describe('UIMenu', () => {
       // Username is not displayed in current implementation
       expect(mockOverlay.innerHTML).toContain('btn-create-game');
       expect(mockOverlay.innerHTML).toContain('btn-join-game');
-      expect(mockOverlay.innerHTML).toContain('btn-stats');
+      // Statistics button removed
+      // expect(mockOverlay.innerHTML).toContain('btn-stats');
     });
 
     it('should display language selection buttons', () => {
@@ -132,14 +133,15 @@ describe('UIMenu', () => {
       expect(mockOverlay.innerHTML).toContain('btn-back');
     });
 
-    it('should navigate to stats screen when button is clicked', () => {
-      uiMenu.showTitleScreen();
+    // Statistics removed - not implemented
+    // it('should navigate to stats screen when button is clicked', () => {
+    //   uiMenu.showTitleScreen();
 
-      const statsButton = document.getElementById('btn-stats') as HTMLButtonElement;
-      statsButton.click();
+    //   const statsButton = document.getElementById('btn-stats') as HTMLButtonElement;
+    //   statsButton.click();
 
-      expect(mockOverlay.innerHTML).toContain('btn-back');
-    });
+    //   expect(mockOverlay.innerHTML).toContain('btn-back');
+    // });
   });
 
   describe('Create Game Screen', () => {
@@ -291,23 +293,24 @@ describe('UIMenu', () => {
     });
   });
 
-  describe('Statistics Screen', () => {
-    it('should display statistics elements', () => {
-      uiMenu.showStatsScreen();
+  // Statistics Screen removed - not implemented
+  // describe('Statistics Screen', () => {
+  //   it('should display statistics elements', () => {
+  //     uiMenu.showStatsScreen();
 
-      expect(mockOverlay.innerHTML).toContain('btn-back');
-    });
+  //     expect(mockOverlay.innerHTML).toContain('btn-back');
+  //   });
 
-    it('should navigate back to title screen when back button is clicked', () => {
-      uiMenu.showStatsScreen();
+  //   it('should navigate back to title screen when back button is clicked', () => {
+  //     uiMenu.showStatsScreen();
 
-      const backButton = document.getElementById('btn-back') as HTMLButtonElement;
-      backButton.click();
+  //     const backButton = document.getElementById('btn-back') as HTMLButtonElement;
+  //     backButton.click();
 
-      // Username is not displayed in current implementation
-      expect(mockOverlay.innerHTML).toContain('btn-create-game');
-    });
-  });
+  //     // Username is not displayed in current implementation
+  //     expect(mockOverlay.innerHTML).toContain('btn-create-game');
+  //   });
+  // });
 
   describe('Language Persistence', () => {
     it('should change language when button is clicked', () => {

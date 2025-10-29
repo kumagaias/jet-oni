@@ -374,21 +374,6 @@ export class UIMenu {
           font-weight: bold;
           transition: transform 0.1s;
           ">▶ ${this.i18n.t('menu.joinGame').toUpperCase()}</button>
-        
-        <button id="btn-stats" style="
-          width: 100%;
-          padding: 18px;
-          margin: 10px 0;
-          font-size: 18px;
-          cursor: pointer;
-          font-family: monospace;
-          border: 3px solid #666;
-          background: #222;
-          color: #aaa;
-          border-radius: 8px;
-          font-weight: bold;
-          transition: transform 0.1s;
-        ">▶ ${this.i18n.t('menu.statistics').toUpperCase()}</button>
       </div>
     `;
     
@@ -425,9 +410,10 @@ export class UIMenu {
       void this.showJoinGameScreen();
     });
     
-    document.getElementById('btn-stats')?.addEventListener('click', () => {
-      this.showStatsScreen();
-    });
+    // Statistics removed - not implemented
+    // document.getElementById('btn-stats')?.addEventListener('click', () => {
+    //   this.showStatsScreen();
+    // });
   }
 
   /**

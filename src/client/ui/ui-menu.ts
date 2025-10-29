@@ -169,6 +169,8 @@ export class UIMenu {
                 font-size: 10px;
                 font-weight: bold;
                 box-shadow: 0 2px 4px rgba(255, 215, 0, 0.3);
+                flex-shrink: 0;
+                margin-left: 8px;
               ">👑 HOST</span>
             ` : ''}
           </div>

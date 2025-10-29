@@ -72,6 +72,17 @@ export class GameManager {
       return { success: false, error: 'Game has already started' };
     }
 
+    // Check if game has been running for more than 20 minutes
+    if (gameState.startTime > 0) {
+      const now = Date.now();
+      const gameAge = now - gameState.startTime;
+      const MAX_GAME_AGE = 20 * 60 * 1000; // 20 minutes in milliseconds
+
+      if (gameAge > MAX_GAME_AGE) {
+        return { success: false, error: 'Game has been running for too long (20+ minutes)' };
+      }
+    }
+
     if (gameState.players.length >= gameState.config.totalPlayers) {
       return { success: false, error: 'Game is full' };
     }
@@ -291,6 +302,18 @@ export class GameManager {
               hostUsername.startsWith('TempUser')) {
             console.log(`Skipping game ${gameState.gameId} with invalid host: ${hostUsername}`);
             continue;
+          }
+
+          // Skip games that have been running for more than 20 minutes
+          if (gameState.startTime > 0) {
+            const now = Date.now();
+            const gameAge = now - gameState.startTime;
+            const MAX_GAME_AGE = 20 * 60 * 1000; // 20 minutes in milliseconds
+
+            if (gameAge > MAX_GAME_AGE) {
+              console.log(`Skipping game ${gameState.gameId} - too old (${Math.floor(gameAge / 60000)} minutes)`);
+              continue;
+            }
           }
 
           games.push({

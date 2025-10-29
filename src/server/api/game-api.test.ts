@@ -175,6 +175,21 @@ describe('Game API Endpoints', () => {
       expect(response.body.success).toBe(false);
       expect(response.body.error).toBe('Game is full');
     });
+
+    it('should return error if game has been running for more than 20 minutes', async () => {
+      mockJoinGame.mockResolvedValue({
+        success: false,
+        error: 'Game has been running for too long (20+ minutes)',
+      });
+
+      const response = await request(app)
+        .post('/api/game/join')
+        .send({ gameId: 'game_123', username: 'TestPlayer' });
+
+      expect(response.status).toBe(400);
+      expect(response.body.success).toBe(false);
+      expect(response.body.error).toContain('20+ minutes');
+    });
   });
 
   describe('GET /api/game/:id', () => {

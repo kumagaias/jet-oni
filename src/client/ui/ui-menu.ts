@@ -274,8 +274,8 @@ export class UIMenu {
       }
     }
     
-    // Dispatch custom event to notify game start with config
-    window.dispatchEvent(new CustomEvent('gameStart', { 
+    // Dispatch custom event to start countdown before game start
+    window.dispatchEvent(new CustomEvent('gameStartCountdown', { 
       detail: { 
         config,
         gameId: this.currentGameId 

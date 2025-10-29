@@ -56,7 +56,8 @@ async function initGame(): Promise<void> {
     const data = (await response.json()) as InitResponse;
     
     if (data.type === 'init') {
-      const playerId = data.username || 'anonymous';
+      // Generate unique player ID
+      const playerId = data.username || `player_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
       // Initialize game state with player ID
       const gameState = new GameState(playerId);
@@ -738,10 +739,17 @@ async function initGame(): Promise<void> {
                 // Resume game engine (for background animation)
                 gameEngine.resume();
                 
+                // Ensure overlay is visible
+                const overlay = document.querySelector('.overlay') as HTMLElement;
+                if (overlay) {
+                  overlay.style.display = 'flex';
+                  console.log('[Back to Menu] Overlay display set to flex');
+                }
+                
                 // Show title screen
                 uiMenu.showTitleScreen();
                 
-                console.log('[Back to Menu] Cleanup complete');
+                console.log('[Back to Menu] Cleanup complete, title screen should be visible');
               });
               
               uiResults.show(gameState.getLocalPlayer().id);

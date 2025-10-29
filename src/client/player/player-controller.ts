@@ -300,12 +300,12 @@ export class PlayerController {
     // Handle keyboard rotation (A/D keys)
     if (this.inputState.left) {
       // Rotate left
-      const newYaw = player.rotation.yaw - this.keyboardRotationSpeed;
+      const newYaw = player.rotation.yaw + this.keyboardRotationSpeed;
       this.gameState.setLocalPlayerRotation(newYaw, player.rotation.pitch);
     }
     if (this.inputState.right) {
       // Rotate right
-      const newYaw = player.rotation.yaw + this.keyboardRotationSpeed;
+      const newYaw = player.rotation.yaw - this.keyboardRotationSpeed;
       this.gameState.setLocalPlayerRotation(newYaw, player.rotation.pitch);
     }
     

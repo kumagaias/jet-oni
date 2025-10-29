@@ -501,15 +501,20 @@ async function initGame(): Promise<void> {
       uiControls.hide(); // Hide until game starts
       
       // Add HUD update to game loop
+      let lastGameEndCheck = 0;
       gameEngine.onUpdate((_deltaTime: number) => {
         if (gameState.getGamePhase() === 'playing') {
           // No beacon cooldown in item-based system
           uiHud.update(0);
           
-          // Check if game should end
-          if (gameState.shouldGameEnd()) {
-            console.log('Game should end - triggering gameEnd event');
-            window.dispatchEvent(new Event('gameEnd'));
+          // Check if game should end (only once per second to reduce overhead)
+          const now = Date.now();
+          if (now - lastGameEndCheck > 1000) {
+            lastGameEndCheck = now;
+            if (gameState.shouldGameEnd()) {
+              console.log('Game should end - triggering gameEnd event');
+              window.dispatchEvent(new Event('gameEnd'));
+            }
           }
         }
       });

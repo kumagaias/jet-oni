@@ -449,9 +449,9 @@ export class GameState {
       return false;
     }
     
-    // Don't check for game end in the first 5 seconds (allow time for sync)
+    // Don't check for game end in the first 10 seconds (allow time for sync)
     const elapsed = this.getElapsedTime();
-    if (elapsed < 5) {
+    if (elapsed < 10) {
       return false;
     }
     

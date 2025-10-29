@@ -257,29 +257,18 @@ export class RealtimeSyncManager {
       message.wasTagged = state.wasTagged;
     }
 
-    // Send via Redis-based sync API (Devvit Realtime has timeout issues)
-    fetch('/api/sync/update', {
+    // Send via server API (Devvit Web requires server-side realtime.send)
+    fetch('/api/realtime/broadcast', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         gameId: this.gameId,
-        playerId: this.playerId,
-        state: {
-          position: state.position,
-          velocity: state.velocity,
-          rotation: state.rotation,
-          fuel: state.fuel,
-          isOni: state.isOni,
-          isDashing: state.isDashing,
-          isJetpacking: state.isJetpacking,
-          isOnSurface: state.isOnSurface,
-          timestamp: now,
-        },
+        message,
       }),
     }).catch((error) => {
-      console.error('Failed to update player state:', error);
+      console.error('Failed to broadcast player state:', error);
     });
   }
 

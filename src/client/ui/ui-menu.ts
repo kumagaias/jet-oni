@@ -491,7 +491,7 @@ export class UIMenu {
           <div style="margin-bottom: 15px;">
             <p style="color: #aaa; font-size: 11px; margin-bottom: 5px;">${this.i18n.t('settings.players').toUpperCase()}:</p>
             <div id="player-options">
-              ${[4, 6, 8, 10, 15, 20].map(num => `
+              ${[6, 8, 10, 15, 20].map(num => `
                 <button class="option-btn" data-option="players" data-value="${num}" style="
                   padding: 8px 16px;
                   margin: 3px;
@@ -520,24 +520,6 @@ export class UIMenu {
                   background: #222;
                   color: #aaa;
                 ">${this.i18n.t('settings.minutes', { value: min })}</button>
-              `).join('')}
-            </div>
-          </div>
-          
-          <div style="margin-bottom: 15px;">
-            <p style="color: #aaa; font-size: 11px; margin-bottom: 5px;">${this.i18n.t('settings.rounds').toUpperCase()}:</p>
-            <div id="rounds-options">
-              ${[1, 3, 5].map(num => `
-                <button class="option-btn" data-option="rounds" data-value="${num}" style="
-                  padding: 8px 16px;
-                  margin: 3px;
-                  font-size: 12px;
-                  cursor: pointer;
-                  font-family: monospace;
-                  border: 1px solid #666;
-                  background: #222;
-                  color: #aaa;
-                ">${num}</button>
               `).join('')}
             </div>
           </div>
@@ -580,7 +562,6 @@ export class UIMenu {
     const selectedOptions = {
       players: 6,
       duration: 3,
-      rounds: 1,
     };
     
     // Set initial button states
@@ -598,7 +579,6 @@ export class UIMenu {
     
     setInitialState('players', 6);
     setInitialState('duration', 3);
-    setInitialState('rounds', 1);
     
     // Option buttons
     document.querySelectorAll('.option-btn').forEach(btn => {
@@ -641,7 +621,7 @@ export class UIMenu {
         const config: GameConfig = {
           totalPlayers: selectedOptions.players,
           roundDuration: selectedOptions.duration * 60, // Convert minutes to seconds
-          rounds: selectedOptions.rounds,
+          rounds: 1, // Fixed to 1 round
         };
         
         // Call API to create game

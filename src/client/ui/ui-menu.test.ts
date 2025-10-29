@@ -148,13 +148,12 @@ describe('UIMenu', () => {
 
       expect(mockOverlay.innerHTML).toContain('player-options');
       expect(mockOverlay.innerHTML).toContain('duration-options');
-      expect(mockOverlay.innerHTML).toContain('rounds-options');
     });
 
     it('should display player count options', () => {
       uiMenu.showCreateGameScreen();
 
-      const playerOptions = [4, 6, 8, 10, 15, 20];
+      const playerOptions = [6, 8, 10, 15, 20];
       playerOptions.forEach(count => {
         expect(mockOverlay.innerHTML).toContain(`data-value="${count}"`);
       });
@@ -165,16 +164,6 @@ describe('UIMenu', () => {
 
       expect(mockOverlay.innerHTML).toContain('data-value="3"');
       expect(mockOverlay.innerHTML).toContain('data-value="5"');
-    });
-
-    it('should display rounds options', () => {
-      uiMenu.showCreateGameScreen();
-
-      const roundOptions = [1, 3, 5];
-      roundOptions.forEach(count => {
-        const selector = `[data-option="rounds"][data-value="${count}"]`;
-        expect(document.querySelector(selector)).toBeTruthy();
-      });
     });
 
     it('should highlight selected option', () => {

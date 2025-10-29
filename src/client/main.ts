@@ -351,7 +351,6 @@ async function initGame(): Promise<void> {
           let finalVelocity = physicsResult.velocity;
           if (carCollision.collided) {
             finalVelocity = carCollision.newVelocity;
-            console.log('Car collision! Bouncing player');
           }
           
           // Apply collision detection with buildings
@@ -442,7 +441,6 @@ async function initGame(): Promise<void> {
             model = new PlayerModel(false);
             gameEngine.addToScene(model.getModel());
             remotePlayerModels.set(remotePlayer.id, model);
-            console.log(`Created model for remote player ${remotePlayer.username}`);
           }
           
           // Update model position and state (interpolated position from GameSyncManager)
@@ -482,7 +480,6 @@ async function initGame(): Promise<void> {
             gameEngine.removeFromScene(model.getModel());
             remotePlayerModels.delete(playerId);
             gameState.removePlayer(playerId);
-            console.log(`Removed model for remote player ${playerId}`);
           }
         }
       });

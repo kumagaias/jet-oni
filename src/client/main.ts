@@ -588,8 +588,18 @@ async function initGame(): Promise<void> {
       window.addEventListener('gameStartCountdown', ((e: CustomEvent) => {
         console.log('[Countdown] Starting countdown');
         
-        // Hide lobby screen but keep phase as 'lobby' temporarily
-        // Canvas is already visible from lobby
+        // Hide lobby screen (overlay)
+        const overlay = document.querySelector('.overlay') as HTMLElement;
+        if (overlay) {
+          overlay.style.display = 'none';
+        }
+        
+        // Show canvas and resume game engine
+        const canvas = document.getElementById('bg') as HTMLCanvasElement;
+        if (canvas) {
+          canvas.style.display = 'block';
+        }
+        gameEngine.resume();
         
         // Set game config if provided
         if (e.detail?.config) {

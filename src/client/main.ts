@@ -546,6 +546,11 @@ async function initGame(): Promise<void> {
         uiHud.startTimer(gameState.getGameConfig()?.roundDuration ?? 300);
         uiControls.show();
         
+        // Debug: Log initial player state (once at game start)
+        console.log('[Game Start] Local player isOni:', gameState.getLocalPlayer().isOni);
+        console.log('[Game Start] ONI count:', gameState.countOniPlayers(), 'Runners:', gameState.countRunnerPlayers());
+        console.log('[Game Start] All players:', gameState.getAllPlayers().length);
+        
         // Set random spawn position for local player
         const spawnX = (Math.random() - 0.5) * 180; // Random X between -90 and 90
         const spawnZ = (Math.random() - 0.5) * 180; // Random Z between -90 and 90
@@ -562,6 +567,8 @@ async function initGame(): Promise<void> {
         }
         
         // Assign random ONI
+        // Note: In multiplayer, ONI assignment should be done by the server
+        // For now, each client assigns ONI independently (will be synced via Realtime)
         const allPlayers = gameState.getAllPlayers();
         
         if (allPlayers.length > 0) {
@@ -577,6 +584,7 @@ async function initGame(): Promise<void> {
               wasOni = true;
             } else {
               // Remote/AI player is ONI
+              gameState.setLocalPlayerIsOni(false); // Explicitly set local player as runner
               const remotePlayer = gameState.getPlayer(oniPlayer.id);
               if (remotePlayer) {
                 remotePlayer.isOni = true;

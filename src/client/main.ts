@@ -214,6 +214,7 @@ async function initGame(): Promise<void> {
       
       // Track previous ONI state to detect changes
       let wasOni = gameState.getLocalPlayer().isOni;
+      let gameHasStarted = false;
       
       // Setup game loop
       gameEngine.onUpdate((deltaTime: number) => {
@@ -234,9 +235,9 @@ async function initGame(): Promise<void> {
           inputState.beacon = true;
         }
         
-        // Check if player became ONI
+        // Check if player became ONI (only after game has started)
         const localPlayer = gameState.getLocalPlayer();
-        if (localPlayer.isOni && !wasOni) {
+        if (gameHasStarted && localPlayer.isOni && !wasOni) {
           console.log('Became ONI');
         }
         wasOni = localPlayer.isOni;
@@ -505,6 +506,7 @@ async function initGame(): Promise<void> {
       window.addEventListener('gameStart', ((e: CustomEvent) => {
         console.log('Game starting - showing HUD and controls');
         gameState.setGamePhase('playing');
+        gameHasStarted = true; // Mark that game has started
         uiHud.show();
         uiHud.startTimer(300); // Start 5 minute timer
         uiControls.show();

@@ -547,9 +547,10 @@ async function initGame(): Promise<void> {
         uiControls.show();
         
         // Debug: Log initial player state (once at game start)
+        const allPlayersAtStart = gameState.getAllPlayers();
         console.log('[Game Start] Local player isOni:', gameState.getLocalPlayer().isOni);
         console.log('[Game Start] ONI count:', gameState.countOniPlayers(), 'Runners:', gameState.countRunnerPlayers());
-        console.log('[Game Start] All players:', gameState.getAllPlayers().length);
+        console.log('[Game Start] All players:', allPlayersAtStart.length, allPlayersAtStart.map(p => ({ id: p.id, username: p.username, isAI: p.isAI })));
         
         // Set random spawn position for local player
         const spawnX = (Math.random() - 0.5) * 180; // Random X between -90 and 90
@@ -566,38 +567,41 @@ async function initGame(): Promise<void> {
           console.log(`Connecting to Realtime for game ${currentGameId}`);
         }
         
-        // Assign random ONI
+        // Assign random ONI after a short delay to ensure all players are loaded
         // Note: In multiplayer, ONI assignment should be done by the server
         // For now, each client assigns ONI independently (will be synced via Realtime)
-        const allPlayers = gameState.getAllPlayers();
-        
-        if (allPlayers.length > 0) {
-          const randomIndex = Math.floor(Math.random() * allPlayers.length);
-          const oniPlayer = allPlayers[randomIndex];
+        setTimeout(() => {
+          const allPlayers = gameState.getAllPlayers();
+          console.log('[ONI Assignment] Total players:', allPlayers.length);
           
-          if (oniPlayer) {
-            if (oniPlayer.id === gameState.getLocalPlayer().id) {
-              // Local player is ONI
-              gameState.setLocalPlayerIsOni(true);
-              console.log('You are ONI!');
-              // Update wasOni to prevent "Became ONI" message
-              wasOni = true;
-            } else {
-              // Remote/AI player is ONI
-              gameState.setLocalPlayerIsOni(false); // Explicitly set local player as runner
-              const remotePlayer = gameState.getPlayer(oniPlayer.id);
-              if (remotePlayer) {
-                remotePlayer.isOni = true;
-                // Update AI model color
-                const aiModel = aiPlayerModels.get(oniPlayer.id);
-                if (aiModel) {
-                  aiModel.setIsOni(true);
+          if (allPlayers.length > 0) {
+            const randomIndex = Math.floor(Math.random() * allPlayers.length);
+            const oniPlayer = allPlayers[randomIndex];
+            
+            if (oniPlayer) {
+              if (oniPlayer.id === gameState.getLocalPlayer().id) {
+                // Local player is ONI
+                gameState.setLocalPlayerIsOni(true);
+                console.log('You are ONI!');
+                // Update wasOni to prevent "Became ONI" message
+                wasOni = true;
+              } else {
+                // Remote/AI player is ONI
+                gameState.setLocalPlayerIsOni(false); // Explicitly set local player as runner
+                const remotePlayer = gameState.getPlayer(oniPlayer.id);
+                if (remotePlayer) {
+                  remotePlayer.isOni = true;
+                  // Update AI model color
+                  const aiModel = aiPlayerModels.get(oniPlayer.id);
+                  if (aiModel) {
+                    aiModel.setIsOni(true);
+                  }
+                  console.log(`${oniPlayer.username} is ONI!`);
                 }
-                console.log(`${oniPlayer.username} is ONI!`);
               }
             }
           }
-        }
+        }, 100); // 100ms delay to ensure AI players are added
         
         // Place beacon items on the map
         const buildings = cityGenerator.getBuildingData();

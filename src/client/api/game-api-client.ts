@@ -197,6 +197,22 @@ export class GameAPIClient {
   }
 
   /**
+   * Delete a game (host only)
+   */
+  async deleteGame(gameId: string): Promise<void> {
+    const response = await this.delete<{ success: boolean; error?: string }>(
+      `/game/${gameId}`
+    );
+
+    if (!response.success) {
+      throw new GameAPIError(
+        response.error || 'Failed to delete game',
+        400
+      );
+    }
+  }
+
+  /**
    * Generic GET request with retry logic
    */
   private async get<T>(endpoint: string): Promise<T> {
@@ -218,6 +234,18 @@ export class GameAPIClient {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(body),
+    });
+  }
+
+  /**
+   * Generic DELETE request with retry logic
+   */
+  private async delete<T>(endpoint: string): Promise<T> {
+    return this.fetchWithRetry<T>(`${this.baseUrl}${endpoint}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
     });
   }
 

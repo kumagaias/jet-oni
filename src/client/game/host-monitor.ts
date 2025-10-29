@@ -111,6 +111,26 @@ export class HostMonitor {
   }
 
   /**
+   * Delete game when host exits (lobby or game end)
+   */
+  public async deleteGameOnExit(): Promise<void> {
+    if (!this.currentGameId) {
+      console.warn('[HostMonitor] No game to delete');
+      return;
+    }
+
+    const gameId = this.currentGameId;
+    this.stop(); // Stop monitoring first
+
+    try {
+      await this.gameApiClient.deleteGame(gameId);
+      console.log('[HostMonitor] Game deleted successfully:', gameId);
+    } catch (error) {
+      console.error('[HostMonitor] Failed to delete game:', error);
+    }
+  }
+
+  /**
    * Check if currently monitoring
    */
   public isMonitoring(): boolean {

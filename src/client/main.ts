@@ -25,6 +25,7 @@ import { UIManager } from './ui/ui-manager';
 import { UIMenu } from './ui/ui-menu';
 import { GameAPIClient } from './api/game-api-client';
 import { RealtimeSyncManager } from './sync/realtime-sync-manager';
+import { HostMonitor } from './game/host-monitor';
 import { en } from './i18n/translations/en';
 import { jp } from './i18n/translations/jp';
 import { InitResponse } from '../shared/types/api';
@@ -465,6 +466,12 @@ async function initGame(): Promise<void> {
       // Initialize RealtimeSyncManager
       const realtimeSyncManager = new RealtimeSyncManager();
       
+      // Initialize HostMonitor
+      const hostMonitor = new HostMonitor(gameApiClient);
+      
+      // Track if local player is host
+      let isHost = false;
+      
       // Register callback for player disconnection
       realtimeSyncManager.onPlayerDisconnect(async (playerId) => {
         console.log(`Player ${playerId} disconnected`);
@@ -680,6 +687,22 @@ async function initGame(): Promise<void> {
         console.log('Beacon items placed on map');
       }) as EventListener);
       
+      // Listen for lobby exit event (when host leaves lobby)
+      window.addEventListener('lobbyExit', (async () => {
+        console.log('[Lobby Exit] Host leaving lobby');
+        
+        // If host, delete the game
+        if (isHost && currentGameId) {
+          console.log('[Lobby Exit] Deleting game as host');
+          await hostMonitor.deleteGameOnExit();
+        }
+        
+        // Clean up
+        hostMonitor.stop();
+        isHost = false;
+        currentGameId = null;
+      }) as EventListener);
+      
       // Listen for lobby event (when user creates a game)
       window.addEventListener('showLobby', (async (e: CustomEvent) => {
         console.log('[Phase Change] Showing lobby - setting phase to "lobby"');
@@ -693,6 +716,9 @@ async function initGame(): Promise<void> {
           await realtimeSyncManager.disconnect();
           currentGameId = null;
         }
+        
+        // Stop host monitoring
+        hostMonitor.stop();
         
         // Clear remote player models
         remotePlayerModels.forEach((model) => {
@@ -718,7 +744,22 @@ async function initGame(): Promise<void> {
         
         console.log('[Lobby] Cleanup complete');
         
-        const { currentPlayers, maxPlayers, isHost } = e.detail;
+        const { currentPlayers, maxPlayers, isHost: isHostFlag, gameId } = e.detail;
+        isHost = isHostFlag;
+        
+        // Set current game ID
+        if (gameId) {
+          currentGameId = gameId;
+          
+          // Start host monitoring
+          if (isHost) {
+            console.log('[Lobby] Starting as host');
+            hostMonitor.startAsHost(gameId);
+          } else {
+            console.log('[Lobby] Starting as participant');
+            hostMonitor.startAsParticipant(gameId);
+          }
+        }
         
         // Add AI players to fill remaining slots
         const aiCount = maxPlayers - currentPlayers;
@@ -727,7 +768,7 @@ async function initGame(): Promise<void> {
         }
         
         // Show lobby with human player count only (not including AI)
-        uiMenu.showLobbyScreen(currentPlayers, maxPlayers, isHost);
+        uiMenu.showLobbyScreen(currentPlayers, maxPlayers, isHostFlag);
       }) as EventListener);
       
       // Listen for game end event

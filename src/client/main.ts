@@ -584,6 +584,13 @@ async function initGame(): Promise<void> {
       window.addEventListener('gameStart', ((e: CustomEvent) => {
         console.log('[Phase Change] Game starting - setting phase to "playing"');
         
+        // Show canvas and resume game engine
+        const canvas = document.getElementById('bg') as HTMLCanvasElement;
+        if (canvas) {
+          canvas.style.display = 'block';
+        }
+        gameEngine.resume();
+        
         // Set game config if provided
         if (e.detail?.config) {
           gameState.setGameConfig(e.detail.config);
@@ -747,6 +754,15 @@ async function initGame(): Promise<void> {
         gameState.setLocalPlayerIsOni(false);
         
         console.log('[Lobby] Cleanup complete');
+        
+        // Hide canvas during lobby
+        const canvas = document.getElementById('bg') as HTMLCanvasElement;
+        if (canvas) {
+          canvas.style.display = 'none';
+        }
+        
+        // Pause game engine
+        gameEngine.pause();
         
         const { currentPlayers, maxPlayers, isHost: isHostFlag, gameId } = e.detail;
         isHost = isHostFlag;

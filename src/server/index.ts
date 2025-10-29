@@ -170,6 +170,22 @@ app.use(syncApiRouter);
 
 app.use(router);
 
+// Start periodic cleanup of stale games
+import { GameManager } from './core/game-manager';
+const gameManager = new GameManager();
+
+// Clean up stale games every 2 minutes
+setInterval(() => {
+  void gameManager.cleanupStaleGames();
+}, 2 * 60 * 1000);
+
+// Run initial cleanup after 30 seconds
+setTimeout(() => {
+  void gameManager.cleanupStaleGames();
+}, 30 * 1000);
+
+console.log('[Server] Stale game cleanup task started');
+
 const server = createServer(app);
 server.on('error', (err) => console.error(`server error; ${err.stack}`));
 server.listen(getServerPort());

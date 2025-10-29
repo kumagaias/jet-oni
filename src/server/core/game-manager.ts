@@ -545,5 +545,64 @@ export class GameManager {
     return { success: true };
   }
 
+  /**
+   * Clean up stale games (games in lobby with no recent heartbeat)
+   * Should be called periodically
+   */
+  async cleanupStaleGames(): Promise<number> {
+    const gameIds = await RedisStorage.getActiveGames();
+    let cleanedCount = 0;
+
+    const now = Date.now();
+    const STALE_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+
+    for (const gameId of gameIds) {
+      const gameState = await this.getGameState(gameId);
+
+      if (!gameState) {
+        // Game state doesn't exist, remove from active games
+        await RedisStorage.removeActiveGame(gameId);
+        cleanedCount++;
+        continue;
+      }
+
+      // Only clean up games in lobby status
+      if (gameState.status !== 'lobby') {
+        continue;
+      }
+
+      // Check if host heartbeat is stale
+      if (gameState.lastHostHeartbeat) {
+        const timeSinceHeartbeat = now - gameState.lastHostHeartbeat;
+        
+        if (timeSinceHeartbeat > STALE_TIMEOUT) {
+          console.log(`Cleaning up stale game ${gameId} (${Math.floor(timeSinceHeartbeat / 1000)}s since last heartbeat)`);
+          await RedisStorage.deleteGameState(gameId);
+          await RedisStorage.removeActiveGame(gameId);
+          cleanedCount++;
+        }
+      } else {
+        // No heartbeat data, check game creation time
+        // If game is older than 5 minutes and has no heartbeat, clean it up
+        const gameIdTimestamp = parseInt(gameId.split('_')[1] || '0');
+        if (gameIdTimestamp > 0) {
+          const gameAge = now - gameIdTimestamp;
+          if (gameAge > STALE_TIMEOUT) {
+            console.log(`Cleaning up old game ${gameId} (${Math.floor(gameAge / 1000)}s old, no heartbeat)`);
+            await RedisStorage.deleteGameState(gameId);
+            await RedisStorage.removeActiveGame(gameId);
+            cleanedCount++;
+          }
+        }
+      }
+    }
+
+    if (cleanedCount > 0) {
+      console.log(`Cleaned up ${cleanedCount} stale games`);
+    }
+
+    return cleanedCount;
+  }
+
 
 }

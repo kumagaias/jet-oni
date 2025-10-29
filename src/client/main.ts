@@ -3,6 +3,13 @@
  * A 3D multiplayer tag game built with Three.js and Devvit
  */
 
+// Extend Window interface for debug logging
+declare global {
+  interface Window {
+    lastPhaseLogTime?: number;
+  }
+}
+
 import * as THREE from 'three';
 import { GameEngine } from './game/game-engine';
 import { GameState } from './game/game-state';
@@ -103,6 +110,7 @@ async function initGame(): Promise<void> {
       const gameState = new GameState(playerId);
       
       // Start in lobby state
+      console.log('[Phase Change] Initializing - setting phase to "lobby"');
       gameState.setGamePhase('lobby');
       
       // Generate city environment with fixed seed for consistent map across all players
@@ -411,8 +419,17 @@ async function initGame(): Promise<void> {
         // Update camera
         playerCamera.update(deltaTime);
         
-        // Send player state to sync manager (if game is playing)
-        if (gameState.getGamePhase() === 'playing' && currentGameId !== null) {
+        // Send player state to sync manager (only during gameplay, not in lobby)
+        const phase = gameState.getGamePhase();
+        
+        // Debug: Log phase check (throttled to once per 5 seconds)
+        const currentTime = Date.now();
+        if (!window.lastPhaseLogTime || currentTime - window.lastPhaseLogTime > 5000) {
+          console.log(`[Phase Check] Current phase: ${phase}, gameId: ${currentGameId}, should sync: ${phase === 'playing' && currentGameId !== null}`);
+          window.lastPhaseLogTime = currentTime;
+        }
+        
+        if (phase === 'playing' && currentGameId !== null) {
           const localPlayer = gameState.getLocalPlayer();
           realtimeSyncManager.sendPlayerState({
             position: localPlayer.position,
@@ -564,7 +581,7 @@ async function initGame(): Promise<void> {
       
       // Listen for game start event
       window.addEventListener('gameStart', ((e: CustomEvent) => {
-        console.log('Game starting - showing HUD and controls');
+        console.log('[Phase Change] Game starting - setting phase to "playing"');
         
         // Set game config if provided
         if (e.detail?.config) {
@@ -591,6 +608,7 @@ async function initGame(): Promise<void> {
         
         gameState.setGamePhase('playing');
         gameHasStarted = true; // Mark that game has started
+        console.log('[Phase Change] Phase set to "playing", gameHasStarted:', gameHasStarted);
         
         uiHud.show();
         uiHud.startTimer(gameState.getGameConfig()?.roundDuration ?? 300);
@@ -674,7 +692,7 @@ async function initGame(): Promise<void> {
       
       // Listen for lobby event (when user creates a game)
       window.addEventListener('showLobby', ((e: CustomEvent) => {
-        console.log('Showing lobby');
+        console.log('[Phase Change] Showing lobby - setting phase to "lobby"');
         gameState.setGamePhase('lobby');
         const { currentPlayers, maxPlayers, isHost } = e.detail;
         

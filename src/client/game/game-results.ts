@@ -23,13 +23,33 @@ export class GameResults {
   }
 
   /**
-   * Get the winner (longest survival time)
+   * Get the winner
+   * - If there are survivors (runners who weren't tagged): longest survivor wins
+   * - If all players became oni: the one who was oni longest (tagged first) wins
    */
   public getWinner(): Player | null {
     if (this.players.length === 0) {
       return null;
     }
 
+    // Winner is a runner who wasn't tagged (survived)
+    const survivors = this.players.filter(p => !p.wasTagged && !p.isOni);
+    if (survivors.length > 0) {
+      // Sort survivors by survival time (longest survivor wins)
+      survivors.sort((a, b) => b.survivedTime - a.survivedTime);
+      return survivors[0];
+    }
+
+    // If all players became oni, the one who was oni longest wins
+    // This is the player who was tagged first (highest survivedTime when tagged)
+    const taggedPlayers = this.players.filter(p => p.wasTagged);
+    if (taggedPlayers.length > 0) {
+      // Sort by survival time (highest = tagged first = was oni longest)
+      taggedPlayers.sort((a, b) => b.survivedTime - a.survivedTime);
+      return taggedPlayers[0];
+    }
+
+    // Fallback: longest survival time
     const sorted = this.getSortedPlayers();
     return sorted[0];
   }

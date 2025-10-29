@@ -43,7 +43,7 @@ export const jp: Translations = {
   lobby: {
     title: 'ロビー',
     waiting: 'プレイヤーを待っています...',
-    players: 'プレイヤー: {current}/{max}',
+    players: '{current}/{max} (AIプレイヤー{ai}人が参加)',
     pressSpace: 'SPACEキーで開始',
     addingAI: 'AIプレイヤーを追加中...',
     ready: '準備完了！',

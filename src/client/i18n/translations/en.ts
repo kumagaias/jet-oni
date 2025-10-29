@@ -43,7 +43,7 @@ export const en: Translations = {
   lobby: {
     title: 'Lobby',
     waiting: 'Waiting for players...',
-    players: 'Players: {current}/{max}',
+    players: '{current}/{max} ({ai} AI players will join)',
     pressSpace: 'Press SPACE to start',
     addingAI: 'Adding AI players...',
     ready: 'Ready!',

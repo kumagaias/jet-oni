@@ -18,9 +18,18 @@ export interface TagEvent {
 export class TagSystem {
   private gameState: GameState;
   private onTagCallback?: (event: TagEvent) => void;
+  private gameStartTime: number = 0;
+  private readonly TAG_GRACE_PERIOD = 3000; // 3 seconds grace period after game start
 
   constructor(gameState: GameState) {
     this.gameState = gameState;
+  }
+
+  /**
+   * Reset game start time (call when game starts)
+   */
+  public resetGameStartTime(): void {
+    this.gameStartTime = Date.now();
   }
 
   /**
@@ -100,6 +109,14 @@ export class TagSystem {
     // Only check for tags during gameplay
     if (!this.gameState.isPlaying()) {
       return;
+    }
+
+    // Grace period after game start to allow players to spread out
+    if (this.gameStartTime > 0) {
+      const timeSinceStart = Date.now() - this.gameStartTime;
+      if (timeSinceStart < this.TAG_GRACE_PERIOD) {
+        return;
+      }
     }
 
     const allPlayers = this.gameState.getAllPlayers();

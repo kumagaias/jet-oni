@@ -618,6 +618,9 @@ async function initGame(): Promise<void> {
         gameHasStarted = true; // Mark that game has started
         console.log('[Phase Change] Phase set to "playing", gameHasStarted:', gameHasStarted);
         
+        // Reset tag system grace period
+        tagSystem.resetGameStartTime();
+        
         uiHud.show();
         uiHud.startTimer(gameState.getGameConfig()?.roundDuration ?? 300);
         uiControls.show();

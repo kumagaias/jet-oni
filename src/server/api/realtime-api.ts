@@ -34,6 +34,7 @@ router.post(
 
       // Send message to game-specific channel
       const channelName = `game:${gameId}`;
+      console.log(`[Realtime] Broadcasting to ${channelName}:`, JSON.stringify(message).substring(0, 100));
       await realtime.send(channelName, message);
 
       res.json({

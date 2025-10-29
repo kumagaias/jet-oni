@@ -102,7 +102,7 @@ export class RealtimeSyncManager {
     this.predictionEnabled = config.predictionEnabled ?? true;
     this.disconnectTimeout = config.disconnectTimeout ?? 10000; // 10 seconds
     this.maxReconnectAttempts = config.maxReconnectAttempts ?? 3;
-    this.throttleInterval = config.throttleInterval ?? 16; // ~60 messages/second
+    this.throttleInterval = config.throttleInterval ?? 100; // 10 messages/second (reduced from 60)
   }
 
   /**
@@ -266,17 +266,21 @@ export class RealtimeSyncManager {
    * Handle incoming Realtime message
    */
   private handleMessage(data: RealtimeMessage): void {
+    console.log('[Realtime] Received message:', data.type, 'from', data.playerId);
+    
     if (data.type !== 'player-update') {
       return;
     }
 
     // Skip messages from local player
     if (data.playerId === this.playerId) {
+      console.log('[Realtime] Skipping own message');
       return;
     }
 
     const now = Date.now();
     this.lastReceiveTime = now;
+    console.log('[Realtime] Processing remote player update:', data.playerId);
 
     const existing = this.remotePlayers.get(data.playerId);
 

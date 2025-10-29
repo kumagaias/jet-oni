@@ -691,9 +691,43 @@ async function initGame(): Promise<void> {
       }) as EventListener);
       
       // Listen for lobby event (when user creates a game)
-      window.addEventListener('showLobby', ((e: CustomEvent) => {
+      window.addEventListener('showLobby', (async (e: CustomEvent) => {
         console.log('[Phase Change] Showing lobby - setting phase to "lobby"');
+        
+        // Clean up previous game state first
+        console.log('[Lobby] Cleaning up previous game state...');
+        
+        // Disconnect from Realtime if connected
+        if (currentGameId) {
+          console.log('[Lobby] Disconnecting from Realtime...');
+          await realtimeSyncManager.disconnect();
+          currentGameId = null;
+        }
+        
+        // Clear remote player models
+        remotePlayerModels.forEach((model) => {
+          gameEngine.removeFromScene(model.getModel());
+        });
+        remotePlayerModels.clear();
+        
+        // Clear AI player models
+        aiPlayerModels.forEach((model) => {
+          gameEngine.removeFromScene(model.getModel());
+        });
+        aiPlayerModels.clear();
+        
+        // Reset game state
         gameState.setGamePhase('lobby');
+        gameHasStarted = false;
+        wasOni = false;
+        
+        // Reset local player
+        gameState.setLocalPlayerPosition({ x: 0, y: 2, z: 0 });
+        gameState.setLocalPlayerVelocity({ x: 0, y: 0, z: 0 });
+        gameState.setLocalPlayerIsOni(false);
+        
+        console.log('[Lobby] Cleanup complete');
+        
         const { currentPlayers, maxPlayers, isHost } = e.detail;
         
         // Add AI players to fill remaining slots
@@ -708,9 +742,10 @@ async function initGame(): Promise<void> {
       
       // Listen for game end event
       window.addEventListener('gameEnd', async () => {
-        console.log('Game ending - disconnecting from Realtime');
+        console.log('[Phase Change] Game ending - setting phase to "ended"');
         
         // Disconnect from Realtime
+        console.log('[Game End] Disconnecting from Realtime...');
         await realtimeSyncManager.disconnect();
         
         // Call endGame API if we have a game ID

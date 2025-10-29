@@ -64,12 +64,12 @@ async function initGame(): Promise<void> {
       // Start in lobby state
       gameState.setGamePhase('lobby');
       
-      // Generate city environment
+      // Generate city environment with fixed seed for consistent map across all players
       console.log('Generating city...');
-      const cityGenerator = new CityGenerator();
+      const cityGenerator = new CityGenerator('jetoni-v1'); // Fixed seed ensures same map for all players
       const city = cityGenerator.generateCity();
       gameEngine.addToScene(city);
-      console.log('City generated');
+      console.log('City generated with seed: jetoni-v1');
       
       // Generate dynamic objects (cars, pedestrians, ladders)
       console.log('Generating dynamic objects...');

@@ -9,17 +9,18 @@
 ### ❌ 絶対にやってはいけないこと
 
 1. **高頻度コールバック内でのログ出力**
+
    ```typescript
    // ❌ 悪い例：毎フレーム実行される（60回/秒）
    gameLoop(() => {
      console.log('Game loop running');
    });
-   
+
    // ❌ 悪い例：リアルタイム同期コールバック
    realtimeSyncManager.onRemotePlayerUpdate((players) => {
      console.log('Synced players:', players.length);
    });
-   
+
    // ❌ 悪い例：アニメーションフレーム内
    requestAnimationFrame(() => {
      console.log('Frame rendered');
@@ -27,6 +28,7 @@
    ```
 
 2. **ループ内での無条件ログ**
+
    ```typescript
    // ❌ 悪い例：大量のログが出力される
    for (const player of players) {
@@ -47,6 +49,7 @@
 ### ✅ 推奨される方法
 
 1. **スロットリング（時間制限）**
+
    ```typescript
    // ✅ 良い例：5秒に1回だけログ出力
    let lastLogTime = 0;
@@ -60,16 +63,18 @@
    ```
 
 2. **条件付きログ（開発環境のみ）**
+
    ```typescript
    // ✅ 良い例：開発環境でのみログ出力
    const isDev = import.meta.env.DEV;
-   
+
    if (isDev) {
      console.log('Debug info:', data);
    }
    ```
 
 3. **重要なイベントのみログ出力**
+
    ```typescript
    // ✅ 良い例：状態変化時のみログ
    let previousState = null;
@@ -99,11 +104,13 @@
 ### デバッグログの追加時
 
 1. **実行頻度を必ず確認**
+
    - どのコールバック/関数内に追加するか
    - 1秒間に何回実行されるか
    - 1分間で何回実行されるか
 
 2. **一時的なログには明確なマーク**
+
    ```typescript
    // TODO: Remove debug log before commit
    console.log('[DEBUG]', data);
@@ -149,7 +156,8 @@ console.log('Game started'); // 1回だけ実行されるイベント
 const startTime = performance.now();
 // 処理
 const endTime = performance.now();
-if (endTime - startTime > 16) { // 16ms = 60FPS
+if (endTime - startTime > 16) {
+  // 16ms = 60FPS
   console.warn('Slow operation:', endTime - startTime, 'ms');
 }
 ```

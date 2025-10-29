@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { MAP_SIZE, BUILDING_COUNT, HOUSE_COUNT } from '../../shared/constants';
+import { SeededRandom } from '../utils/seeded-random';
 
 /**
  * Represents an occupied area in the city to prevent overlapping structures
@@ -33,12 +34,16 @@ export class CityGenerator {
   private rivers: THREE.Group;
   private bridges: THREE.Group;
   private landmark: THREE.Group | null = null;
+  private rng: SeededRandom;
 
-  constructor() {
+  constructor(seed?: string | number) {
     this.buildings = new THREE.Group();
     this.roads = new THREE.Group();
     this.rivers = new THREE.Group();
     this.bridges = new THREE.Group();
+    
+    // Use provided seed or default seed for consistent map generation
+    this.rng = new SeededRandom(seed || 'default-city-seed');
   }
 
   /**
@@ -133,8 +138,8 @@ export class CityGenerator {
    */
   private findUnoccupiedPosition(width: number, depth: number, maxAttempts = 50): { x: number; z: number } | null {
     for (let i = 0; i < maxAttempts; i++) {
-      const x = (Math.random() - 0.5) * MAP_SIZE * 1.8;
-      const z = (Math.random() - 0.5) * MAP_SIZE * 1.8;
+      const x = (this.rng.next() - 0.5) * MAP_SIZE * 1.8;
+      const z = (this.rng.next() - 0.5) * MAP_SIZE * 1.8;
 
       if (!this.isAreaOccupied(x, z, width, depth)) {
         return { x, z };
@@ -149,7 +154,7 @@ export class CityGenerator {
   private generateRiver(): void {
     const riverWidth = 15;
     const riverDepth = MAP_SIZE * 2;
-    const riverX = (Math.random() - 0.5) * MAP_SIZE * 0.5; // Random position, not too far from center
+    const riverX = (this.rng.next() - 0.5) * MAP_SIZE * 0.5; // Random position, not too far from center
 
     // Create river geometry
     const geometry = new THREE.PlaneGeometry(riverWidth, riverDepth);
@@ -263,9 +268,9 @@ export class CityGenerator {
       attempts++;
 
       const config: BuildingConfig = {
-        width: 10 + Math.random() * 15,
-        height: 15 + Math.random() * 35,
-        depth: 10 + Math.random() * 15,
+        width: 10 + this.rng.next() * 15,
+        height: 15 + this.rng.next() * 35,
+        depth: 10 + this.rng.next() * 15,
         color: this.getRandomBuildingColor(),
       };
 
@@ -317,9 +322,9 @@ export class CityGenerator {
     while (housesCreated < HOUSE_COUNT && attempts < maxAttempts) {
       attempts++;
 
-      const width = 6 + Math.random() * 6;
-      const height = 4 + Math.random() * 4;
-      const depth = 6 + Math.random() * 6;
+      const width = 6 + this.rng.next() * 6;
+      const height = 4 + this.rng.next() * 4;
+      const depth = 6 + this.rng.next() * 6;
 
       const position = this.findUnoccupiedPosition(width, depth);
       if (!position) continue;
@@ -431,7 +436,7 @@ export class CityGenerator {
       0x8b7355, // Brown
       0x4a5f6a, // Blue-gray
     ];
-    return colors[Math.floor(Math.random() * colors.length)];
+    return colors[Math.floor(this.rng.next() * colors.length)];
   }
 
   /**
@@ -445,7 +450,7 @@ export class CityGenerator {
       0xffdab9, // Peach
       0xd2b48c, // Tan
     ];
-    return colors[Math.floor(Math.random() * colors.length)];
+    return colors[Math.floor(this.rng.next() * colors.length)];
   }
 
   /**

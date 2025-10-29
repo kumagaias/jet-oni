@@ -135,7 +135,13 @@ export class GameAPIClient {
    * List all available games
    */
   async listGames(): Promise<GameListResponse> {
-    return this.get<GameListResponse>('/game/list');
+    // Try /games first (plural), fallback to /game/list if needed
+    try {
+      return await this.get<GameListResponse>('/games');
+    } catch (error) {
+      // Fallback to /game/list
+      return this.get<GameListResponse>('/game/list');
+    }
   }
 
   /**

@@ -540,8 +540,18 @@ async function initGame(): Promise<void> {
           console.log('Using default game config: 300s duration, 4 players');
         }
         
+        // Ensure AI players are added before game starts
+        const config = gameState.getGameConfig();
+        const currentPlayerCount = gameState.getAllPlayers().length;
+        const aiNeeded = (config?.totalPlayers ?? 4) - currentPlayerCount;
+        if (aiNeeded > 0) {
+          console.log(`[Game Start] Adding ${aiNeeded} AI players`);
+          addAIPlayers(aiNeeded);
+        }
+        
         gameState.setGamePhase('playing');
         gameHasStarted = true; // Mark that game has started
+        
         uiHud.show();
         uiHud.startTimer(gameState.getGameConfig()?.roundDuration ?? 300);
         uiControls.show();

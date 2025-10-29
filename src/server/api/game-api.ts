@@ -104,7 +104,7 @@ router.post(
 
       const result = await gameManager.joinGame(gameId, username);
 
-      if (!result.success) {
+      if (!result.success || !result.gameState) {
         res.status(400).json({
           success: false,
           error: result.error || 'Failed to join game',
@@ -240,7 +240,7 @@ router.post(
       if (!result.success) {
         res.status(400).json({
           success: false,
-          error: result.error,
+          error: result.error || 'Failed to update player state',
         });
         return;
       }
@@ -392,7 +392,7 @@ router.post(
       if (!result.success) {
         res.status(400).json({
           success: false,
-          error: result.error,
+          error: result.error || 'Failed to replace player',
         });
         return;
       }

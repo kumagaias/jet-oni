@@ -449,19 +449,7 @@ export class GameState {
       return false;
     }
     
-    // Don't check for game end in the first 10 seconds (allow time for sync)
-    const elapsed = this.getElapsedTime();
-    if (elapsed < 10) {
-      return false;
-    }
-    
-    // Don't end game if there are less than 2 total players visible
-    // (AI players may exist on server)
-    const totalPlayers = 1 + this.remotePlayers.size;
-    if (totalPlayers < 2) {
-      return false; // Wait for server sync
-    }
-    
+    // Check if all visible players are oni
     return this.countRunnerPlayers() === 0;
   }
 
@@ -472,7 +460,15 @@ export class GameState {
     if (!this.isPlaying()) {
       return false;
     }
-    return this.hasTimeRunOut() || this.areAllPlayersOni();
+    
+    const timeRunOut = this.hasTimeRunOut();
+    const allOni = this.areAllPlayersOni();
+    
+    if (timeRunOut || allOni) {
+      console.log(`Game should end - timeRunOut: ${timeRunOut}, allOni: ${allOni}, elapsed: ${this.getElapsedTime().toFixed(1)}s, runners: ${this.countRunnerPlayers()}, oni: ${this.countOniPlayers()}, remotePlayers: ${this.remotePlayers.size}`);
+    }
+    
+    return timeRunOut || allOni;
   }
 
   /**

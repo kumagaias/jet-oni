@@ -249,8 +249,22 @@ export class UIMenu {
       this.gameEngine.resume();
     }
     
-    // Dispatch custom event to notify game start
-    window.dispatchEvent(new CustomEvent('gameStart'));
+    // Get game config from lobby manager
+    let config: GameConfig | undefined;
+    if (this.lobbyManager) {
+      const gameState = this.lobbyManager.getGameState();
+      if (gameState) {
+        config = gameState.config;
+      }
+    }
+    
+    // Dispatch custom event to notify game start with config
+    window.dispatchEvent(new CustomEvent('gameStart', { 
+      detail: { 
+        config,
+        gameId: this.currentGameId 
+      } 
+    }));
   }
 
   /**

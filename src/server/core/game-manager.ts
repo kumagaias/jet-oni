@@ -344,7 +344,8 @@ export class GameManager {
 
     // If the disconnected player is the host and game is in lobby, close the game
     if (playerId === gameState.hostId && gameState.status === 'lobby') {
-      await this.storage.delete(`game:${gameId}`);
+      await RedisStorage.deleteGameState(gameId);
+      await RedisStorage.removeActiveGame(gameId);
       return { success: true, error: 'Game closed - host disconnected' };
     }
 
@@ -384,7 +385,6 @@ export class GameManager {
       return [];
     }
 
-    const now = Date.now();
     const replacedPlayerIds: string[] = [];
 
     for (let i = 0; i < gameState.players.length; i++) {

@@ -148,28 +148,28 @@ export class StateCompressor {
         };
 
     // Decompress position
-    if (compressed.p) {
+    if (compressed.p && compressed.p.length >= 3) {
       state.position = {
-        x: compressed.p[0],
-        y: compressed.p[1],
-        z: compressed.p[2],
+        x: compressed.p[0]!,
+        y: compressed.p[1]!,
+        z: compressed.p[2]!,
       };
     }
 
     // Decompress velocity
-    if (compressed.v) {
+    if (compressed.v && compressed.v.length >= 3) {
       state.velocity = {
-        x: compressed.v[0],
-        y: compressed.v[1],
-        z: compressed.v[2],
+        x: compressed.v[0]!,
+        y: compressed.v[1]!,
+        z: compressed.v[2]!,
       };
     }
 
     // Decompress rotation
-    if (compressed.r) {
+    if (compressed.r && compressed.r.length >= 2) {
       state.rotation = {
-        yaw: compressed.r[0],
-        pitch: compressed.r[1],
+        yaw: compressed.r[0]!,
+        pitch: compressed.r[1]!,
       };
     }
 

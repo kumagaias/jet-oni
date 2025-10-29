@@ -525,10 +525,25 @@ async function initGame(): Promise<void> {
       // Listen for game start event
       window.addEventListener('gameStart', ((e: CustomEvent) => {
         console.log('Game starting - showing HUD and controls');
+        
+        // Set game config if provided
+        if (e.detail?.config) {
+          gameState.setGameConfig(e.detail.config);
+          console.log(`Game config set: ${e.detail.config.roundDuration}s duration, ${e.detail.config.totalPlayers} players`);
+        } else {
+          // Default config if not provided
+          gameState.setGameConfig({
+            totalPlayers: 4,
+            roundDuration: 300,
+            rounds: 1,
+          });
+          console.log('Using default game config: 300s duration, 4 players');
+        }
+        
         gameState.setGamePhase('playing');
         gameHasStarted = true; // Mark that game has started
         uiHud.show();
-        uiHud.startTimer(300); // Start 5 minute timer
+        uiHud.startTimer(gameState.getGameConfig()?.roundDuration ?? 300);
         uiControls.show();
         
         // Set random spawn position for local player

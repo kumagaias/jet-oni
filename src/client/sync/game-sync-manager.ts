@@ -79,8 +79,8 @@ export class GameSyncManager {
 
   constructor(apiClient: GameAPIClient, config: GameSyncConfig = {}) {
     this.apiClient = apiClient;
-    this.syncInterval = config.syncInterval ?? 100; // 10Hz
-    this.interpolationDuration = config.interpolationDuration ?? 100;
+    this.syncInterval = config.syncInterval ?? 500; // 2Hz (reduced from 10Hz to prevent rate limiting)
+    this.interpolationDuration = config.interpolationDuration ?? 500;
     this.predictionEnabled = config.predictionEnabled ?? true;
     this.disconnectTimeout = config.disconnectTimeout ?? 10000; // 10 seconds
     this.compressor = new StateCompressor();
@@ -102,12 +102,12 @@ export class GameSyncManager {
     this.isRunning = true;
     this.remotePlayers.clear();
 
-    // Start send loop (100ms interval)
+    // Start send loop (500ms interval = 2Hz)
     this.sendInterval = window.setInterval(() => {
       void this.sendLoop();
     }, this.syncInterval);
 
-    // Start receive loop (100ms interval)
+    // Start receive loop (500ms interval = 2Hz)
     this.receiveInterval = window.setInterval(() => {
       void this.receiveLoop();
     }, this.syncInterval);

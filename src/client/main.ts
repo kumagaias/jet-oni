@@ -533,17 +533,17 @@ async function initGame(): Promise<void> {
         } else {
           // Default config if not provided
           gameState.setGameConfig({
-            totalPlayers: 4,
+            totalPlayers: 6,
             roundDuration: 300,
             rounds: 1,
           });
-          console.log('Using default game config: 300s duration, 4 players');
+          console.log('Using default game config: 300s duration, 6 players');
         }
         
         // Ensure AI players are added before game starts
         const config = gameState.getGameConfig();
         const currentPlayerCount = gameState.getAllPlayers().length;
-        const aiNeeded = (config?.totalPlayers ?? 4) - currentPlayerCount;
+        const aiNeeded = (config?.totalPlayers ?? 6) - currentPlayerCount;
         if (aiNeeded > 0) {
           console.log(`[Game Start] Adding ${aiNeeded} AI players`);
           addAIPlayers(aiNeeded);
@@ -585,10 +585,16 @@ async function initGame(): Promise<void> {
           console.log('[ONI Assignment] Total players:', allPlayers.length);
           
           if (allPlayers.length > 0) {
-            const randomIndex = Math.floor(Math.random() * allPlayers.length);
-            const oniPlayer = allPlayers[randomIndex];
+            // Calculate number of ONI: minimum 2, or 1/3 of total players (rounded up)
+            const oniCount = Math.max(2, Math.ceil(allPlayers.length / 3));
+            console.log(`[ONI Assignment] Assigning ${oniCount} ONI out of ${allPlayers.length} players`);
             
-            if (oniPlayer) {
+            // Shuffle players and select first N as ONI
+            const shuffled = [...allPlayers].sort(() => Math.random() - 0.5);
+            const oniPlayers = shuffled.slice(0, oniCount);
+            
+            // Assign ONI status
+            oniPlayers.forEach(oniPlayer => {
               if (oniPlayer.id === gameState.getLocalPlayer().id) {
                 // Local player is ONI
                 gameState.setLocalPlayerIsOni(true);
@@ -597,7 +603,6 @@ async function initGame(): Promise<void> {
                 wasOni = true;
               } else {
                 // Remote/AI player is ONI
-                gameState.setLocalPlayerIsOni(false); // Explicitly set local player as runner
                 const remotePlayer = gameState.getPlayer(oniPlayer.id);
                 if (remotePlayer) {
                   remotePlayer.isOni = true;
@@ -609,6 +614,11 @@ async function initGame(): Promise<void> {
                   console.log(`${oniPlayer.username} is ONI!`);
                 }
               }
+            });
+            
+            // Ensure local player is set as runner if not selected as ONI
+            if (!oniPlayers.some(p => p.id === gameState.getLocalPlayer().id)) {
+              gameState.setLocalPlayerIsOni(false);
             }
           }
         }, 100); // 100ms delay to ensure AI players are added
@@ -664,6 +674,13 @@ async function initGame(): Promise<void> {
               gameResults.setResults(players, null);
               const uiResults = new UIResults(gameResults, i18n);
               uiResults.create();
+              
+              // Set callback to return to menu
+              uiResults.setOnBackToMenu(() => {
+                uiResults.hide();
+                uiMenu.showTitleScreen();
+              });
+              
               uiResults.show(gameState.getLocalPlayer().id);
             }
           } catch (error) {

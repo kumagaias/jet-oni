@@ -138,7 +138,7 @@ describe('UIMenu', () => {
       const statsButton = document.getElementById('btn-stats') as HTMLButtonElement;
       statsButton.click();
 
-      expect(mockOverlay.innerHTML).toContain('btn-reset-stats');
+      expect(mockOverlay.innerHTML).toContain('btn-back');
     });
   });
 
@@ -306,15 +306,7 @@ describe('UIMenu', () => {
     it('should display statistics elements', () => {
       uiMenu.showStatsScreen();
 
-      expect(mockOverlay.innerHTML).toContain('btn-reset-stats');
       expect(mockOverlay.innerHTML).toContain('btn-back');
-    });
-
-    it('should display reset button', () => {
-      uiMenu.showStatsScreen();
-
-      const resetButton = document.getElementById('btn-reset-stats');
-      expect(resetButton).toBeTruthy();
     });
 
     it('should navigate back to title screen when back button is clicked', () => {

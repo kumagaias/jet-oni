@@ -578,10 +578,27 @@ export class UIMenu {
    */
   private setupCreateGameListeners(): void {
     const selectedOptions = {
-      players: 4,
+      players: 6,
       duration: 3,
       rounds: 1,
     };
+    
+    // Set initial button states
+    const setInitialState = (option: string, value: number) => {
+      document.querySelectorAll(`[data-option="${option}"]`).forEach(b => {
+        const button = b as HTMLButtonElement;
+        if (button.dataset.value === value.toString()) {
+          button.style.backgroundColor = '#ff8800';
+          button.style.color = '#000';
+          button.style.border = '1px solid #ff8800';
+          button.style.fontWeight = 'bold';
+        }
+      });
+    };
+    
+    setInitialState('players', 6);
+    setInitialState('duration', 3);
+    setInitialState('rounds', 1);
     
     // Option buttons
     document.querySelectorAll('.option-btn').forEach(btn => {
@@ -900,18 +917,35 @@ export class UIMenu {
       
       <div style="
         background: rgba(0, 0, 0, 0.85);
-        border: 2px solid #666;
         border-radius: 8px;
         padding: 30px;
         max-width: 600px;
         font-family: monospace;
       ">
-        <h2 style="
-          color: #ff8800;
-          font-size: 24px;
+        <div style="
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
           margin-bottom: 20px;
-          font-weight: bold;
-        ">${this.i18n.t('gameList.title')}</h2>
+        ">
+          <h2 style="
+            color: #ff8800;
+            font-size: 24px;
+            font-weight: bold;
+            margin: 0;
+          ">${this.i18n.t('gameList.title')}</h2>
+          
+          <button id="btn-refresh" style="
+            padding: 8px 16px;
+            font-size: 14px;
+            cursor: pointer;
+            font-family: monospace;
+            border: 1px solid #ff8800;
+            background: #331a00;
+            color: #ff8800;
+            border-radius: 4px;
+          ">🔄</button>
+        </div>
         
         <div id="game-list-container" style="
           background: #111;
@@ -925,31 +959,17 @@ export class UIMenu {
           ${gameListHTML}
         </div>
         
-        <div style="display: flex; gap: 10px;">
-          <button id="btn-refresh" style="
-            flex: 1;
-            padding: 12px;
-            font-size: 14px;
-            cursor: pointer;
-            font-family: monospace;
-            border: 1px solid #ff8800;
-            background: #331a00;
-            color: #ff8800;
-            border-radius: 4px;
-          ">🔄 ${this.i18n.t('error.retry').toUpperCase()}</button>
-          
-          <button id="btn-back" style="
-            flex: 1;
-            padding: 12px;
-            font-size: 14px;
-            cursor: pointer;
-            font-family: monospace;
-            border: 1px solid #666;
-            background: #222;
-            color: #aaa;
-            border-radius: 4px;
-          ">← ${this.i18n.t('menu.back').toUpperCase()}</button>
-        </div>
+        <button id="btn-back" style="
+          width: 100%;
+          padding: 12px;
+          font-size: 14px;
+          cursor: pointer;
+          font-family: monospace;
+          border: 1px solid #666;
+          background: #222;
+          color: #aaa;
+          border-radius: 4px;
+        ">← ${this.i18n.t('menu.back').toUpperCase()}</button>
       </div>
     `;
     
@@ -1330,18 +1350,6 @@ export class UIMenu {
           </div>
         </div>
         
-        <button id="btn-reset-stats" style="
-          width: 100%;
-          padding: 12px;
-          margin: 5px 0;
-          font-size: 14px;
-          cursor: pointer;
-          font-family: monospace;
-          border: 1px solid #ff0000;
-          background: #330000;
-          color: #ff0000;
-        ">${this.i18n.t('stats.reset').toUpperCase()}</button>
-        
         <button id="btn-back" style="
           width: 100%;
           padding: 12px;
@@ -1355,13 +1363,6 @@ export class UIMenu {
         ">← ${this.i18n.t('menu.back').toUpperCase()}</button>
       </div>
     `;
-    
-    document.getElementById('btn-reset-stats')?.addEventListener('click', () => {
-      if (confirm(this.i18n.t('stats.confirmReset'))) {
-        console.log('Resetting statistics...');
-        this.showStatsScreen(); // Refresh
-      }
-    });
     
     document.getElementById('btn-back')?.addEventListener('click', () => {
       this.showTitleScreen();

@@ -5,6 +5,7 @@ import { createPost } from './core/post';
 import gameApiRouter from './api/game-api';
 import statsApiRouter from './api/stats-api';
 import realtimeApiRouter from './api/realtime-api';
+import syncApiRouter from './api/sync-api';
 
 const app = express();
 
@@ -161,8 +162,11 @@ app.use(gameApiRouter);
 // Mount stats API routes
 app.use(statsApiRouter);
 
-// Mount realtime API routes
-app.use(realtimeApiRouter);
+// Mount realtime API routes (deprecated - using Redis polling instead)
+// app.use(realtimeApiRouter);
+
+// Mount sync API routes (Redis-based polling)
+app.use(syncApiRouter);
 
 app.use(router);
 

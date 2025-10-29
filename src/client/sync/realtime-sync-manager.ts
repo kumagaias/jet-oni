@@ -204,8 +204,15 @@ export class RealtimeSyncManager {
    * Send local player state via Realtime (with throttling)
    */
   sendPlayerState(state: PlayerStateUpdate): void {
-    if (!this.isRunning || this.connectionState !== 'connected') {
-      // Store state for when connection is established
+    // Debug: Check connection state
+    if (!this.isRunning) {
+      console.warn('[Realtime] Not running, skipping send');
+      this.lastSentState = state;
+      return;
+    }
+    
+    if (this.connectionState !== 'connected') {
+      console.warn('[Realtime] Not connected, state:', this.connectionState);
       this.lastSentState = state;
       return;
     }
@@ -214,12 +221,13 @@ export class RealtimeSyncManager {
     const now = Date.now();
     const timeSinceLastSend = now - this.lastSendTime;
     if (timeSinceLastSend < this.throttleInterval) {
-      // Update stored state but don't send yet
+      // Update stored state but don't send yet (throttled)
+      console.log(`[Realtime] Throttled (${timeSinceLastSend}ms < ${this.throttleInterval}ms)`);
       this.lastSentState = state;
       return;
     }
 
-    console.log(`[Realtime] Sending player state (throttled: ${timeSinceLastSend}ms since last send)`);
+    console.log(`[Realtime] Sending player state (${timeSinceLastSend}ms since last)`);
     this.lastSentState = state;
     this.lastSendTime = now;
 
@@ -249,18 +257,29 @@ export class RealtimeSyncManager {
       message.wasTagged = state.wasTagged;
     }
 
-    // Send via server API (Devvit Web requires server-side realtime.send)
-    fetch('/api/realtime/broadcast', {
+    // Send via Redis-based sync API (Devvit Realtime has timeout issues)
+    fetch('/api/sync/update', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         gameId: this.gameId,
-        message,
+        playerId: this.playerId,
+        state: {
+          position: state.position,
+          velocity: state.velocity,
+          rotation: state.rotation,
+          fuel: state.fuel,
+          isOni: state.isOni,
+          isDashing: state.isDashing,
+          isJetpacking: state.isJetpacking,
+          isOnSurface: state.isOnSurface,
+          timestamp: now,
+        },
       }),
     }).catch((error) => {
-      console.error('Failed to broadcast player state:', error);
+      console.error('Failed to update player state:', error);
     });
   }
 

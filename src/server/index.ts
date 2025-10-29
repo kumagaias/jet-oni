@@ -36,6 +36,13 @@ router.get<{ postId: string }, InitResponse | { status: string; message: string 
         reddit.getCurrentUsername(),
       ]);
 
+      // Log username retrieval for debugging
+      if (!username) {
+        console.warn('[Init] Failed to get Reddit username, using anonymous');
+      } else {
+        console.log('[Init] Retrieved username:', username);
+      }
+
       res.json({
         type: 'init',
         postId: postId,

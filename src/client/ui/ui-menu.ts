@@ -782,8 +782,7 @@ export class UIMenu {
           border-radius: 4px;
         ">
           <div style="text-align: center;">
-            <p style="color: #666; font-size: 10px; margin-bottom: 4px;">PLAYERS</p>
-            <p style="color: ${statusColor}; font-size: 18px; font-weight: bold;">
+            <p style="color: ${statusColor}; font-size: 24px; font-weight: bold; margin: 0;">
               ${game.currentPlayers}/${game.maxPlayers}
             </p>
           </div>

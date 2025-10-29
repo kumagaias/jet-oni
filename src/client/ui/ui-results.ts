@@ -62,8 +62,9 @@ export class UIResults {
       padding: 20px;
       max-width: 500px;
       width: 90%;
-      max-height: 80vh;
-      overflow-y: auto;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
       box-shadow: 0 0 20px rgba(74, 144, 226, 0.5);
     `;
 
@@ -109,6 +110,14 @@ export class UIResults {
     // Show player list based on who won
     const playersToShow = runnersWin ? escapedPlayers : oniPlayers;
     
+    // Create scrollable container for player list
+    const playerListContainer = document.createElement('div');
+    playerListContainer.style.cssText = `
+      flex: 1;
+      overflow-y: auto;
+      margin-bottom: 10px;
+    `;
+    
     // Player list header
     const listHeader = document.createElement('div');
     listHeader.style.cssText = `
@@ -135,7 +144,7 @@ export class UIResults {
     timeHeader.textContent = this.i18n.t('results.time');
     listHeader.appendChild(timeHeader);
 
-    panel.appendChild(listHeader);
+    playerListContainer.appendChild(listHeader);
 
     // Player list
     playersToShow.forEach((player, index) => {
@@ -188,8 +197,11 @@ export class UIResults {
       time.textContent = this.formatTime(player.survivedTime);
       playerRow.appendChild(time);
 
-      panel.appendChild(playerRow);
+      playerListContainer.appendChild(playerRow);
     });
+    
+    // Add player list container to panel
+    panel.appendChild(playerListContainer);
 
     // Back to menu button
     const backButton = document.createElement('button');
@@ -213,10 +225,20 @@ export class UIResults {
       backButton.style.background = '#4a90e2';
     };
     backButton.onclick = () => {
-      this.hide();
+      console.log('[UIResults] Back button clicked');
+      
+      // Prevent multiple clicks
+      if (backButton.disabled) {
+        console.log('[UIResults] Button already clicked, ignoring');
+        return;
+      }
+      backButton.disabled = true;
+      
       if (this.onBackToMenu) {
         this.onBackToMenu();
       }
+      
+      this.hide();
     };
     panel.appendChild(backButton);
 

@@ -89,7 +89,7 @@ describe('Game Timer Integration', () => {
   });
 
   describe('Game end when all players are oni', () => {
-    it('should end game when all players become oni', () => {
+    it('should end game when all players become oni', async () => {
       const callback = vi.fn();
       gameEndManager.setOnGameEnd(callback);
 
@@ -99,6 +99,9 @@ describe('Game Timer Integration', () => {
         rounds: 1,
       });
       gameState.setGamePhase('playing');
+      
+      // Wait for 10 seconds to pass (required by areAllPlayersOni logic)
+      await new Promise((resolve) => setTimeout(resolve, 11000));
       
       // Add a remote player and make both oni
       gameState.updateRemotePlayer({
@@ -125,15 +128,18 @@ describe('Game Timer Integration', () => {
       expect(callback).toHaveBeenCalled();
       expect(gameState.hasEnded()).toBe(true);
       expect(gameEndManager.getEndReason()).toBe('all-oni');
-    });
+    }, 15000);
 
-    it('should process results after all oni', () => {
+    it('should process results after all oni', async () => {
       gameState.setGameConfig({
         totalPlayers: 4,
         roundDuration: 300,
         rounds: 1,
       });
       gameState.setGamePhase('playing');
+      
+      // Wait for 10 seconds to pass (required by areAllPlayersOni logic)
+      await new Promise((resolve) => setTimeout(resolve, 11000));
       
       // Add a remote player and make both oni
       gameState.updateRemotePlayer({
@@ -162,7 +168,7 @@ describe('Game Timer Integration', () => {
 
       expect(gameResults.getEndReason()).toBe('all-oni');
       expect(gameResults.getEscapedPlayers()).toHaveLength(0);
-    });
+    }, 15000);
   });
 
   describe('Timer color changes', () => {

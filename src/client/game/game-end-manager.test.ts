@@ -41,7 +41,7 @@ describe('GameEndManager', () => {
       expect(gameState.hasEnded()).toBe(true);
     });
 
-    it('should end game when all players are oni', () => {
+    it('should end game when all players are oni', async () => {
       const callback = vi.fn();
       gameEndManager.setOnGameEnd(callback);
 
@@ -51,6 +51,9 @@ describe('GameEndManager', () => {
         rounds: 1,
       });
       gameState.setGamePhase('playing');
+      
+      // Wait for 10 seconds to pass (required by areAllPlayersOni logic)
+      await new Promise((resolve) => setTimeout(resolve, 11000));
       
       // Add a remote player and make both oni
       gameState.updateRemotePlayer({
@@ -76,7 +79,7 @@ describe('GameEndManager', () => {
 
       expect(callback).toHaveBeenCalled();
       expect(gameState.hasEnded()).toBe(true);
-    });
+    }, 15000);
 
     it('should not end game multiple times', () => {
       const callback = vi.fn();
@@ -115,13 +118,16 @@ describe('GameEndManager', () => {
       expect(gameEndManager.getEndReason()).toBe('timeout');
     });
 
-    it('should return "all-oni" when all players are oni', () => {
+    it('should return "all-oni" when all players are oni', async () => {
       gameState.setGameConfig({
         totalPlayers: 4,
         roundDuration: 300,
         rounds: 1,
       });
       gameState.setGamePhase('playing');
+      
+      // Wait for 10 seconds to pass (required by areAllPlayersOni logic)
+      await new Promise((resolve) => setTimeout(resolve, 11000));
       
       // Add a remote player and make both oni
       gameState.updateRemotePlayer({
@@ -146,7 +152,7 @@ describe('GameEndManager', () => {
       gameEndManager.update();
 
       expect(gameEndManager.getEndReason()).toBe('all-oni');
-    });
+    }, 15000);
   });
 
   describe('reset', () => {

@@ -219,13 +219,16 @@ describe('GameState', () => {
   });
 
   describe('game end conditions', () => {
-    it('should detect when all players are oni', () => {
+    it('should detect when all players are oni', async () => {
       gameState.setGameConfig({
         totalPlayers: 4,
         roundDuration: 180,
         rounds: 1,
       });
       gameState.setGamePhase('playing');
+      
+      // Wait for 10 seconds to pass (required by areAllPlayersOni logic)
+      await new Promise((resolve) => setTimeout(resolve, 11000));
       
       // Add a remote player and make both oni
       gameState.updateRemotePlayer({
@@ -248,7 +251,7 @@ describe('GameState', () => {
       gameState.setLocalPlayerIsOni(true);
 
       expect(gameState.areAllPlayersOni()).toBe(true);
-    });
+    }, 15000);
 
     it('should not detect all oni when there are runners', () => {
       gameState.setGameConfig({
@@ -273,13 +276,16 @@ describe('GameState', () => {
       expect(gameState.shouldGameEnd()).toBe(true);
     });
 
-    it('should detect when game should end due to all oni', () => {
+    it('should detect when game should end due to all oni', async () => {
       gameState.setGameConfig({
         totalPlayers: 4,
         roundDuration: 180,
         rounds: 1,
       });
       gameState.setGamePhase('playing');
+      
+      // Wait for 10 seconds to pass (required by areAllPlayersOni logic)
+      await new Promise((resolve) => setTimeout(resolve, 11000));
       
       // Add a remote player and make both oni
       gameState.updateRemotePlayer({
@@ -302,7 +308,7 @@ describe('GameState', () => {
       gameState.setLocalPlayerIsOni(true);
 
       expect(gameState.shouldGameEnd()).toBe(true);
-    });
+    }, 15000);
 
     it('should not end game when in lobby', () => {
       gameState.setGamePhase('lobby');

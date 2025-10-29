@@ -23,7 +23,7 @@ import { I18n } from './i18n/i18n';
 import { UIManager } from './ui/ui-manager';
 import { UIMenu } from './ui/ui-menu';
 import { GameAPIClient } from './api/game-api-client';
-import { GameSyncManager } from './sync/game-sync-manager';
+import { RealtimeSyncManager } from './sync/realtime-sync-manager';
 import { en } from './i18n/translations/en';
 import { jp } from './i18n/translations/jp';
 import { InitResponse } from '../shared/types/api';
@@ -372,7 +372,7 @@ async function initGame(): Promise<void> {
         // Send player state to sync manager (if game is playing)
         if (gameState.getGamePhase() === 'playing' && currentGameId !== null) {
           const localPlayer = gameState.getLocalPlayer();
-          gameSyncManager.sendPlayerState({
+          realtimeSyncManager.sendPlayerState({
             position: localPlayer.position,
             velocity: localPlayer.velocity,
             rotation: localPlayer.rotation,
@@ -385,7 +385,7 @@ async function initGame(): Promise<void> {
         }
         
         // Update interpolation for remote players
-        gameSyncManager.updateInterpolation(deltaTime);
+        realtimeSyncManager.updateInterpolation(deltaTime);
         
         // Update debug info
         const beaconActive = Date.now() < beaconActiveUntil;
@@ -413,11 +413,11 @@ async function initGame(): Promise<void> {
       // Initialize GameAPIClient
       const gameApiClient = new GameAPIClient();
       
-      // Initialize GameSyncManager
-      const gameSyncManager = new GameSyncManager(gameApiClient);
+      // Initialize RealtimeSyncManager
+      const realtimeSyncManager = new RealtimeSyncManager();
       
       // Register callback for player disconnection
-      gameSyncManager.onPlayerDisconnect(async (playerId) => {
+      realtimeSyncManager.onPlayerDisconnect(async (playerId) => {
         console.log(`Player ${playerId} disconnected`);
         
         // If we have a current game, notify server to replace with AI
@@ -432,7 +432,7 @@ async function initGame(): Promise<void> {
       });
       
       // Register callback for remote player updates
-      gameSyncManager.onRemotePlayerUpdate((remotePlayers) => {
+      realtimeSyncManager.onRemotePlayerUpdate((remotePlayers) => {
         // Update or create models for remote players
         for (const remotePlayer of remotePlayers) {
           let model = remotePlayerModels.get(remotePlayer.id);
@@ -554,11 +554,11 @@ async function initGame(): Promise<void> {
         localPlayer.velocity = { x: 0, y: 0, z: 0 };
         console.log(`Spawned at (${spawnX.toFixed(1)}, 2, ${spawnZ.toFixed(1)})`);
         
-        // Start game synchronization if gameId is provided
+        // Start Realtime synchronization if gameId is provided
         if (e.detail?.gameId) {
           currentGameId = e.detail.gameId as string;
-          gameSyncManager.startSync(currentGameId, gameState.getLocalPlayer().id);
-          console.log(`Started game sync for game ${currentGameId}`);
+          void realtimeSyncManager.connect(currentGameId, gameState.getLocalPlayer().id);
+          console.log(`Connecting to Realtime for game ${currentGameId}`);
         }
         
         // Assign random ONI
@@ -614,10 +614,10 @@ async function initGame(): Promise<void> {
       
       // Listen for game end event
       window.addEventListener('gameEnd', async () => {
-        console.log('Game ending - stopping sync');
+        console.log('Game ending - disconnecting from Realtime');
         
-        // Stop game synchronization
-        gameSyncManager.stopSync();
+        // Disconnect from Realtime
+        await realtimeSyncManager.disconnect();
         
         // Call endGame API if we have a game ID
         if (currentGameId) {
@@ -657,7 +657,7 @@ async function initGame(): Promise<void> {
         uiHud.hide();
         uiControls.hide();
         
-        console.log('Game sync stopped');
+        console.log('Realtime disconnected');
       });
       
       uiMenu.showTitleScreen();

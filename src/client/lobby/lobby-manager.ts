@@ -42,7 +42,7 @@ export class LobbyManager {
   constructor(config: LobbyManagerConfig) {
     this.gameApiClient = config.gameApiClient;
     this.pollInterval = config.pollInterval ?? 1000; // 1 second
-    this.countdownDuration = config.countdownDuration ?? 3; // 3 seconds
+    this.countdownDuration = config.countdownDuration ?? 10; // 10 seconds
   }
 
   /**
@@ -91,6 +91,13 @@ export class LobbyManager {
    */
   getMaxPlayers(): number {
     return this.gameState?.config.totalPlayers ?? 0;
+  }
+
+  /**
+   * Get current game state
+   */
+  getGameState(): GameState | null {
+    return this.gameState;
   }
 
   /**

@@ -1118,14 +1118,14 @@ export class UIMenu {
               align-items: center;
               justify-content: center;
               box-shadow: 0 0 30px rgba(255, 136, 0, 0.8), 0 0 60px rgba(255, 136, 0, 0.4);
-              animation: countdownPulse 1s infinite, countdownRotate 2s linear infinite;
+              animation: countdownPulse 1s infinite;
             ">
               <span id="countdown-number" style="
                 color: #fff;
                 font-size: 64px;
                 font-weight: bold;
                 text-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-              ">5</span>
+              ">10</span>
             </div>
             <p style="
               color: #ff8800;
@@ -1140,11 +1140,6 @@ export class UIMenu {
               @keyframes countdownPulse {
                 0%, 100% { transform: scale(1); }
                 50% { transform: scale(1.1); }
-              }
-              
-              @keyframes countdownRotate {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
               }
             </style>
           </div>

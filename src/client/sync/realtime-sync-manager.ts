@@ -204,6 +204,9 @@ export class RealtimeSyncManager {
    * Send local player state via Realtime (with throttling)
    */
   sendPlayerState(state: PlayerStateUpdate): void {
+    // Debug: Log all calls to sendPlayerState
+    console.log('[Realtime] sendPlayerState called, isRunning:', this.isRunning, 'connectionState:', this.connectionState, 'gameId:', this.gameId, 'playerId:', this.playerId);
+    
     // Debug: Check connection state
     if (!this.isRunning) {
       console.warn('[Realtime] Not running, skipping send');

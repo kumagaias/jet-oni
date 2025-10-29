@@ -626,8 +626,17 @@ async function initGame(): Promise<void> {
         });
       }) as EventListener);
       
+      // Track if game has been started to prevent duplicate starts
+      let gameStarted = false;
+      
       // Listen for game start event (after countdown)
       window.addEventListener('gameStart', ((e: CustomEvent) => {
+        if (gameStarted) {
+          console.log('[Game Start] Already started, ignoring duplicate event');
+          return;
+        }
+        gameStarted = true;
+        
         console.log('[Phase Change] Game starting - setting phase to "playing"');
         
         // Show canvas and resume game engine

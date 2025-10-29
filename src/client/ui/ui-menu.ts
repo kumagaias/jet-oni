@@ -1210,34 +1210,24 @@ export class UIMenu {
       }
     });
     
-    // Auto-start countdown when lobby is full
+    // Auto-start game when lobby is full
     if (currentPlayers >= maxPlayers) {
-      const countdownDisplay = document.getElementById('countdown-display');
-      const countdownNumber = document.getElementById('countdown-number');
       const waitingMessage = document.getElementById('waiting-message');
       const lobbyButtons = document.getElementById('lobby-buttons');
       
-      if (countdownDisplay && countdownNumber && waitingMessage) {
-        countdownDisplay.style.display = 'block';
-        waitingMessage.style.display = 'none';
-        
-        // Hide buttons when countdown starts
-        if (lobbyButtons) {
-          lobbyButtons.style.display = 'none';
-        }
-        
-        let countdown = 10;
-        countdownNumber.textContent = countdown.toString();
-        const countdownInterval = setInterval(() => {
-          countdown--;
-          countdownNumber.textContent = countdown.toString();
-          
-          if (countdown <= 0) {
-            clearInterval(countdownInterval);
-            this.startGame();
-          }
-        }, 1000);
+      if (waitingMessage) {
+        waitingMessage.textContent = 'Starting game...';
       }
+      
+      // Hide buttons when starting
+      if (lobbyButtons) {
+        lobbyButtons.style.display = 'none';
+      }
+      
+      // Start game immediately (will trigger countdown)
+      setTimeout(() => {
+        this.startGame();
+      }, 1000);
     }
     
   }

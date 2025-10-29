@@ -82,6 +82,10 @@ export class CityGenerator {
       cityGroup.add(this.landmark);
     }
 
+    // Generate dome landmark
+    this.generateDomeLandmark();
+    cityGroup.add(this.buildings); // Dome is part of buildings group
+
     return cityGroup;
   }
 
@@ -427,6 +431,82 @@ export class CityGenerator {
 
     this.landmark.position.set(position.x, 0, position.z);
     this.markAreaOccupied(position.x, position.z, landmarkWidth, landmarkDepth, 'landmark');
+  }
+
+  /**
+   * Generate a dome landmark (stadium or observatory)
+   */
+  private generateDomeLandmark(): void {
+    const domeRadius = 20;
+    const domeHeight = 25;
+    const baseHeight = 5;
+
+    // Try to place away from center (opposite side from tower)
+    const position = this.findUnoccupiedPosition(domeRadius * 2, domeRadius * 2, 100);
+    if (!position) return;
+
+    const domeGroup = new THREE.Group();
+
+    // Base platform
+    const baseGeometry = new THREE.CylinderGeometry(domeRadius, domeRadius, baseHeight, 16);
+    const baseMaterial = new THREE.MeshStandardMaterial({
+      color: 0xf0f0f0, // White
+      roughness: 0.6,
+      metalness: 0.3,
+    });
+
+    const base = new THREE.Mesh(baseGeometry, baseMaterial);
+    base.position.y = baseHeight / 2;
+    base.castShadow = true;
+    base.receiveShadow = true;
+    domeGroup.add(base);
+
+    // Dome (hemisphere)
+    const domeGeometry = new THREE.SphereGeometry(domeRadius, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2);
+    const domeMaterial = new THREE.MeshStandardMaterial({
+      color: 0x4169e1, // Royal blue
+      roughness: 0.3,
+      metalness: 0.7,
+      transparent: true,
+      opacity: 0.9,
+    });
+
+    const dome = new THREE.Mesh(domeGeometry, domeMaterial);
+    dome.position.y = baseHeight;
+    dome.castShadow = true;
+    dome.receiveShadow = true;
+    domeGroup.add(dome);
+
+    // Add decorative rings
+    for (let i = 0; i < 3; i++) {
+      const ringRadius = domeRadius * (0.3 + i * 0.2);
+      const ringGeometry = new THREE.TorusGeometry(ringRadius, 0.5, 8, 32);
+      const ringMaterial = new THREE.MeshStandardMaterial({
+        color: 0xffd700, // Gold
+        roughness: 0.4,
+        metalness: 0.8,
+      });
+
+      const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+      ring.position.y = baseHeight + domeHeight * (0.2 + i * 0.25);
+      ring.rotation.x = Math.PI / 2;
+      ring.castShadow = true;
+      domeGroup.add(ring);
+    }
+
+    domeGroup.position.set(position.x, 0, position.z);
+    this.buildings.add(domeGroup);
+
+    // Register for collision detection
+    this.buildingData.push({
+      position: { x: position.x, y: baseHeight + domeHeight / 2, z: position.z },
+      width: domeRadius * 2,
+      height: baseHeight + domeHeight,
+      depth: domeRadius * 2,
+      shape: 'cylinder',
+    });
+
+    this.markAreaOccupied(position.x, position.z, domeRadius * 2, domeRadius * 2, 'landmark');
   }
 
   /**

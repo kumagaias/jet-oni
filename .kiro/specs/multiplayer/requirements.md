@@ -52,17 +52,17 @@ JET ONIゲームにリアルタイムマルチプレイヤー機能を実装す�
 4. WHEN カウントダウンが終了する, THE システム SHALL ゲームを自動開始する
 5. WHEN ホストがSPACEキーを押す, THE システム SHALL 早期にゲームを開始する
 
-### 要件4: リアルタイム同期
+### 要件4: リアルタイム同期（Devvit Realtime使用）
 
 **ユーザーストーリー**: プレイヤーとして、他のプレイヤーの動きをリアルタイムで見たい
 
 #### 受入基準
 
-1. WHEN ゲームが開始する, THE システム SHALL 定期的に自分の状態をサーバーに送信する
-2. WHEN サーバーが状態を受信する, THE システム SHALL Redisに保存する
-3. WHEN クライアントがポーリングする, THE システム SHALL 他のプレイヤーの状態を取得する
-4. WHEN 他のプレイヤーの状態を受信する, THE システム SHALL 画面上の位置を更新する
-5. WHILE ゲームが進行中である, THE システム SHALL 毎秒10回状態を同期する
+1. WHEN ゲームが開始する, THE システム SHALL Devvit Realtimeチャンネルに接続する
+2. WHEN プレイヤーが移動する, THE システム SHALL Realtimeチャンネルに状態を送信する
+3. WHEN 他のプレイヤーが状態を送信する, THE システム SHALL onMessageハンドラで受信する
+4. WHEN 状態を受信する, THE システム SHALL 画面上の位置を即座に更新する
+5. WHEN ネットワークが切断される, THE システム SHALL onDisconnectハンドラで再接続を試みる
 
 ### 要件5: プレイヤー状態管理
 
@@ -106,11 +106,11 @@ JET ONIゲームにリアルタイムマルチプレイヤー機能を実装す�
 
 #### 受入基準
 
-1. WHEN 状態を同期する, THE システム SHALL 100ms以内にレスポンスを返す
+1. WHEN Realtimeで状態を同期する, THE システム SHALL ほぼゼロレイテンシで配信する
 2. WHEN プレイヤー数が20人である, THE システム SHALL 60FPSを維持する
 3. WHEN ネットワーク遅延が発生する, THE システム SHALL 補間で滑らかに表示する
 4. WHEN データを送信する, THE システム SHALL 必要最小限のデータのみ送信する
-5. WHEN Redisに保存する, THE システム SHALL TTLを設定してメモリを管理する
+5. WHEN Realtimeメッセージを送信する, THE システム SHALL イベント駆動で効率的に配信する
 
 ### 要件9: セキュリティ
 
@@ -135,3 +135,15 @@ JET ONIゲームにリアルタイムマルチプレイヤー機能を実装す�
 3. WHEN 接続状態を表示する, THE システム SHALL アイコンで視覚的に示す
 4. WHEN エラーが発生する, THE システム SHALL トーストメッセージで通知する
 5. WHEN ローディング中である, THE システム SHALL スピナーを表示する
+
+### 要件11: Realtime接続管理
+
+**ユーザーストーリー**: システムとして、Realtime接続を適切に管理したい
+
+#### 受入基準
+
+1. WHEN ゲームが開始する, THE システム SHALL ゲーム固有のRealtimeチャンネルに接続する
+2. WHEN 接続が確立される, THE システム SHALL onConnectハンドラで初期化処理を実行する
+3. WHEN 接続が切断される, THE システム SHALL onDisconnectハンドラで再接続を試みる
+4. WHEN ゲームが終了する, THE システム SHALL Realtime接続を切断する
+5. WHEN 複数のゲームセッションが存在する, THE システム SHALL チャンネル名でゲームを識別する

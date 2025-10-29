@@ -8,7 +8,8 @@
       ],
       "disabled": false,
       "autoApprove": [
-        "devvit_logs"
+        "devvit_logs",
+        "devvit_search"
       ]
     }
   }

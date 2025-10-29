@@ -201,11 +201,22 @@ async function initGame(): Promise<void> {
       `;
       document.body.appendChild(debugInfo);
       
-      // Toggle debug mode with F12
+      // Toggle debug mode with F2 (only in r/jet_oni_dev)
       let debugMode = false;
+      const isDevSubreddit = window.location.href.includes('r/jet_oni_dev') || 
+                             window.location.href.includes('localhost') ||
+                             window.location.href.includes('playtest');
+      
       window.addEventListener('keydown', (e) => {
-        if (e.key === 'F12') {
+        if (e.key === 'F2') {
           e.preventDefault();
+          
+          // Only allow debug mode in dev subreddit
+          if (!isDevSubreddit) {
+            console.log('Debug mode is only available in r/jet_oni_dev');
+            return;
+          }
+          
           debugMode = !debugMode;
           debugInfo.style.display = debugMode ? 'block' : 'none';
           console.log(`Debug mode: ${debugMode ? 'ON' : 'OFF'}`);

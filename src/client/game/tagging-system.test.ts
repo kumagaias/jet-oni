@@ -62,7 +62,7 @@ describe('TaggingSystem', () => {
         username: 'Runner',
         isOni: false,
         isAI: false,
-        position: { x: 5, y: 0, z: 0 }, // 5 units away (> TAG_DISTANCE)
+        position: { x: 10, y: 0, z: 0 }, // 10 units away (> TAG_DISTANCE)
         velocity: { x: 0, y: 0, z: 0 },
         fuel: 100,
         survivedTime: 10,

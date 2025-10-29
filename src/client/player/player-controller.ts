@@ -134,9 +134,20 @@ export class PlayerController {
    * Handle keydown events
    */
   private handleKeyDown(event: KeyboardEvent): void {
-    // Debug mode: F3 to toggle ONI/Runner
+    // Debug mode: F3 to toggle ONI/Runner (only in dev subreddit)
     if (event.code === 'F3') {
       event.preventDefault();
+      
+      // Only allow in dev subreddit
+      const isDevSubreddit = window.location.href.includes('r/jet_oni_dev') || 
+                             window.location.href.includes('localhost') ||
+                             window.location.href.includes('playtest');
+      
+      if (!isDevSubreddit) {
+        console.log('Debug features are only available in r/jet_oni_dev');
+        return;
+      }
+      
       const player = this.gameState.getLocalPlayer();
       this.gameState.setLocalPlayerIsOni(!player.isOni);
       console.log(`[DEBUG] Switched to ${player.isOni ? 'Runner' : 'ONI'}`);

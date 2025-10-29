@@ -18,7 +18,7 @@ export const JUMP_FORCE = 10;
 export const JETPACK_FORCE = 21; // Must be greater than GRAVITY to fly upward
 
 // Tagging
-export const TAG_DISTANCE = 3.0; // units (increased for easier tagging)
+export const TAG_DISTANCE = 5.0; // units (increased for easier tagging)
 
 // Beacon ability
 export const BEACON_INITIAL_DELAY = 30; // seconds after becoming oni

@@ -63,12 +63,16 @@ router.post(
       }
 
       // Get current username from Reddit
-      let username = await reddit.getCurrentUsername();
+      const username = await reddit.getCurrentUsername();
       
-      // If username is null or empty, generate a random guest name
+      // If username is null or empty, return error
       if (!username || username.trim() === '') {
-        username = `Guest${Math.floor(Math.random() * 10000)}`;
-        console.warn('Failed to get Reddit username, using:', username);
+        console.error('Failed to get Reddit username for game creation');
+        res.status(400).json({
+          success: false,
+          error: 'Unable to retrieve your Reddit username. Please try again.',
+        });
+        return;
       }
       
       const gameId = await gameManager.createGame(config, username);

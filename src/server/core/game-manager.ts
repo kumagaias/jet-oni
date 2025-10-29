@@ -280,10 +280,20 @@ export class GameManager {
         // Only include games in lobby status that are not full
         if (gameState.status === 'lobby' && gameState.players.length < gameState.config.totalPlayers) {
           const hostPlayer = gameState.players.find((p) => p.id === gameState.hostId);
+          
+          // Skip games where host username is invalid (Guest####, Host, Unknown, etc.)
+          const hostUsername = hostPlayer?.username || '';
+          if (!hostUsername || 
+              hostUsername === 'Host' || 
+              hostUsername === 'Unknown' || 
+              hostUsername.startsWith('Guest')) {
+            console.log(`Skipping game ${gameState.gameId} with invalid host: ${hostUsername}`);
+            continue;
+          }
 
           games.push({
             gameId: gameState.gameId,
-            hostUsername: hostPlayer?.username || 'Unknown',
+            hostUsername: hostUsername,
             currentPlayers: gameState.players.length,
             totalPlayers: gameState.config.totalPlayers,
             roundDuration: gameState.config.roundDuration,

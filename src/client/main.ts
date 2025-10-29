@@ -390,16 +390,18 @@ async function initGame(): Promise<void> {
             localPlayer.isJetpacking
           );
           
-          // Check car collision first (for bounce effect)
-          const carCollision = carSystem.checkCarCollision(
-            physicsResult.position,
-            physicsResult.velocity
-          );
-          
-          // If car collision, apply bounce velocity
+          // Check car collision first (for bounce effect) - only during gameplay
           let finalVelocity = physicsResult.velocity;
-          if (carCollision.collided) {
-            finalVelocity = carCollision.newVelocity;
+          if (gameState.getGamePhase() === 'playing') {
+            const carCollision = carSystem.checkCarCollision(
+              physicsResult.position,
+              physicsResult.velocity
+            );
+            
+            // If car collision, apply bounce velocity
+            if (carCollision.collided) {
+              finalVelocity = carCollision.newVelocity;
+            }
           }
           
           // Apply collision detection with buildings
@@ -489,6 +491,8 @@ async function initGame(): Promise<void> {
       
       // Register callback for remote player updates
       realtimeSyncManager.onRemotePlayerUpdate((remotePlayers) => {
+        console.log(`[Remote Players] Received update for ${remotePlayers.length} players`);
+        
         // Update or create models for remote players
         for (const remotePlayer of remotePlayers) {
           let model = remotePlayerModels.get(remotePlayer.id);

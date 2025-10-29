@@ -247,14 +247,19 @@ export class RealtimeSyncManager {
       message.wasTagged = state.wasTagged;
     }
 
-    // Send via Realtime (messages are automatically broadcast to all clients)
-    // Note: In Devvit Web, we can't directly call send on the connection
-    // Messages are sent through the server-side realtime.send API
-    // For client-to-client communication, we would need to implement
-    // a server endpoint that receives the state and broadcasts it
-    
-    // TODO: Implement actual message sending through server endpoint
-    // For now, this is a placeholder that demonstrates the throttling logic
+    // Send via server API (Devvit Web requires server-side realtime.send)
+    fetch('/api/realtime/broadcast', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        gameId: this.gameId,
+        message,
+      }),
+    }).catch((error) => {
+      console.error('Failed to broadcast player state:', error);
+    });
   }
 
   /**

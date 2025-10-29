@@ -4,6 +4,7 @@ import { redis, reddit, createServer, context, getServerPort } from '@devvit/web
 import { createPost } from './core/post';
 import gameApiRouter from './api/game-api';
 import statsApiRouter from './api/stats-api';
+import realtimeApiRouter from './api/realtime-api';
 
 const app = express();
 
@@ -159,6 +160,9 @@ app.use(gameApiRouter);
 
 // Mount stats API routes
 app.use(statsApiRouter);
+
+// Mount realtime API routes
+app.use(realtimeApiRouter);
 
 app.use(router);
 

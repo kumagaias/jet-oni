@@ -367,7 +367,6 @@ export class GameManager {
     }
 
     const now = Date.now();
-    const INACTIVE_TIMEOUT = 10000; // 10 seconds
     const replacedPlayerIds: string[] = [];
 
     for (let i = 0; i < gameState.players.length; i++) {

@@ -57,6 +57,45 @@ async function initGame(): Promise<void> {
     const data = (await response.json()) as InitResponse;
     
     if (data.type === 'init') {
+      // Check if username is anonymous (Google login issue)
+      if (data.username === 'anonymous' || !data.username) {
+        console.warn('[Init] Username is anonymous - Reddit account may not be fully set up');
+        
+        // Show warning message to user
+        const warningDiv = document.createElement('div');
+        warningDiv.style.cssText = `
+          position: fixed;
+          top: 20px;
+          left: 50%;
+          transform: translateX(-50%);
+          background: rgba(255, 136, 0, 0.95);
+          color: white;
+          padding: 15px 25px;
+          border-radius: 8px;
+          font-family: monospace;
+          font-size: 14px;
+          z-index: 10000;
+          max-width: 500px;
+          text-align: center;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+        `;
+        warningDiv.innerHTML = `
+          <strong>⚠️ Account Setup Required</strong><br>
+          <span style="font-size: 12px;">
+            Please set up your Reddit username to create games.<br>
+            You can still join games created by others.
+          </span>
+        `;
+        document.body.appendChild(warningDiv);
+        
+        // Auto-hide after 10 seconds
+        setTimeout(() => {
+          warningDiv.style.transition = 'opacity 0.5s';
+          warningDiv.style.opacity = '0';
+          setTimeout(() => warningDiv.remove(), 500);
+        }, 10000);
+      }
+      
       // Generate unique player ID
       const playerId = data.username || `player_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       

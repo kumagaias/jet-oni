@@ -31,16 +31,31 @@ router.get<{ postId: string }, InitResponse | { status: string; message: string 
     }
 
     try {
-      const [count, username] = await Promise.all([
-        redis.get('count'),
-        reddit.getCurrentUsername(),
-      ]);
-
-      // Log username retrieval for debugging
+      // Try multiple methods to get username
+      let username: string | null = null;
+      
+      // Method 1: getCurrentUsername()
+      username = await reddit.getCurrentUsername();
+      console.log('[Init] getCurrentUsername() returned:', username);
+      
+      // Method 2: If that fails, try getCurrentUser()
       if (!username) {
-        console.warn('[Init] Failed to get Reddit username, using anonymous');
+        try {
+          const user = await reddit.getCurrentUser();
+          username = user?.username ?? null;
+          console.log('[Init] getCurrentUser().username returned:', username);
+        } catch (userError) {
+          console.error('[Init] getCurrentUser() failed:', userError);
+        }
+      }
+      
+      const count = await redis.get('count');
+
+      // Log final result
+      if (!username) {
+        console.warn('[Init] All methods failed to get Reddit username, using anonymous');
       } else {
-        console.log('[Init] Retrieved username:', username);
+        console.log('[Init] Successfully retrieved username:', username);
       }
 
       res.json({

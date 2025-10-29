@@ -62,18 +62,32 @@ router.post(
         return;
       }
 
-      // Get current username from Reddit
-      let username = await reddit.getCurrentUsername();
+      // Try multiple methods to get username
+      let username: string | null = null;
       
-      // Log for debugging
-      console.log('[Create Game] reddit.getCurrentUsername() returned:', username);
+      // Method 1: getCurrentUsername()
+      username = await reddit.getCurrentUsername();
+      console.log('[Create Game] getCurrentUsername() returned:', username);
+      
+      // Method 2: If that fails, try getCurrentUser()
+      if (!username) {
+        try {
+          const user = await reddit.getCurrentUser();
+          username = user?.username ?? null;
+          console.log('[Create Game] getCurrentUser().username returned:', username);
+        } catch (userError) {
+          console.error('[Create Game] getCurrentUser() failed:', userError);
+        }
+      }
+      
+      // Log request headers for debugging
       console.log('[Create Game] Request headers:', JSON.stringify(req.headers, null, 2));
       
       // If username is null or empty, use temporary username
       // Note: Games with temporary usernames won't appear in game list (filtered by listGames)
       if (!username || username.trim() === '') {
         username = `TempUser${Date.now()}`;
-        console.warn('[Create Game] Failed to get Reddit username, using temporary:', username);
+        console.warn('[Create Game] All methods failed, using temporary:', username);
         console.warn('[Create Game] This game will not appear in the public game list');
       } else {
         console.log('[Create Game] Creating game for user:', username);

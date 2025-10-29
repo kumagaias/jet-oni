@@ -178,6 +178,25 @@ export class GameAPIClient {
   }
 
   /**
+   * Send heartbeat to update host activity timestamp
+   */
+  async sendHeartbeat(gameId: string): Promise<void> {
+    try {
+      const response = await this.post<{ success: boolean; error?: string }>(
+        `/game/${gameId}/heartbeat`,
+        {}
+      );
+
+      if (!response.success) {
+        console.warn('Heartbeat failed:', response.error);
+      }
+    } catch (error) {
+      // Don't throw on heartbeat errors, just log
+      console.warn('Heartbeat error:', error);
+    }
+  }
+
+  /**
    * Generic GET request with retry logic
    */
   private async get<T>(endpoint: string): Promise<T> {

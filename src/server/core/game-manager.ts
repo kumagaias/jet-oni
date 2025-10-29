@@ -43,6 +43,7 @@ export class GameManager {
       endTime: 0,
       currentRound: 0,
       timeRemaining: config.roundDuration,
+      lastHostHeartbeat: Date.now(), // Initialize heartbeat
     };
 
     // Save game state to Redis
@@ -465,6 +466,59 @@ export class GameManager {
    */
   private generatePlayerId(): string {
     return `player_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+  }
+
+  /**
+   * Update host heartbeat timestamp
+   */
+  async updateHostHeartbeat(gameId: string): Promise<{ success: boolean; error?: string }> {
+    const gameState = await this.getGameState(gameId);
+
+    if (!gameState) {
+      return { success: false, error: 'Game not found' };
+    }
+
+    // Update heartbeat timestamp
+    gameState.lastHostHeartbeat = Date.now();
+    await this.saveGameState(gameState);
+
+    return { success: true };
+  }
+
+  /**
+   * Check if host is still active (heartbeat within 30 seconds)
+   */
+  async checkHostActive(gameId: string): Promise<boolean> {
+    const gameState = await this.getGameState(gameId);
+
+    if (!gameState || !gameState.lastHostHeartbeat) {
+      return false;
+    }
+
+    const now = Date.now();
+    const timeSinceHeartbeat = now - gameState.lastHostHeartbeat;
+    const HOST_TIMEOUT = 30 * 1000; // 30 seconds
+
+    return timeSinceHeartbeat < HOST_TIMEOUT;
+  }
+
+  /**
+   * Close game due to host disconnect
+   */
+  async closeGameHostDisconnect(gameId: string): Promise<{ success: boolean; error?: string }> {
+    const gameState = await this.getGameState(gameId);
+
+    if (!gameState) {
+      return { success: false, error: 'Game not found' };
+    }
+
+    console.log(`Closing game ${gameId} due to host disconnect`);
+
+    // Delete game state and remove from active games
+    await RedisStorage.deleteGameState(gameId);
+    await RedisStorage.removeActiveGame(gameId);
+
+    return { success: true };
   }
 
 

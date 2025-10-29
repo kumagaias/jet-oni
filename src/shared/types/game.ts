@@ -48,6 +48,7 @@ export interface GameState {
   endTime: number;
   currentRound: number;
   timeRemaining: number;
+  lastHostHeartbeat?: number; // Timestamp of last host activity
 }
 
 export interface PlayerStats {

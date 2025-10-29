@@ -612,8 +612,8 @@ async function initGame(): Promise<void> {
         // Change phase to countdown
         gameState.setGamePhase('countdown');
         
-        // Start countdown (3 seconds)
-        uiCountdown.start(3, () => {
+        // Start countdown (10 seconds)
+        uiCountdown.start(10, () => {
           // Countdown complete - trigger actual game start
           window.dispatchEvent(new CustomEvent('gameStart', {
             detail: {

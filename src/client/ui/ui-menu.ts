@@ -1110,45 +1110,7 @@ export class UIMenu {
             }
           </style>
           
-          <div id="countdown-display" style="display: none; margin-top: 10px;">
-            <div style="
-              background: linear-gradient(135deg, #ff8800 0%, #ff4400 100%);
-              border: 3px solid #fff;
-              border-radius: 50%;
-              width: 100px;
-              height: 100px;
-              margin: 0 auto;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              box-shadow: 0 0 30px rgba(255, 136, 0, 0.8), 0 0 60px rgba(255, 136, 0, 0.4);
-              animation: countdownPulse 1s infinite;
-            ">
-              <span id="countdown-number" style="
-                color: #fff;
-                font-size: 48px;
-                font-weight: bold;
-                text-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-              ">10</span>
-            </div>
-            <p style="
-              color: #ff8800;
-              font-size: 18px;
-              font-weight: bold;
-              margin-top: 10px;
-              margin-bottom: 5px;
-              text-shadow: 0 0 10px rgba(255, 136, 0, 0.5);
-              animation: pulse 1s infinite;
-            ">GAME STARTING!</p>
-            
-            <style>
-              @keyframes countdownPulse {
-                0%, 100% { transform: scale(1); }
-                50% { transform: scale(1.05); }
-              }
-            </style>
-          </div>
-          
+
           <p id="waiting-message" style="color: #666; font-size: 14px; margin-top: 15px; animation: pulse 2s infinite;">
             Waiting for players...
           </p>

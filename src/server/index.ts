@@ -162,10 +162,10 @@ app.use(gameApiRouter);
 // Mount stats API routes
 app.use(statsApiRouter);
 
-// Mount realtime API routes (deprecated - using Redis polling instead)
-// app.use(realtimeApiRouter);
+// Mount realtime API routes
+app.use(realtimeApiRouter);
 
-// Mount sync API routes (Redis-based polling)
+// Mount sync API routes (for future use)
 app.use(syncApiRouter);
 
 app.use(router);

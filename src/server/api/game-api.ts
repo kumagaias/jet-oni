@@ -65,11 +65,17 @@ router.post(
       // Try multiple methods to get username
       let username: string | null = null;
       
-      // Method 1: getCurrentUsername()
-      username = await reddit.getCurrentUsername();
-      console.log('[Create Game] getCurrentUsername() returned:', username);
+      // Method 1: Get from HTTP headers (most reliable for Devvit Web apps)
+      username = req.headers['devvit-user-name'] as string | undefined ?? null;
+      console.log('[Create Game] devvit-user-name header:', username);
       
-      // Method 2: If that fails, try getCurrentUser()
+      // Method 2: getCurrentUsername()
+      if (!username) {
+        username = await reddit.getCurrentUsername();
+        console.log('[Create Game] getCurrentUsername() returned:', username);
+      }
+      
+      // Method 3: If that fails, try getCurrentUser()
       if (!username) {
         try {
           const user = await reddit.getCurrentUser();
@@ -79,9 +85,6 @@ router.post(
           console.error('[Create Game] getCurrentUser() failed:', userError);
         }
       }
-      
-      // Log request headers for debugging
-      console.log('[Create Game] Request headers:', JSON.stringify(req.headers, null, 2));
       
       // If username is null or empty, use temporary username
       // Note: Games with temporary usernames won't appear in game list (filtered by listGames)

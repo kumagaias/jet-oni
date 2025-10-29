@@ -1,15 +1,12 @@
 import { GameAPIClient } from '../api/game-api-client';
-import { GameState } from './game-state';
 
 /**
  * HostMonitor monitors host connection and handles disconnection
  */
 export class HostMonitor {
   private gameApiClient: GameAPIClient;
-  private gameState: GameState;
   private heartbeatInterval: number | null = null;
   private checkInterval: number | null = null;
-  private isHost = false;
   private currentGameId: string | null = null;
   private onHostDisconnectCallback?: () => void;
 
@@ -17,16 +14,14 @@ export class HostMonitor {
   private readonly CHECK_INTERVAL = 5 * 1000; // Check host status every 5 seconds
   private readonly HOST_TIMEOUT = 30 * 1000; // 30 seconds timeout
 
-  constructor(gameApiClient: GameAPIClient, gameState: GameState) {
+  constructor(gameApiClient: GameAPIClient) {
     this.gameApiClient = gameApiClient;
-    this.gameState = gameState;
   }
 
   /**
    * Start monitoring as host
    */
   public startAsHost(gameId: string): void {
-    this.isHost = true;
     this.currentGameId = gameId;
 
     // Send heartbeat every 10 seconds
@@ -43,7 +38,6 @@ export class HostMonitor {
    * Start monitoring as participant
    */
   public startAsParticipant(gameId: string): void {
-    this.isHost = false;
     this.currentGameId = gameId;
 
     // Check host status every 5 seconds
@@ -62,7 +56,7 @@ export class HostMonitor {
 
     try {
       const gameState = await this.gameApiClient.getGameState(this.currentGameId);
-      
+
       if (!gameState.lastHostHeartbeat) {
         console.warn('[HostMonitor] No heartbeat data available');
         return;

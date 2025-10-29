@@ -18,7 +18,7 @@ const router = express.Router();
 
 router.get<{ postId: string }, InitResponse | { status: string; message: string }>(
   '/api/init',
-  async (_req, res): Promise<void> => {
+  async (req, res): Promise<void> => {
     const { postId } = context;
 
     if (!postId) {
@@ -34,11 +34,17 @@ router.get<{ postId: string }, InitResponse | { status: string; message: string 
       // Try multiple methods to get username
       let username: string | null = null;
       
-      // Method 1: getCurrentUsername()
-      username = await reddit.getCurrentUsername();
-      console.log('[Init] getCurrentUsername() returned:', username);
+      // Method 1: Get from HTTP headers (most reliable for Devvit Web apps)
+      username = req.headers['devvit-user-name'] as string | undefined ?? null;
+      console.log('[Init] devvit-user-name header:', username);
       
-      // Method 2: If that fails, try getCurrentUser()
+      // Method 2: getCurrentUsername()
+      if (!username) {
+        username = await reddit.getCurrentUsername();
+        console.log('[Init] getCurrentUsername() returned:', username);
+      }
+      
+      // Method 3: If that fails, try getCurrentUser()
       if (!username) {
         try {
           const user = await reddit.getCurrentUser();

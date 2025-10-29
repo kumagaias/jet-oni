@@ -34,12 +34,11 @@ JET ONIゲームのマルチプレイヤー機能の技術設計。クライア�
    - Server → Redis: プレイヤー追加
    - Server → Client: 参加成功
 
-3. **状態同期フロー**
-   - Client → Server: POST /api/game/update (自分の状態)
-   - Server → Redis: 状態保存
-   - Client → Server: GET /api/game/:id (全プレイヤーの状態)
-   - Server → Redis: 状態取得
-   - Server → Client: 全プレイヤーの状態返却
+3. **状態同期フロー（Devvit Realtime使用）**
+   - Client: Realtimeチャンネル `game:{gameId}` に接続
+   - Client → Realtime: プレイヤー状態をブロードキャスト
+   - Realtime → All Clients: 全クライアントに即座に配信
+   - Server: 定期的にRedisに状態を保存（永続化用）
 
 ## コンポーネント設計
 
@@ -64,25 +63,27 @@ class GameAPIClient {
 - タイムアウト: 5秒
 - サーバーエラー: エラーメッセージ表示
 
-### 2. GameSyncManager (クライアント側)
+### 2. RealtimeSyncManager (クライアント側)
 
-**責務**: ゲーム状態のリアルタイム同期
+**責務**: Devvit Realtimeを使用したゲーム状態の同期
 
 **主要メソッド**:
 ```typescript
-class GameSyncManager {
-  startSync(gameId: string, playerId: string): void
-  stopSync(): void
+class RealtimeSyncManager {
+  async connect(gameId: string, playerId: string): Promise<void>
+  async disconnect(): Promise<void>
   sendPlayerState(state: PlayerState): void
   onRemotePlayerUpdate(callback: (players: Player[]) => void): void
+  onConnect(callback: () => void): void
+  onDisconnect(callback: () => void): void
 }
 ```
 
 **同期戦略**:
-- 送信頻度: 100ms (10Hz)
-- 受信頻度: 100ms (10Hz)
+- イベント駆動: 状態変更時のみ送信
+- ほぼゼロレイテンシ: Realtimeで即座に配信
 - 補間: 線形補間で滑らかに表示
-- 予測: クライアント側で位置を予測
+- 自動再接続: 切断時に自動的に再接続
 
 ### 3. LobbyManager (クライアント側)
 
@@ -289,52 +290,69 @@ interface Player {
 }
 ```
 
-## 同期戦略
+## 同期戦略（Devvit Realtime使用）
 
 ### クライアント側
 
-1. **送信ループ** (100ms間隔)
-   - 自分の状態をサーバーに送信
-   - 位置、速度、回転、燃料など
+1. **Realtime接続**
+   - ゲーム開始時にチャンネル `game:{gameId}` に接続
+   - `connectRealtime()` を使用
 
-2. **受信ループ** (100ms間隔)
-   - サーバーから全プレイヤーの状態を取得
-   - リモートプレイヤーの位置を更新
+2. **状態送信** (イベント駆動)
+   - プレイヤーが移動したときのみ送信
+   - スロットリング: 最大60回/秒
+   - メッセージ形式:
+     ```typescript
+     {
+       type: 'player-update',
+       playerId: string,
+       position: Vector3,
+       velocity: Vector3,
+       rotation: Rotation,
+       fuel: number,
+       isOni: boolean,
+       timestamp: number
+     }
+     ```
 
-3. **補間**
-   - 受信した位置と現在の位置を線形補間
-   - 滑らかな動きを実現
+3. **状態受信** (onMessageハンドラ)
+   - Realtimeから他のプレイヤーの状態を受信
+   - 即座にゲーム状態を更新
+   - 補間で滑らかに表示
 
-4. **予測**
-   - ネットワーク遅延を考慮して位置を予測
-   - 速度ベクトルから次の位置を計算
+4. **接続管理**
+   - `onConnect`: 接続確立時に初期状態を送信
+   - `onDisconnect`: 切断時に再接続を試みる
+   - 自動再接続: 最大3回リトライ
 
 ### サーバー側
 
-1. **状態検証**
-   - クライアントから受信した状態を検証
-   - 異常な速度や位置を補正
+1. **Realtimeメッセージ配信**
+   - クライアントからのメッセージを全クライアントに配信
+   - Devvit Realtimeが自動的に処理
 
-2. **状態保存**
-   - Redisに状態を保存
+2. **状態永続化** (オプション)
+   - 定期的にRedisに状態を保存
+   - ゲーム終了時の結果計算用
    - TTLを設定してメモリ管理
 
-3. **状態配信**
-   - クライアントからのリクエストに応じて状態を返却
-   - 最新の状態のみ返却
+3. **状態検証** (サーバー側エンドポイント)
+   - 重要な状態変更（鬼になる、タグ付けなど）はサーバー側で検証
+   - `/api/game/:id/tag` エンドポイントで処理
 
 ## パフォーマンス最適化
+
+### Realtime最適化
+- **イベント駆動**: 変更時のみ送信（HTTPポーリングより80%削減）
+- **スロットリング**: 最大60回/秒に制限
+- **差分送信**: 変化がない場合はスキップ
+- **ほぼゼロレイテンシ**: Realtimeで即座に配信
 
 ### データ圧縮
 - 位置: Float32 (4 bytes) × 3 = 12 bytes
 - 速度: Float32 (4 bytes) × 3 = 12 bytes
 - 回転: Float32 (4 bytes) × 2 = 8 bytes
 - 合計: 約32 bytes/player
-
-### ネットワーク最適化
-- 差分のみ送信
-- 変化がない場合はスキップ
-- バッチ処理で複数プレイヤーをまとめて送信
 
 ### Redis最適化
 - パイプライン処理
@@ -359,6 +377,90 @@ interface Player {
 - AIプレイヤーに置き換え
 - 他のプレイヤーに通知
 
+## Realtime実装詳細
+
+### クライアント側実装
+
+```typescript
+import { connectRealtime } from '@devvit/web/client';
+
+class RealtimeSyncManager {
+  private connection: RealtimeConnection | null = null;
+  private gameId: string | null = null;
+  private playerId: string | null = null;
+  
+  async connect(gameId: string, playerId: string): Promise<void> {
+    this.gameId = gameId;
+    this.playerId = playerId;
+    
+    this.connection = await connectRealtime({
+      channel: `game:${gameId}`,
+      onConnect: (channel) => {
+        console.log(`Connected to ${channel}`);
+        // 初期状態を送信
+        this.sendInitialState();
+      },
+      onDisconnect: (channel) => {
+        console.log(`Disconnected from ${channel}`);
+        // 再接続を試みる
+        this.reconnect();
+      },
+      onMessage: (data) => {
+        // 他のプレイヤーの状態を処理
+        this.handleRemotePlayerUpdate(data);
+      },
+    });
+  }
+  
+  sendPlayerState(state: PlayerState): void {
+    if (!this.connection) return;
+    
+    const message = {
+      type: 'player-update',
+      playerId: this.playerId,
+      ...state,
+      timestamp: Date.now(),
+    };
+    
+    // Realtimeチャンネルに送信（全クライアントに配信される）
+    this.connection.send(message);
+  }
+}
+```
+
+### サーバー側実装
+
+```typescript
+import { realtime } from '@devvit/web/server';
+
+// サーバー側からメッセージを送信する場合（オプション）
+async function broadcastGameEvent(gameId: string, event: GameEvent) {
+  await realtime.send(`game:${gameId}`, {
+    type: 'game-event',
+    event,
+    timestamp: Date.now(),
+  });
+}
+
+// 例: 鬼の割り当てをサーバー側で処理
+router.post('/api/game/:id/assign-oni', async (req, res) => {
+  const { id } = req.params;
+  const { playerId } = req.body;
+  
+  // ゲーム状態を更新
+  await gameManager.assignOni(id, playerId);
+  
+  // Realtimeで全クライアントに通知
+  await realtime.send(`game:${id}`, {
+    type: 'oni-assigned',
+    playerId,
+    timestamp: Date.now(),
+  });
+  
+  res.json({ success: true });
+});
+```
+
 ## セキュリティ
 
 ### 入力検証
@@ -367,12 +469,13 @@ interface Player {
 - 不正な値は補正
 
 ### レート制限
-- API呼び出し: 100回/秒/ユーザー
-- 状態更新: 20回/秒/ユーザー
+- Realtimeメッセージ: 60回/秒/ユーザー（クライアント側でスロットリング）
+- API呼び出し: 10回/秒/ユーザー
 
 ### 認証
 - Devvitの認証機能を使用
 - Redditユーザー情報で識別
+- Realtimeチャンネルはゲーム参加者のみアクセス可能
 
 ## テスト戦略
 

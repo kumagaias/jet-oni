@@ -674,15 +674,43 @@ async function initGame(): Promise<void> {
               
               // Set callback to return to menu
               uiResults.setOnBackToMenu(() => {
+                console.log('[Back to Menu] Starting cleanup...');
+                
+                // Hide and destroy results screen
                 uiResults.hide();
+                uiResults.destroy();
                 
                 // Reset game state
                 gameState.setGamePhase('lobby');
                 gameHasStarted = false;
+                wasOni = false;
                 
                 // Hide HUD and controls
                 uiHud.hide();
                 uiControls.hide();
+                
+                // Disconnect from Realtime
+                if (currentGameId) {
+                  void realtimeSyncManager.disconnect();
+                  currentGameId = null;
+                }
+                
+                // Clear remote player models
+                remotePlayerModels.forEach((model) => {
+                  gameEngine.removeFromScene(model.getModel());
+                });
+                remotePlayerModels.clear();
+                
+                // Clear AI player models
+                aiPlayerModels.forEach((model) => {
+                  gameEngine.removeFromScene(model.getModel());
+                });
+                aiPlayerModels.clear();
+                
+                // Reset local player position
+                gameState.setLocalPlayerPosition({ x: 0, y: 2, z: 0 });
+                gameState.setLocalPlayerVelocity({ x: 0, y: 0, z: 0 });
+                gameState.setLocalPlayerIsOni(false);
                 
                 // Show canvas again
                 const canvas = document.getElementById('bg') as HTMLCanvasElement;
@@ -690,8 +718,13 @@ async function initGame(): Promise<void> {
                   canvas.style.display = 'block';
                 }
                 
+                // Resume game engine (for background animation)
+                gameEngine.resume();
+                
                 // Show title screen
                 uiMenu.showTitleScreen();
+                
+                console.log('[Back to Menu] Cleanup complete');
               });
               
               uiResults.show(gameState.getLocalPlayer().id);

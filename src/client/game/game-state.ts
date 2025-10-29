@@ -449,6 +449,19 @@ export class GameState {
       return false;
     }
     
+    // Don't check for game end in the first 10 seconds (allow time for sync)
+    const elapsed = this.getElapsedTime();
+    if (elapsed < 10) {
+      return false;
+    }
+    
+    // Don't end game if there are less than 2 total players visible
+    // (AI players may exist on server)
+    const totalPlayers = 1 + this.remotePlayers.size;
+    if (totalPlayers < 2) {
+      return false; // Wait for server sync
+    }
+    
     // Check if all visible players are oni
     return this.countRunnerPlayers() === 0;
   }

@@ -138,13 +138,14 @@ export class UIMenu {
             transition: all 0.2s ease;
             box-shadow: ${isCurrentPlayer ? '0 0 10px rgba(255, 136, 0, 0.3)' : 'none'};
           ">
-            <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0;">
               <span style="
                 width: 8px;
                 height: 8px;
                 background: #0f0;
                 border-radius: 50%;
                 display: inline-block;
+                flex-shrink: 0;
                 box-shadow: 0 0 8px rgba(0, 255, 0, 0.6);
                 animation: pulse 2s infinite;
               "></span>
@@ -152,6 +153,9 @@ export class UIMenu {
                 color: ${isCurrentPlayer ? '#ff8800' : '#aaa'};
                 font-size: 13px;
                 font-weight: ${isCurrentPlayer ? 'bold' : 'normal'};
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
               ">
                 ${player.username}${isCurrentPlayer ? ' (You)' : ''}
               </span>
@@ -1083,7 +1087,6 @@ export class UIMenu {
             }
             
             .player-list-item:hover {
-              transform: scale(1.02);
               box-shadow: 0 2px 8px rgba(255, 136, 0, 0.2);
             }
             

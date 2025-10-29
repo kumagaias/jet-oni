@@ -223,17 +223,27 @@ export class UIMenu {
       playerListElement.innerHTML = [...playerItems, ...emptySlotItems].join('');
     }
     
-    // Show/hide countdown
+    // Show/hide countdown and buttons
+    const lobbyButtons = document.getElementById('lobby-buttons');
+    
     if (this.lobbyManager.isCountdownActive()) {
       if (countdownDisplay && countdownNumber && waitingMessage) {
         countdownDisplay.style.display = 'block';
         waitingMessage.style.display = 'none';
         countdownNumber.textContent = this.lobbyManager.getCountdownRemaining().toString();
       }
+      // Hide buttons when countdown starts
+      if (lobbyButtons) {
+        lobbyButtons.style.display = 'none';
+      }
     } else {
       if (countdownDisplay && waitingMessage) {
         countdownDisplay.style.display = 'none';
         waitingMessage.style.display = 'block';
+      }
+      // Show buttons when countdown is not active
+      if (lobbyButtons) {
+        lobbyButtons.style.display = 'flex';
       }
     }
   }
@@ -1155,7 +1165,7 @@ export class UIMenu {
           </p>
         </div>
         
-        <div style="display: flex; gap: 10px;">
+        <div id="lobby-buttons" style="display: flex; gap: 10px;">
           <button id="btn-back" style="
             flex: 1;
             padding: 12px;
@@ -1216,10 +1226,16 @@ export class UIMenu {
       const countdownDisplay = document.getElementById('countdown-display');
       const countdownNumber = document.getElementById('countdown-number');
       const waitingMessage = document.getElementById('waiting-message');
+      const lobbyButtons = document.getElementById('lobby-buttons');
       
       if (countdownDisplay && countdownNumber && waitingMessage) {
         countdownDisplay.style.display = 'block';
         waitingMessage.style.display = 'none';
+        
+        // Hide buttons when countdown starts
+        if (lobbyButtons) {
+          lobbyButtons.style.display = 'none';
+        }
         
         let countdown = 10;
         countdownNumber.textContent = countdown.toString();

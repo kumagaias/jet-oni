@@ -475,11 +475,6 @@ async function initGame(): Promise<void> {
           });
         }
         
-        // Log sync status during game
-        if (gameHasStarted) {
-          console.log(`Synced ${remotePlayers.length} remote players - Total ONI: ${gameState.countOniPlayers()}, Runners: ${gameState.countRunnerPlayers()}`);
-        }
-        
         // Remove models for players that left
         const remotePlayerIds = new Set(remotePlayers.map(p => p.id));
         for (const [playerId, model] of remotePlayerModels) {
@@ -568,7 +563,6 @@ async function initGame(): Promise<void> {
         
         // Assign random ONI
         const allPlayers = gameState.getAllPlayers();
-        console.log(`Assigning ONI from ${allPlayers.length} players:`, allPlayers.map(p => ({ id: p.id, username: p.username })));
         
         if (allPlayers.length > 0) {
           const randomIndex = Math.floor(Math.random() * allPlayers.length);
@@ -596,9 +590,6 @@ async function initGame(): Promise<void> {
             }
           }
         }
-        
-        // Log player counts after assignment
-        console.log(`After ONI assignment - ONI: ${gameState.countOniPlayers()}, Runners: ${gameState.countRunnerPlayers()}`);
         
         // Place beacon items on the map
         const buildings = cityGenerator.getBuildingData();

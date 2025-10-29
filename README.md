@@ -906,13 +906,107 @@ The following features are planned for the full JetOni game (see `.kiro/specs/je
 - ⏳ Mobile touch controls
 - ⏳ Game timer and end conditions
 
-**Phase 5 - Multiplayer (Planned)**
+**Phase 5 - Multiplayer (✅ Complete)**
 
-- Server API for game management
-- Real-time multiplayer synchronization
-- Lobby system with matchmaking
-- Persistent player statistics with Redis
-- Leaderboards
+- ✅ Server API for game management (create, join, update, end)
+- ✅ Real-time multiplayer synchronization (100ms sync interval)
+- ✅ Lobby system with player list and countdown
+- ✅ Persistent player statistics with Redis
+- ✅ Game state compression and optimization
+- ✅ Network error handling and reconnection
+- ✅ Client disconnection detection and AI replacement
+
+## Multiplayer Features
+
+### Real-Time Multiplayer
+
+JetOni now supports **real-time multiplayer gameplay** with up to 20 players per game. The multiplayer system is built on a robust client-server architecture with optimized network communication.
+
+#### Key Features
+
+**Game Management:**
+- Create games with custom settings (4-20 players, 3-5 minute rounds, 1-5 rounds)
+- Join available games from a live game list
+- Lobby system with real-time player list updates
+- Automatic game start with 3-second countdown when full
+- Host can manually start games early
+
+**Real-Time Synchronization:**
+- 100ms sync interval (10Hz) for smooth gameplay
+- Position interpolation for smooth remote player movement
+- Velocity-based prediction to reduce perceived latency
+- Automatic state compression to minimize bandwidth usage
+- Delta compression - only changed data is transmitted
+
+**Network Optimization:**
+- Batch processing of multiple updates
+- Change detection - skip transmission if no changes
+- Redis pipeline operations for efficient database access
+- Parallel fetching of game states
+- Automatic retry with exponential backoff on failures
+
+**Error Handling:**
+- Network error detection with automatic retry (3 attempts)
+- Client disconnection detection (10-second timeout)
+- Automatic AI replacement for disconnected players
+- Connection status indicator (connected/unstable/disconnected)
+- Graceful degradation on server errors
+
+**Data Persistence:**
+- Game states stored in Redis with 1-hour TTL
+- Player statistics tracked across sessions
+- Active game list with automatic cleanup
+- Efficient batch operations for multiple players
+
+### Multiplayer Architecture
+
+**Client-Side Components:**
+- `GameAPIClient`: Handles all server communication with retry logic
+- `GameSyncManager`: Manages real-time state synchronization
+- `LobbyManager`: Handles lobby UI and player list updates
+- `StateCompressor`: Compresses player state for network transmission
+
+**Server-Side Components:**
+- `GameManager`: Core game logic and state management
+- `RedisStorage`: Persistent data storage with TTL management
+- `StateValidator`: Validates player state to prevent cheating
+- Game API endpoints: `/api/game/create`, `/api/game/join`, `/api/game/:id`, etc.
+
+**Network Protocol:**
+- RESTful API with JSON payloads
+- Float32 arrays for position/velocity/rotation data
+- Bit-packed boolean flags for efficient transmission
+- Delta compression - only send changed fields
+- Typical payload size: 40-80 bytes per player update
+
+### Testing Multiplayer
+
+To test multiplayer functionality:
+
+1. Start the development server:
+   ```bash
+   npm run dev
+   ```
+
+2. Open the playtest URL in multiple browser windows
+
+3. Create a game in one window:
+   - Click "CREATE GAME"
+   - Configure settings
+   - Click "START GAME"
+
+4. Join the game from other windows:
+   - Click "JOIN GAME"
+   - Select the game from the list
+   - Click "JOIN"
+
+5. Test gameplay:
+   - Move around and verify other players see your movement
+   - Test abilities (jetpack, dash, jump)
+   - Verify tagging mechanics work
+   - Check that disconnected players are replaced by AI
+
+For detailed test cases, see `.kiro/specs/multiplayer/test-plan.md`.
 
 ## Development
 

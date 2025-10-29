@@ -6,6 +6,8 @@ import {
   JoinGameRequest,
   JoinGameResponse,
   GetGameStateResponse,
+  UpdatePlayerStateRequest,
+  UpdatePlayerStateResponse,
   EndGameResponse,
   GameListResponse,
 } from '../../shared/types/api';
@@ -167,6 +169,92 @@ router.get(
 );
 
 /**
+ * POST /api/game/:id/update
+ * Update player state in a game
+ */
+router.post(
+  '/api/game/:id/update',
+  async (
+    req: Request<{ id: string }, UpdatePlayerStateResponse, UpdatePlayerStateRequest>,
+    res: Response<UpdatePlayerStateResponse>
+  ): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const {
+        playerId,
+        position,
+        velocity,
+        rotation,
+        fuel,
+        isOni,
+        isDashing,
+        isJetpacking,
+        isOnSurface,
+        beaconCooldown,
+        survivedTime,
+        wasTagged,
+      } = req.body;
+
+      if (!id) {
+        res.status(400).json({
+          success: false,
+          error: 'Game ID is required',
+        });
+        return;
+      }
+
+      if (!playerId) {
+        res.status(400).json({
+          success: false,
+          error: 'Player ID is required',
+        });
+        return;
+      }
+
+      if (!position || !velocity || !rotation) {
+        res.status(400).json({
+          success: false,
+          error: 'Position, velocity, and rotation are required',
+        });
+        return;
+      }
+
+      const result = await gameManager.updatePlayerState(id, playerId, {
+        position,
+        velocity,
+        rotation,
+        fuel,
+        isOni,
+        isDashing,
+        isJetpacking,
+        isOnSurface,
+        beaconCooldown,
+        survivedTime,
+        wasTagged,
+      });
+
+      if (!result.success) {
+        res.status(400).json({
+          success: false,
+          error: result.error,
+        });
+        return;
+      }
+
+      res.json({
+        success: true,
+      });
+    } catch (error) {
+      console.error('Error updating player state:', error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to update player state',
+      });
+    }
+  }
+);
+
+/**
  * POST /api/game/:id/end
  * End a game session
  */
@@ -233,6 +321,86 @@ router.get(
       res.status(500).json({
         success: false,
         error: error instanceof Error ? error.message : 'Failed to list games',
+      });
+    }
+  }
+);
+
+/**
+ * GET /api/game/list
+ * Get list of available games (alternative endpoint)
+ */
+router.get(
+  '/api/game/list',
+  async (
+    _req: Request<unknown, GameListResponse>,
+    res: Response<GameListResponse>
+  ): Promise<void> => {
+    try {
+      const games = await gameManager.listGames();
+
+      res.json({
+        success: true,
+        games,
+      });
+    } catch (error) {
+      console.error('Error listing games:', error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to list games',
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/game/:id/replace-player
+ * Replace a disconnected player with an AI player
+ */
+router.post(
+  '/api/game/:id/replace-player',
+  async (
+    req: Request<{ id: string }, { success: boolean; error?: string }, { playerId: string }>,
+    res: Response<{ success: boolean; error?: string }>
+  ): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const { playerId } = req.body;
+
+      if (!id) {
+        res.status(400).json({
+          success: false,
+          error: 'Game ID is required',
+        });
+        return;
+      }
+
+      if (!playerId) {
+        res.status(400).json({
+          success: false,
+          error: 'Player ID is required',
+        });
+        return;
+      }
+
+      const result = await gameManager.replacePlayerWithAI(id, playerId);
+
+      if (!result.success) {
+        res.status(400).json({
+          success: false,
+          error: result.error,
+        });
+        return;
+      }
+
+      res.json({
+        success: true,
+      });
+    } catch (error) {
+      console.error('Error replacing player with AI:', error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to replace player',
       });
     }
   }

@@ -98,6 +98,8 @@ export const en: Translations = {
     gameStarting: 'Game starting...',
     roundStarting: 'Round {round} starting...',
     getReady: 'Get ready!',
+    playerDisconnected: '{player} disconnected',
+    playerReplacedWithAI: '{player} was replaced with AI',
     notifications: {
       becameOni: 'You became ONI!',
       taggedPlayer: 'Tagged {player}!',
@@ -145,6 +147,11 @@ export const en: Translations = {
     invalidSettings: 'Invalid game settings',
     unknown: 'An error occurred',
     retry: 'Retry',
+    networkError: 'Network error occurred',
+    timeout: 'Request timed out',
+    serverError: 'Server error occurred',
+    validationError: 'Invalid data',
+    retrying: 'Retrying... ({attempt}/{max})',
   },
 
   // Common

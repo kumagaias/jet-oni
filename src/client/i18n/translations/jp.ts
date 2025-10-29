@@ -98,6 +98,8 @@ export const jp: Translations = {
     gameStarting: 'ゲーム開始...',
     roundStarting: 'ラウンド{round}開始...',
     getReady: '準備してください！',
+    playerDisconnected: '{player}が切断されました',
+    playerReplacedWithAI: '{player}がAIに置き換えられました',
     notifications: {
       becameOni: '鬼になった！',
       taggedPlayer: '{player}をタグ付けした！',
@@ -145,6 +147,11 @@ export const jp: Translations = {
     invalidSettings: '無効なゲーム設定です',
     unknown: 'エラーが発生しました',
     retry: '再試行',
+    networkError: 'ネットワークエラーが発生しました',
+    timeout: 'リクエストがタイムアウトしました',
+    serverError: 'サーバーエラーが発生しました',
+    validationError: '無効なデータです',
+    retrying: '再試行中... ({attempt}/{max})',
   },
 
   // 共通

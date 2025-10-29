@@ -1,3 +1,6 @@
+import { ConnectionIndicator } from './connection-indicator.js';
+import type { ConnectionStatus } from './connection-indicator.js';
+
 /**
  * UIManager - Manages all UI screens and transitions
  */
@@ -8,6 +11,7 @@ export class UIManager {
   private currentScreen: UIScreen = 'title';
   private overlay: HTMLElement;
   private onScreenChange?: (screen: UIScreen) => void;
+  private connectionIndicator: ConnectionIndicator;
 
   constructor() {
     const overlay = document.querySelector('.overlay') as HTMLElement;
@@ -15,6 +19,11 @@ export class UIManager {
       throw new Error('Overlay element not found');
     }
     this.overlay = overlay;
+    
+    // Initialize connection indicator
+    this.connectionIndicator = new ConnectionIndicator();
+    this.connectionIndicator.init();
+    this.connectionIndicator.hide(); // Hidden by default
   }
 
   /**
@@ -65,5 +74,33 @@ export class UIManager {
    */
   public showOverlay(): void {
     this.overlay.style.display = 'flex';
+  }
+
+  /**
+   * Set connection status
+   */
+  public setConnectionStatus(status: ConnectionStatus): void {
+    this.connectionIndicator.setStatus(status);
+  }
+
+  /**
+   * Show connection indicator
+   */
+  public showConnectionIndicator(): void {
+    this.connectionIndicator.show();
+  }
+
+  /**
+   * Hide connection indicator
+   */
+  public hideConnectionIndicator(): void {
+    this.connectionIndicator.hide();
+  }
+
+  /**
+   * Get connection indicator
+   */
+  public getConnectionIndicator(): ConnectionIndicator {
+    return this.connectionIndicator;
   }
 }

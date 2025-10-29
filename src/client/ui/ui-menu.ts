@@ -4,18 +4,38 @@
 
 import { UIManager } from './ui-manager';
 import { I18n } from '../i18n/i18n';
+import { GameAPIClient } from '../api/game-api-client.js';
+import { LobbyManager } from '../lobby/lobby-manager.js';
+import { ToastNotification } from './toast-notification.js';
+import type { GameConfig } from '../../shared/types/game.js';
 
 export class UIMenu {
   private uiManager: UIManager;
   private i18n: I18n;
   private username: string;
   private gameEngine: { pause: () => void; resume: () => void } | null = null;
+  private gameApiClient: GameAPIClient;
+  private lobbyManager: LobbyManager | null = null;
+  private currentGameId: string | null = null;
+  private currentPlayerId: string | null = null;
+  private toast: ToastNotification;
 
-  constructor(uiManager: UIManager, i18n: I18n, username: string, gameEngine?: { pause: () => void; resume: () => void }) {
+  constructor(
+    uiManager: UIManager, 
+    i18n: I18n, 
+    username: string, 
+    gameApiClient: GameAPIClient,
+    gameEngine?: { pause: () => void; resume: () => void }
+  ) {
     this.uiManager = uiManager;
     this.i18n = i18n;
     this.username = username;
+    this.gameApiClient = gameApiClient;
     this.gameEngine = gameEngine || null;
+    
+    // Initialize toast notification
+    this.toast = new ToastNotification(i18n);
+    this.toast.init();
   }
 
   /**
@@ -23,6 +43,145 @@ export class UIMenu {
    */
   public setGameEngine(gameEngine: { pause: () => void; resume: () => void }): void {
     this.gameEngine = gameEngine;
+  }
+
+  /**
+   * Show error message as toast
+   */
+  private showErrorMessage(message: string): void {
+    this.toast.error(message, 3000);
+  }
+
+  /**
+   * Show success message as toast
+   */
+  private showSuccessMessage(message: string): void {
+    this.toast.success(message, 3000);
+  }
+
+  /**
+   * Show info message as toast
+   */
+  private showInfoMessage(message: string): void {
+    this.toast.info(message, 3000);
+  }
+
+  /**
+   * Setup lobby event handlers
+   */
+  private setupLobbyEventHandlers(): void {
+    if (!this.lobbyManager) return;
+    
+    // Handle player joined
+    this.lobbyManager.on('playerJoined', (data) => {
+      console.log('Player joined:', data);
+      this.updateLobbyDisplay();
+    });
+    
+    // Handle player left
+    this.lobbyManager.on('playerLeft', (data) => {
+      console.log('Player left:', data);
+      this.updateLobbyDisplay();
+    });
+    
+    // Handle countdown started
+    this.lobbyManager.on('countdownStarted', () => {
+      console.log('Countdown started');
+      this.updateLobbyDisplay();
+    });
+    
+    // Handle game starting
+    this.lobbyManager.on('gameStarting', () => {
+      console.log('Game starting');
+      this.startGame();
+    });
+  }
+
+  /**
+   * Update lobby display with current state
+   */
+  private updateLobbyDisplay(): void {
+    if (!this.lobbyManager) return;
+    
+    const playerCountElement = document.getElementById('lobby-player-count');
+    const playerListElement = document.getElementById('lobby-player-list');
+    const countdownDisplay = document.getElementById('countdown-display');
+    const countdownNumber = document.getElementById('countdown-number');
+    const waitingMessage = document.getElementById('waiting-message');
+    
+    // Update player count
+    if (playerCountElement) {
+      playerCountElement.textContent = `${this.lobbyManager.getPlayerCount()} / ${this.lobbyManager.getMaxPlayers()}`;
+    }
+    
+    // Update player list
+    if (playerListElement) {
+      const players = this.lobbyManager.getPlayers();
+      
+      playerListElement.innerHTML = players.map((player, index) => {
+        const isCurrentPlayer = player.id === this.currentPlayerId;
+        const isPlayerHost = index === 0; // First player is host
+        
+        return `
+          <div class="player-list-item" style="
+            background: ${isCurrentPlayer ? 'linear-gradient(135deg, #331a00 0%, #442200 100%)' : 'linear-gradient(135deg, #1a1a1a 0%, #222 100%)'};
+            border: 2px solid ${isCurrentPlayer ? '#ff8800' : '#333'};
+            padding: 10px 14px;
+            margin: 6px 0;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.2s ease;
+            box-shadow: ${isCurrentPlayer ? '0 0 10px rgba(255, 136, 0, 0.3)' : 'none'};
+          ">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="
+                width: 8px;
+                height: 8px;
+                background: #0f0;
+                border-radius: 50%;
+                display: inline-block;
+                box-shadow: 0 0 8px rgba(0, 255, 0, 0.6);
+                animation: pulse 2s infinite;
+              "></span>
+              <span style="
+                color: ${isCurrentPlayer ? '#ff8800' : '#aaa'};
+                font-size: 13px;
+                font-weight: ${isCurrentPlayer ? 'bold' : 'normal'};
+              ">
+                ${player.username}${isCurrentPlayer ? ' (You)' : ''}
+              </span>
+            </div>
+            ${isPlayerHost ? `
+              <span style="
+                background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+                color: #000;
+                padding: 3px 8px;
+                border-radius: 4px;
+                font-size: 10px;
+                font-weight: bold;
+                box-shadow: 0 2px 4px rgba(255, 215, 0, 0.3);
+              ">👑 HOST</span>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+    
+    // Show/hide countdown
+    if (this.lobbyManager.isCountdownActive()) {
+      if (countdownDisplay && countdownNumber && waitingMessage) {
+        countdownDisplay.style.display = 'block';
+        waitingMessage.style.display = 'none';
+        countdownNumber.textContent = this.lobbyManager.getCountdownRemaining().toString();
+      }
+    } else {
+      if (countdownDisplay && waitingMessage) {
+        countdownDisplay.style.display = 'none';
+        waitingMessage.style.display = 'block';
+      }
+    }
   }
 
   /**
@@ -185,7 +344,7 @@ export class UIMenu {
     });
     
     document.getElementById('btn-join-game')?.addEventListener('click', () => {
-      this.showJoinGameScreen();
+      void this.showJoinGameScreen();
     });
     
     document.getElementById('btn-stats')?.addEventListener('click', () => {
@@ -373,17 +532,56 @@ export class UIMenu {
       });
     });
     
-    // Start game button (actually goes to lobby)
-    document.getElementById('btn-start-game')?.addEventListener('click', () => {
-      console.log('Creating game with options:', selectedOptions);
-      // Dispatch event to show lobby
-      window.dispatchEvent(new CustomEvent('showLobby', {
-        detail: {
-          currentPlayers: 1,
-          maxPlayers: selectedOptions.players,
-          isHost: true
+    // Start game button - create game via API
+    document.getElementById('btn-start-game')?.addEventListener('click', async () => {
+      const startButton = document.getElementById('btn-start-game') as HTMLButtonElement;
+      if (!startButton) return;
+      
+      // Disable button and show loading
+      startButton.disabled = true;
+      startButton.textContent = this.i18n.t('common.loading');
+      
+      try {
+        // Create game config
+        const config: GameConfig = {
+          totalPlayers: selectedOptions.players,
+          roundDuration: selectedOptions.duration * 60, // Convert minutes to seconds
+          rounds: selectedOptions.rounds,
+        };
+        
+        // Call API to create game
+        const response = await this.gameApiClient.createGame(config);
+        
+        if (response.success && response.gameId) {
+          // Store game ID and player ID (host is first player)
+          this.currentGameId = response.gameId;
+          this.currentPlayerId = this.username; // Use username as player ID for now
+          
+          // Initialize lobby manager
+          this.lobbyManager = new LobbyManager({
+            gameApiClient: this.gameApiClient,
+            i18n: this.i18n,
+          });
+          
+          await this.lobbyManager.initialize(response.gameId, this.currentPlayerId, true);
+          
+          // Set up lobby event handlers
+          this.setupLobbyEventHandlers();
+          
+          // Show lobby screen
+          this.showLobbyScreenWithManager();
+        } else {
+          // Show error message
+          this.showErrorMessage(response.error || this.i18n.t('error.unknown'));
+          startButton.disabled = false;
+          startButton.textContent = this.i18n.t('settings.confirm').toUpperCase();
         }
-      }));
+      } catch (error) {
+        console.error('Failed to create game:', error);
+        this.showErrorMessage(this.i18n.t('error.connectionFailed'));
+        startButton.disabled = false;
+        startButton.textContent = this.i18n.t('settings.confirm').toUpperCase();
+      }
     });
     
     // Back button
@@ -400,15 +598,7 @@ export class UIMenu {
   /**
    * Show join game screen
    */
-  public showJoinGameScreen(games?: Array<{
-    id: string;
-    hostName: string;
-    currentPlayers: number;
-    maxPlayers: number;
-    duration: number;
-    rounds: number;
-    isFull: boolean;
-  }>): void {
+  public async showJoinGameScreen(): Promise<void> {
     // Hide canvas on join game screen
     const canvas = document.getElementById('bg') as HTMLCanvasElement;
     if (canvas) {
@@ -417,51 +607,7 @@ export class UIMenu {
     
     const overlay = this.uiManager.getOverlay();
     
-    const gameListHTML = games && games.length > 0
-      ? games.map(game => `
-          <div style="
-            background: #222;
-            border: 1px solid ${game.isFull ? '#666' : '#ff8800'};
-            padding: 12px;
-            margin-bottom: 10px;
-            border-radius: 4px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-          ">
-            <div style="flex: 1;">
-              <p style="color: #ff8800; font-size: 14px; font-weight: bold; margin-bottom: 5px;">
-                ${game.hostName}'s Game
-              </p>
-              <p style="color: #aaa; font-size: 11px; margin: 2px 0;">
-                ${this.i18n.t('gameList.players', { current: game.currentPlayers, max: game.maxPlayers })} | 
-                ${this.i18n.t('gameList.duration', { minutes: game.duration })} | 
-                ${this.i18n.t('gameList.rounds', { count: game.rounds })}
-              </p>
-            </div>
-            <button 
-              class="join-game-btn" 
-              data-game-id="${game.id}"
-              ${game.isFull ? 'disabled' : ''}
-              style="
-                padding: 8px 16px;
-                font-size: 12px;
-                cursor: ${game.isFull ? 'not-allowed' : 'pointer'};
-                font-family: monospace;
-                border: 1px solid ${game.isFull ? '#666' : '#0f0'};
-                background: ${game.isFull ? '#333' : '#003300'};
-                color: ${game.isFull ? '#666' : '#0f0'};
-                font-weight: bold;
-                opacity: ${game.isFull ? '0.5' : '1'};
-              ">
-              ${game.isFull ? this.i18n.t('gameList.full').toUpperCase() : this.i18n.t('gameList.join').toUpperCase()}
-            </button>
-          </div>
-        `).join('')
-      : `<p style="color: #666; font-size: 12px; text-align: center; padding: 20px;">
-          ${this.i18n.t('gameList.noGames')}
-        </p>`;
-    
+    // Show loading state
     overlay.innerHTML = `
       <div style="
         background: rgba(0, 0, 0, 0.85);
@@ -469,6 +615,218 @@ export class UIMenu {
         border-radius: 8px;
         padding: 30px;
         max-width: 500px;
+        font-family: monospace;
+        text-align: center;
+      ">
+        <h2 style="
+          color: #ff8800;
+          font-size: 24px;
+          margin-bottom: 20px;
+          font-weight: bold;
+        ">${this.i18n.t('gameList.title')}</h2>
+        <p style="color: #aaa; font-size: 14px;">${this.i18n.t('common.loading')}</p>
+      </div>
+    `;
+    
+    try {
+      // Fetch game list from API
+      const response = await this.gameApiClient.listGames();
+      
+      if (!response.success || !response.games) {
+        this.showErrorMessage(response.error || this.i18n.t('error.unknown'));
+        this.showTitleScreen();
+        return;
+      }
+      
+      // Convert API response to display format
+      const games = response.games
+        .filter(game => game.status === 'lobby') // Only show lobby games
+        .map(game => ({
+          id: game.gameId,
+          hostName: game.hostUsername,
+          currentPlayers: game.currentPlayers,
+          maxPlayers: game.totalPlayers,
+          duration: Math.floor(game.roundDuration / 60), // Convert seconds to minutes
+          rounds: game.rounds,
+          isFull: game.currentPlayers >= game.totalPlayers,
+        }));
+      
+      this.renderJoinGameScreen(games);
+    } catch (error) {
+      console.error('Failed to fetch game list:', error);
+      this.showErrorMessage(this.i18n.t('error.connectionFailed'));
+      this.showTitleScreen();
+    }
+  }
+
+  /**
+   * Create a game card HTML element
+   */
+  private createGameCard(game: {
+    id: string;
+    hostName: string;
+    currentPlayers: number;
+    maxPlayers: number;
+    duration: number;
+    rounds: number;
+    isFull: boolean;
+  }): string {
+    const playerPercentage = (game.currentPlayers / game.maxPlayers) * 100;
+    const statusColor = game.isFull ? '#666' : playerPercentage > 75 ? '#ff8800' : '#0f0';
+    
+    return `
+      <div class="game-card" style="
+        background: linear-gradient(135deg, #1a1a1a 0%, #222 100%);
+        border: 2px solid ${statusColor};
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 12px;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+      ">
+        <!-- Host info -->
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="
+              background: #ff8800;
+              color: #000;
+              padding: 4px 8px;
+              border-radius: 4px;
+              font-size: 10px;
+              font-weight: bold;
+            ">👑 HOST</span>
+            <span style="color: #ff8800; font-size: 16px; font-weight: bold;">
+              ${game.hostName}
+            </span>
+          </div>
+          <span style="
+            background: ${game.isFull ? '#666' : 'rgba(0, 255, 0, 0.2)'};
+            color: ${game.isFull ? '#999' : '#0f0'};
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 10px;
+            font-weight: bold;
+          ">
+            ${game.isFull ? '● FULL' : '● OPEN'}
+          </span>
+        </div>
+        
+        <!-- Game info grid -->
+        <div style="
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 12px;
+          margin-bottom: 12px;
+          padding: 12px;
+          background: rgba(0, 0, 0, 0.3);
+          border-radius: 4px;
+        ">
+          <div style="text-align: center;">
+            <p style="color: #666; font-size: 10px; margin-bottom: 4px;">PLAYERS</p>
+            <p style="color: ${statusColor}; font-size: 18px; font-weight: bold;">
+              ${game.currentPlayers}/${game.maxPlayers}
+            </p>
+          </div>
+          <div style="text-align: center;">
+            <p style="color: #666; font-size: 10px; margin-bottom: 4px;">TIME</p>
+            <p style="color: #aaa; font-size: 18px; font-weight: bold;">
+              ${game.duration}m
+            </p>
+          </div>
+          <div style="text-align: center;">
+            <p style="color: #666; font-size: 10px; margin-bottom: 4px;">ROUNDS</p>
+            <p style="color: #aaa; font-size: 18px; font-weight: bold;">
+              ${game.rounds}
+            </p>
+          </div>
+        </div>
+        
+        <!-- Player progress bar -->
+        <div style="
+          width: 100%;
+          height: 6px;
+          background: #333;
+          border-radius: 3px;
+          overflow: hidden;
+          margin-bottom: 12px;
+        ">
+          <div style="
+            width: ${playerPercentage}%;
+            height: 100%;
+            background: ${statusColor};
+            transition: width 0.3s ease;
+          "></div>
+        </div>
+        
+        <!-- Join button -->
+        <button 
+          class="join-game-btn" 
+          data-game-id="${game.id}"
+          ${game.isFull ? 'disabled' : ''}
+          style="
+            width: 100%;
+            padding: 12px;
+            font-size: 14px;
+            cursor: ${game.isFull ? 'not-allowed' : 'pointer'};
+            font-family: monospace;
+            border: 2px solid ${game.isFull ? '#666' : '#0f0'};
+            background: ${game.isFull ? '#333' : 'linear-gradient(135deg, #003300 0%, #005500 100%)'};
+            color: ${game.isFull ? '#666' : '#0f0'};
+            font-weight: bold;
+            border-radius: 6px;
+            opacity: ${game.isFull ? '0.5' : '1'};
+            transition: all 0.2s ease;
+            text-transform: uppercase;
+          ">
+          ${game.isFull ? '🔒 ' + this.i18n.t('gameList.full') : '▶ ' + this.i18n.t('gameList.join')}
+        </button>
+      </div>
+    `;
+  }
+
+  /**
+   * Render join game screen with game list
+   */
+  private renderJoinGameScreen(games: Array<{
+    id: string;
+    hostName: string;
+    currentPlayers: number;
+    maxPlayers: number;
+    duration: number;
+    rounds: number;
+    isFull: boolean;
+  }>): void {
+    const overlay = this.uiManager.getOverlay();
+    
+    const gameListHTML = games.length > 0
+      ? games.map(game => this.createGameCard(game)).join('')
+      : `<p style="color: #666; font-size: 12px; text-align: center; padding: 20px;">
+          ${this.i18n.t('gameList.noGames')}
+        </p>`;
+    
+    overlay.innerHTML = `
+      <style>
+        .game-card:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 6px 12px rgba(255, 136, 0, 0.3);
+        }
+        
+        .join-game-btn:not(:disabled):hover {
+          transform: scale(1.05);
+          box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+        }
+        
+        .join-game-btn:not(:disabled):active {
+          transform: scale(0.98);
+        }
+      </style>
+      
+      <div style="
+        background: rgba(0, 0, 0, 0.85);
+        border: 2px solid #666;
+        border-radius: 8px;
+        padding: 30px;
+        max-width: 600px;
         font-family: monospace;
       ">
         <h2 style="
@@ -478,48 +836,124 @@ export class UIMenu {
           font-weight: bold;
         ">${this.i18n.t('gameList.title')}</h2>
         
-        <div style="
+        <div id="game-list-container" style="
           background: #111;
           border: 1px solid #333;
           padding: 15px;
           border-radius: 4px;
           margin-bottom: 15px;
-          max-height: 300px;
+          max-height: 400px;
           overflow-y: auto;
         ">
           ${gameListHTML}
         </div>
         
-        <button id="btn-back" style="
-          width: 100%;
-          padding: 12px;
-          margin: 5px 0;
-          font-size: 14px;
-          cursor: pointer;
-          font-family: monospace;
-          border: 1px solid #666;
-          background: #222;
-          color: #aaa;
-        ">← ${this.i18n.t('menu.back').toUpperCase()}</button>
+        <div style="display: flex; gap: 10px;">
+          <button id="btn-refresh" style="
+            flex: 1;
+            padding: 12px;
+            font-size: 14px;
+            cursor: pointer;
+            font-family: monospace;
+            border: 1px solid #ff8800;
+            background: #331a00;
+            color: #ff8800;
+            border-radius: 4px;
+          ">🔄 ${this.i18n.t('error.retry').toUpperCase()}</button>
+          
+          <button id="btn-back" style="
+            flex: 1;
+            padding: 12px;
+            font-size: 14px;
+            cursor: pointer;
+            font-family: monospace;
+            border: 1px solid #666;
+            background: #222;
+            color: #aaa;
+            border-radius: 4px;
+          ">← ${this.i18n.t('menu.back').toUpperCase()}</button>
+        </div>
       </div>
     `;
     
     // Setup join button listeners
     document.querySelectorAll('.join-game-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
+      btn.addEventListener('click', async (e) => {
         const target = e.target as HTMLButtonElement;
         const gameId = target.dataset.gameId;
-        if (gameId) {
-          console.log('Joining game:', gameId);
-          // TODO: Implement join game logic
-          this.uiManager.hideOverlay();
+        if (gameId && !target.disabled) {
+          await this.handleJoinGame(gameId);
         }
       });
     });
     
+    // Refresh button
+    document.getElementById('btn-refresh')?.addEventListener('click', () => {
+      void this.showJoinGameScreen();
+    });
+    
+    // Back button
     document.getElementById('btn-back')?.addEventListener('click', () => {
       this.showTitleScreen();
     });
+  }
+
+  /**
+   * Handle joining a game
+   */
+  private async handleJoinGame(gameId: string): Promise<void> {
+    try {
+      // Call API to join game
+      const response = await this.gameApiClient.joinGame(gameId, this.username);
+      
+      if (response.success && response.playerId && response.gameState) {
+        // Store game ID and player ID
+        this.currentGameId = gameId;
+        this.currentPlayerId = response.playerId;
+        
+        // Initialize lobby manager
+        this.lobbyManager = new LobbyManager({
+          gameApiClient: this.gameApiClient,
+          i18n: this.i18n,
+        });
+        
+        await this.lobbyManager.initialize(gameId, response.playerId, false);
+        
+        // Set up lobby event handlers
+        this.setupLobbyEventHandlers();
+        
+        // Show lobby screen
+        this.showLobbyScreenWithManager();
+      } else {
+        // Show error message
+        this.showErrorMessage(response.error || this.i18n.t('error.unknown'));
+      }
+    } catch (error) {
+      console.error('Failed to join game:', error);
+      this.showErrorMessage(this.i18n.t('error.connectionFailed'));
+    }
+  }
+
+  /**
+   * Show lobby screen with LobbyManager integration
+   */
+  private showLobbyScreenWithManager(): void {
+    if (!this.lobbyManager) return;
+    
+    const currentPlayers = this.lobbyManager.getPlayerCount();
+    const maxPlayers = this.lobbyManager.getMaxPlayers();
+    const isHost = this.lobbyManager.isCurrentPlayerHost();
+    
+    this.showLobbyScreen(currentPlayers, maxPlayers, isHost);
+    
+    // Start periodic updates
+    const updateInterval = setInterval(() => {
+      if (!this.lobbyManager) {
+        clearInterval(updateInterval);
+        return;
+      }
+      this.updateLobbyDisplay();
+    }, 100);
   }
 
   /**
@@ -564,13 +998,52 @@ export class UIMenu {
           margin-bottom: 15px;
           text-align: center;
         ">
-          <p style="color: #ff8800; font-size: 36px; font-weight: bold; margin: 10px 0;">
+          <p id="lobby-player-count" style="color: #ff8800; font-size: 36px; font-weight: bold; margin: 10px 0;">
             ${currentPlayers} / ${maxPlayers}
           </p>
           
           <p style="color: #aaa; font-size: 14px; margin-bottom: 15px;">
             Players
           </p>
+          
+          <div id="lobby-player-list" style="
+            max-height: 200px;
+            overflow-y: auto;
+            margin: 15px 0;
+            text-align: left;
+            padding: 5px;
+          ">
+            <!-- Player list will be populated here -->
+          </div>
+          
+          <style>
+            @keyframes pulse {
+              0%, 100% { opacity: 1; }
+              50% { opacity: 0.5; }
+            }
+            
+            .player-list-item:hover {
+              transform: translateX(4px);
+            }
+            
+            #lobby-player-list::-webkit-scrollbar {
+              width: 6px;
+            }
+            
+            #lobby-player-list::-webkit-scrollbar-track {
+              background: #111;
+              border-radius: 3px;
+            }
+            
+            #lobby-player-list::-webkit-scrollbar-thumb {
+              background: #ff8800;
+              border-radius: 3px;
+            }
+            
+            #lobby-player-list::-webkit-scrollbar-thumb:hover {
+              background: #ffa500;
+            }
+          </style>
           
           <div id="countdown-display" style="display: none; margin-top: 15px;">
             <p style="color: #0f0; font-size: 28px; font-weight: bold; animation: pulse 1s infinite;">
@@ -622,12 +1095,21 @@ export class UIMenu {
     `;
     
     document.getElementById('btn-back')?.addEventListener('click', () => {
+      // Clean up lobby manager
+      if (this.lobbyManager) {
+        this.lobbyManager.destroy();
+        this.lobbyManager = null;
+      }
       this.showTitleScreen();
     });
     
     // Start button (host only)
     document.getElementById('btn-start')?.addEventListener('click', () => {
-      this.startGame();
+      if (this.lobbyManager) {
+        this.lobbyManager.startGameEarly();
+      } else {
+        this.startGame();
+      }
     });
     
     // Auto-start countdown when lobby is full

@@ -28,7 +28,7 @@ interface BuildingConfig {
  */
 export class CityGenerator {
   private occupiedAreas: OccupiedArea[] = [];
-  private buildingData: Array<{ position: { x: number; y: number; z: number }; width: number; depth: number }> = [];
+  private buildingData: Array<{ position: { x: number; y: number; z: number }; width: number; height: number; depth: number; shape: 'box' | 'cylinder' }> = [];
   private buildings: THREE.Group;
   private roads: THREE.Group;
   private rivers: THREE.Group;
@@ -285,7 +285,9 @@ export class CityGenerator {
       this.buildingData.push({
         position: { x: position.x, y: config.height / 2, z: position.z },
         width: config.width,
-        depth: config.depth
+        height: config.height,
+        depth: config.depth,
+        shape: 'box'
       });
 
       this.markAreaOccupied(position.x, position.z, config.width, config.depth, 'building');
@@ -337,7 +339,9 @@ export class CityGenerator {
       this.buildingData.push({
         position: { x: position.x, y: height / 2, z: position.z },
         width: width,
-        depth: depth
+        height: height,
+        depth: depth,
+        shape: 'box'
       });
 
       this.markAreaOccupied(position.x, position.z, width, depth, 'house');
@@ -468,9 +472,9 @@ export class CityGenerator {
   }
 
   /**
-   * Get building data array (for beacon placement)
+   * Get building data array (for collision detection and beacon placement)
    */
-  public getBuildingData(): Array<{ position: { x: number; y: number; z: number }; width: number; depth: number }> {
+  public getBuildingData(): Array<{ position: { x: number; y: number; z: number }; width: number; height: number; depth: number; shape: 'box' | 'cylinder' }> {
     return this.buildingData;
   }
 

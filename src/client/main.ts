@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import { GameEngine } from './game/game-engine';
 import { GameState } from './game/game-state';
+import { TagSystem } from './game/tag-system';
 import { CityGenerator } from './environment/city-generator';
 import { DynamicObjects } from './environment/dynamic-objects';
 import { LadderSystem } from './environment/ladder-system';
@@ -86,29 +87,8 @@ async function initGame(): Promise<void> {
       
       // Initialize collision system
       const collisionSystem = new CollisionSystem();
-      // Convert buildings to BuildingData format for collision
-      const buildingData: BuildingData[] = [];
-      cityGenerator.getBuildings().traverse((object) => {
-        if (object instanceof THREE.Mesh && object.geometry instanceof THREE.BoxGeometry) {
-          const params = object.geometry.parameters;
-          buildingData.push({
-            position: { x: object.position.x, y: object.position.y, z: object.position.z },
-            width: params.width,
-            height: params.height,
-            depth: params.depth,
-            shape: 'box',
-          });
-        } else if (object instanceof THREE.Mesh && object.geometry instanceof THREE.CylinderGeometry) {
-          const params = object.geometry.parameters;
-          buildingData.push({
-            position: { x: object.position.x, y: object.position.y, z: object.position.z },
-            width: params.radiusTop * 2,
-            height: params.height,
-            depth: params.radiusTop * 2,
-            shape: 'cylinder',
-          });
-        }
-      });
+      // Get building data directly from city generator (already in correct format)
+      const buildingData: BuildingData[] = cityGenerator.getBuildingData();
       collisionSystem.registerBuildings(buildingData);
       console.log(`Registered ${buildingData.length} buildings for collision`);
       
@@ -123,6 +103,12 @@ async function initGame(): Promise<void> {
       const playerController = new PlayerController(gameState);
       playerController.setLadderSystem(ladderSystem);
       playerController.init();
+      
+      // Initialize tag system
+      const tagSystem = new TagSystem(gameState);
+      tagSystem.onTag((event) => {
+        console.log(`Player ${event.taggerId} tagged ${event.taggedId}! Survived: ${event.survivedTime.toFixed(1)}s`);
+      });
       
       // Initialize beacon item system
       const beaconItem = new BeaconItem(gameEngine.getScene());
@@ -298,6 +284,9 @@ async function initGame(): Promise<void> {
         
         // Update AI players
         aiController.update(deltaTime);
+        
+        // Update tag system (check for tags between players)
+        tagSystem.update();
         
         // Apply physics to AI players and update models
         for (const [aiId, aiModel] of aiPlayerModels) {

@@ -1061,11 +1061,15 @@ export class UIMenu {
           text-align: center;
         ">
           <p id="lobby-player-count" style="color: #ff8800; font-size: 36px; font-weight: bold; margin: 10px 0;">
-            ${currentPlayers} / ${maxPlayers}
+            ${currentPlayers}
           </p>
           
-          <p style="color: #aaa; font-size: 14px; margin-bottom: 15px;">
-            Players
+          <p style="color: #aaa; font-size: 14px; margin-bottom: 5px;">
+            ${this.i18n.t('lobby.players', { current: currentPlayers, max: maxPlayers })}
+          </p>
+          
+          <p style="color: #666; font-size: 12px; margin-bottom: 15px;">
+            (${maxPlayers - currentPlayers} AI ${maxPlayers - currentPlayers === 1 ? 'player' : 'players'} will join)
           </p>
           
           <div id="lobby-player-list" style="

@@ -324,11 +324,13 @@ async function initGame(): Promise<void> {
         // Update UI controls
         uiControls.update(gameState);
         
-        // Update AI players
-        aiController.update(deltaTime);
-        
-        // Update tag system (check for tags between players)
-        tagSystem.update();
+        // Update AI players (only during gameplay)
+        if (gameState.getGamePhase() === 'playing') {
+          aiController.update(deltaTime);
+          
+          // Update tag system (check for tags between players)
+          tagSystem.update();
+        }
         
         // Apply physics to AI players and update models
         for (const [aiId, aiModel] of aiPlayerModels) {

@@ -1206,7 +1206,8 @@ export class UIMenu {
         countdownDisplay.style.display = 'block';
         waitingMessage.style.display = 'none';
         
-        let countdown = 3;
+        let countdown = 10;
+        countdownNumber.textContent = countdown.toString();
         const countdownInterval = setInterval(() => {
           countdown--;
           countdownNumber.textContent = countdown.toString();

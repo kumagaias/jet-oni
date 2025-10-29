@@ -416,6 +416,21 @@ async function initGame(): Promise<void> {
       // Initialize GameSyncManager
       const gameSyncManager = new GameSyncManager(gameApiClient);
       
+      // Register callback for player disconnection
+      gameSyncManager.onPlayerDisconnect(async (playerId) => {
+        console.log(`Player ${playerId} disconnected`);
+        
+        // If we have a current game, notify server to replace with AI
+        if (currentGameId) {
+          try {
+            await gameApiClient.replacePlayerWithAI(currentGameId, playerId);
+            console.log(`Replaced disconnected player ${playerId} with AI`);
+          } catch (error) {
+            console.error(`Failed to replace player ${playerId} with AI:`, error);
+          }
+        }
+      });
+      
       // Register callback for remote player updates
       gameSyncManager.onRemotePlayerUpdate((remotePlayers) => {
         // Update or create models for remote players
@@ -537,6 +552,8 @@ async function initGame(): Promise<void> {
               // Local player is ONI
               gameState.setLocalPlayerIsOni(true);
               console.log('You are ONI!');
+              // Update wasOni to prevent "Became ONI" message
+              wasOni = true;
             } else {
               // Remote/AI player is ONI
               const remotePlayer = gameState.getPlayer(oniPlayer.id);

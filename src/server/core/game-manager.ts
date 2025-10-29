@@ -342,6 +342,12 @@ export class GameManager {
       return { success: false, error: 'Game not found' };
     }
 
+    // If the disconnected player is the host and game is in lobby, close the game
+    if (playerId === gameState.hostId && gameState.status === 'lobby') {
+      await this.storage.delete(`game:${gameId}`);
+      return { success: true, error: 'Game closed - host disconnected' };
+    }
+
     const playerIndex = gameState.players.findIndex((p) => p.id === playerId);
 
     if (playerIndex === -1) {

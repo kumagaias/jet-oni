@@ -901,15 +901,19 @@ export class UIMenu {
           ">${this.i18n.t('gameList.title')}</h2>
           
           <button id="btn-refresh" style="
-            padding: 8px 16px;
-            font-size: 14px;
+            padding: 8px;
             cursor: pointer;
-            font-family: monospace;
-            border: 1px solid #ff8800;
-            background: #331a00;
-            color: #ff8800;
-            border-radius: 4px;
-          ">🔄</button>
+            border: none;
+            background: transparent;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.3s ease;
+          " onmouseover="this.style.transform='rotate(180deg)'" onmouseout="this.style.transform='rotate(0deg)'">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M21 10C21 10 18.995 7.26822 17.3662 5.63824C15.7373 4.00827 13.4864 3 11 3C6.02944 3 2 7.02944 2 12C2 16.9706 6.02944 21 11 21C15.1031 21 18.5649 18.2543 19.6482 14.5M21 10V4M21 10H15" stroke="#ff8800" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </button>
         </div>
         
         <div id="game-list-container" style="

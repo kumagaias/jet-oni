@@ -81,7 +81,8 @@ export class PlayerController {
    * Setup mouse event listeners
    */
   private setupMouseListeners(): void {
-    window.addEventListener('mousemove', this.handleMouseMove.bind(this));
+    // Mouse look disabled - using keyboard/mobile controls only
+    // window.addEventListener('mousemove', this.handleMouseMove.bind(this));
   }
 
   /**

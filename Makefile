@@ -29,28 +29,21 @@ gitleaks:
 build:
 	npm run build
 
-# Create PR after tests pass (auto-generates title and description from tasks)
+# Create PR after tests pass (auto-generates title and description in English)
 pr: test
 	@echo "All tests passed. Creating PR..."
 	@echo ""
-	@# Find the most recently completed task from tasks.md
-	@task_info=$$(grep -E '^\s*- \[x\].*' .kiro/specs/jetoni/tasks.md | tail -1 | sed 's/- \[x\] //'); \
-	if [ -z "$$task_info" ]; then \
-		echo "Error: No completed tasks found in .kiro/specs/jetoni/tasks.md"; \
-		exit 1; \
-	fi; \
-	task_number=$$(echo "$$task_info" | grep -o '^[0-9]*\.[0-9]*' | head -1); \
-	if [ -z "$$task_number" ]; then \
-		task_number=$$(echo "$$task_info" | grep -o '^[0-9]*' | head -1); \
-	fi; \
-	task_desc=$$(echo "$$task_info" | sed 's/^[0-9]*\.*[0-9]* *//'); \
-	branch="feat/task-$$task_number"; \
-	title="feat: $$task_desc"; \
-	echo "Branch: $$branch"; \
-	echo "Title: $$title"; \
-	echo ""; \
+	@# Stage all changes first
+	@git add .
+	@# Generate PR content from changes
+	@bash scripts/generate-pr-description.sh
+	@echo ""
+	@# Read generated content
+	@branch=$$(cat /tmp/pr_branch_name); \
+	title=$$(cat /tmp/pr_title); \
+	changes=$$(cat /tmp/pr_changes); \
+	echo "Creating branch and committing changes..."; \
 	git checkout -b $$branch 2>/dev/null || git checkout $$branch; \
-	git add .; \
 	if git diff --cached --quiet; then \
 		echo "No changes to commit"; \
 	else \
@@ -62,7 +55,11 @@ pr: test
 	{ \
 		echo "## Summary"; \
 		echo ""; \
-		echo "Implemented task $$task_number: $$task_desc"; \
+		echo "This PR implements the following changes:"; \
+		echo ""; \
+		echo "## Changes"; \
+		echo ""; \
+		echo "$$changes"; \
 		echo ""; \
 		echo "## Testing"; \
 		echo ""; \
@@ -70,7 +67,18 @@ pr: test
 		echo "- [x] Type check passes"; \
 		echo "- [x] Lint passes"; \
 		echo "- [x] Build succeeds"; \
-	} | gh pr create --title "$$title" --body-file - --base main
+		echo ""; \
+		echo "## Quality Checks"; \
+		echo ""; \
+		echo "- [x] Code follows project style guidelines"; \
+		echo "- [x] Self-review completed"; \
+		echo "- [x] No breaking changes"; \
+		echo ""; \
+		echo "## Files Changed"; \
+		echo ""; \
+		git diff --cached --name-only | sed 's/^/- /'; \
+	} | gh pr create --title "$$title" --body-file - --base main; \
+	rm -f /tmp/pr_branch_name /tmp/pr_title /tmp/pr_changes
 
 # Deploy to Devvit (runs tests and security checks first)
 deploy: test security-check

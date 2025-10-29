@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "name": "Pre-Completion Test Reminder",
+  "description": "Reminds the agent to run 'make test' before reporting work completion to ensure all tests pass and code quality is maintained",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "src/**/*.ts",
+      "src/**/*.tsx",
+      "src/**/*.js",
+      "src/**/*.jsx"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "CRITICAL REMINDER: Before reporting that work is complete, you MUST:\n\n1. Run 'make test' to verify all tests pass\n2. Verify the build succeeds with 'npm run build'\n3. Check for type errors with 'npx tsc --noEmit'\n\nNEVER report work as complete without running these checks first. If any check fails, fix the issues before reporting completion.\n\nThis is a mandatory requirement as documented in .kiro/steering/completion-checklist.md"
+  }
+}

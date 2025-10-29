@@ -1,15 +1,12 @@
 import { GameState, GameConfig, Player, Vector3, Rotation } from '../../shared/types/game';
 import { GameListItem, GameResults, PlayerResult } from '../../shared/types/api';
-import { redis } from '@devvit/web/server';
 import { StateValidator } from './state-validator';
+import { RedisStorage } from './redis-storage';
 
 /**
  * GameManager handles game session creation, player management, and game state
  */
 export class GameManager {
-  private readonly GAME_KEY_PREFIX = 'game:';
-  private readonly GAMES_LIST_KEY = 'games:active';
-  private readonly GAME_TTL = 3600; // 1 hour in seconds
 
   /**
    * Create a new game session
@@ -34,7 +31,7 @@ export class GameManager {
     await this.saveGameState(gameState);
 
     // Add to active games list
-    await redis.sAdd(this.GAMES_LIST_KEY, gameId);
+    await RedisStorage.addActiveGame(gameId);
 
     return gameId;
   }
@@ -79,6 +76,7 @@ export class GameManager {
       isAI: false,
       position: { x: 0, y: 0, z: 0 },
       velocity: { x: 0, y: 0, z: 0 },
+      rotation: { yaw: 0, pitch: 0 },
       fuel: 100,
       survivedTime: 0,
       wasTagged: false,
@@ -108,19 +106,7 @@ export class GameManager {
    * Get current game state
    */
   async getGameState(gameId: string): Promise<GameState | null> {
-    const key = this.getGameKey(gameId);
-    const data = await redis.get(key);
-
-    if (!data) {
-      return null;
-    }
-
-    try {
-      return JSON.parse(data) as GameState;
-    } catch (error) {
-      console.error('Error parsing game state:', error);
-      return null;
-    }
+    return await RedisStorage.getGameState(gameId);
   }
 
   /**
@@ -149,17 +135,17 @@ export class GameManager {
     playerResults.sort((a, b) => b.survivedTime - a.survivedTime);
 
     // Winner is the player with longest survival time who wasn't tagged
-    const winner = playerResults.find((p) => !p.wasTagged) || playerResults[0];
+    const winnerCandidate = playerResults.find((p) => !p.wasTagged) || playerResults[0];
 
     const results: GameResults = {
       players: playerResults,
-      winner,
+      ...(winnerCandidate && { winner: winnerCandidate }),
     };
 
     await this.saveGameState(gameState);
 
     // Remove from active games list
-    await redis.sRem(this.GAMES_LIST_KEY, gameId);
+    await RedisStorage.removeActiveGame(gameId);
 
     return results;
   }
@@ -225,19 +211,24 @@ export class GameManager {
     const validatedBeaconCooldown = StateValidator.validateBeaconCooldown(state.beaconCooldown);
 
     // Update player state
+    const existingPlayer = gameState.players[playerIndex];
+    if (!existingPlayer) {
+      return { success: false, error: 'Player not found at index' };
+    }
+
     gameState.players[playerIndex] = {
-      ...gameState.players[playerIndex],
+      ...existingPlayer,
       position: validatedPosition,
       velocity: validatedVelocity,
       rotation: validatedRotation,
       fuel: validatedFuel,
-      isOni: state.isOni,
-      isDashing: state.isDashing,
-      isJetpacking: state.isJetpacking,
-      isOnSurface: state.isOnSurface,
+      isOni: state.isOni ?? existingPlayer.isOni,
+      isDashing: state.isDashing ?? existingPlayer.isDashing,
+      isJetpacking: state.isJetpacking ?? existingPlayer.isJetpacking,
+      isOnSurface: state.isOnSurface ?? existingPlayer.isOnSurface,
       beaconCooldown: validatedBeaconCooldown,
-      survivedTime: state.survivedTime,
-      wasTagged: state.wasTagged,
+      survivedTime: state.survivedTime ?? existingPlayer.survivedTime,
+      wasTagged: state.wasTagged ?? existingPlayer.wasTagged,
     };
 
     await this.saveGameState(gameState);
@@ -250,7 +241,7 @@ export class GameManager {
    * Only returns games in 'lobby' status that are joinable
    */
   async listGames(): Promise<GameListItem[]> {
-    const gameIds = await redis.sMembers(this.GAMES_LIST_KEY);
+    const gameIds = await RedisStorage.getActiveGames();
 
     if (!gameIds || gameIds.length === 0) {
       return [];
@@ -340,6 +331,9 @@ export class GameManager {
     }
 
     const player = gameState.players[playerIndex];
+    if (!player) {
+      return { success: false, error: 'Player not found at index' };
+    }
 
     // Replace with AI player, keeping the same state
     const aiPlayer: Player = {
@@ -371,6 +365,7 @@ export class GameManager {
 
     for (let i = 0; i < gameState.players.length; i++) {
       const player = gameState.players[i];
+      if (!player) continue;
 
       // Skip AI players
       if (player.isAI) {
@@ -398,21 +393,24 @@ export class GameManager {
 
     // Reset all players to runner
     gameState.players.forEach((player) => {
-      player.isOni = false;
+      if (player) {
+        player.isOni = false;
+      }
     });
 
     // Randomly select one player as oni
     const randomIndex = Math.floor(Math.random() * gameState.players.length);
-    gameState.players[randomIndex].isOni = true;
+    const selectedPlayer = gameState.players[randomIndex];
+    if (selectedPlayer) {
+      selectedPlayer.isOni = true;
+    }
   }
 
   /**
    * Save game state to Redis
    */
   private async saveGameState(gameState: GameState): Promise<void> {
-    const key = this.getGameKey(gameState.gameId);
-    const data = JSON.stringify(gameState);
-    await redis.set(key, data, { expiration: new Date(Date.now() + this.GAME_TTL * 1000) });
+    await RedisStorage.saveGameState(gameState.gameId, gameState);
   }
 
   /**
@@ -429,10 +427,5 @@ export class GameManager {
     return `player_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
   }
 
-  /**
-   * Get Redis key for game
-   */
-  private getGameKey(gameId: string): string {
-    return `${this.GAME_KEY_PREFIX}${gameId}`;
-  }
+
 }

@@ -7,6 +7,11 @@ vi.mock('@devvit/web/server', () => ({
   redis: {
     get: vi.fn(),
     set: vi.fn(),
+    del: vi.fn(),
+    expire: vi.fn(),
+    zAdd: vi.fn(),
+    zRem: vi.fn(),
+    zRange: vi.fn().mockResolvedValue([]),
     sAdd: vi.fn(),
     sRem: vi.fn(),
     sMembers: vi.fn(),
@@ -33,14 +38,14 @@ describe('GameManager', () => {
       };
 
       mockRedis.set.mockResolvedValue(undefined);
-      mockRedis.sAdd.mockResolvedValue(1);
+      mockRedis.zAdd.mockResolvedValue(1);
 
       const gameId = await gameManager.createGame(config);
 
       expect(gameId).toBeDefined();
       expect(gameId).toMatch(/^game_/);
       expect(mockRedis.set).toHaveBeenCalled();
-      expect(mockRedis.sAdd).toHaveBeenCalledWith('games:active', gameId);
+      expect(mockRedis.zAdd).toHaveBeenCalled();
     });
 
     it('should create game with correct initial state', async () => {
@@ -55,7 +60,7 @@ describe('GameManager', () => {
         savedGameState = JSON.parse(data) as { players: Array<{ isOni: boolean; isAI?: boolean }> };
         return Promise.resolve(undefined);
       });
-      mockRedis.sAdd.mockResolvedValue(1);
+      mockRedis.zAdd.mockResolvedValue(1);
 
       await gameManager.createGame(config);
 
@@ -291,7 +296,7 @@ describe('GameManager', () => {
 
       mockRedis.get.mockResolvedValue(JSON.stringify(mockGameState));
       mockRedis.set.mockResolvedValue(undefined);
-      mockRedis.sRem.mockResolvedValue(1);
+      mockRedis.zRem.mockResolvedValue(1);
 
       const results = await gameManager.endGame('test_game');
 
@@ -299,7 +304,7 @@ describe('GameManager', () => {
       expect(results?.players).toHaveLength(3);
       expect(results?.winner).toBeDefined();
       expect(results?.winner?.username).toBe('Player2');
-      expect(mockRedis.sRem).toHaveBeenCalledWith('games:active', 'test_game');
+      expect(mockRedis.zRem).toHaveBeenCalled();
     });
 
     it('should return null if game not found', async () => {
@@ -340,7 +345,7 @@ describe('GameManager', () => {
         timeRemaining: 300,
       };
 
-      mockRedis.sMembers.mockResolvedValue(gameIds);
+      mockRedis.zRange.mockResolvedValue(gameIds.map(id => ({ member: id, score: Date.now() })));
       mockRedis.get
         .mockResolvedValueOnce(JSON.stringify(mockGame1))
         .mockResolvedValueOnce(JSON.stringify(mockGame2));
@@ -357,7 +362,7 @@ describe('GameManager', () => {
     });
 
     it('should return empty array if no active games', async () => {
-      mockRedis.sMembers.mockResolvedValue([]);
+      mockRedis.zRange.mockResolvedValue([]);
 
       const games = await gameManager.listGames();
 

@@ -6,8 +6,8 @@ import {
   JoinGameRequest,
   JoinGameResponse,
   GetGameStateResponse,
-  UpdatePlayerStateRequest,
-  UpdatePlayerStateResponse,
+  UpdatePlayerRequest,
+  UpdatePlayerResponse,
   EndGameResponse,
   GameListResponse,
 } from '../../shared/types/api';
@@ -175,8 +175,8 @@ router.get(
 router.post(
   '/api/game/:id/update',
   async (
-    req: Request<{ id: string }, UpdatePlayerStateResponse, UpdatePlayerStateRequest>,
-    res: Response<UpdatePlayerStateResponse>
+    req: Request<{ id: string }, UpdatePlayerResponse, UpdatePlayerRequest>,
+    res: Response<UpdatePlayerResponse>
   ): Promise<void> => {
     try {
       const { id } = req.params;

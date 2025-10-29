@@ -32,7 +32,8 @@ export async function cleanupInvalidGames(): Promise<void> {
       if (!hostUsername || 
           hostUsername === 'Host' || 
           hostUsername === 'Unknown' || 
-          hostUsername.startsWith('Guest')) {
+          hostUsername.startsWith('Guest') ||
+          hostUsername.startsWith('TempUser')) {
         console.log(`Removing game ${gameId} with invalid host: ${hostUsername}`);
         await RedisStorage.deleteGameState(gameId);
         await RedisStorage.removeActiveGame(gameId);

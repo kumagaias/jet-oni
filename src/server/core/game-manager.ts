@@ -282,12 +282,13 @@ export class GameManager {
         if (gameState.status === 'lobby' && gameState.players.length < gameState.config.totalPlayers) {
           const hostPlayer = gameState.players.find((p) => p.id === gameState.hostId);
           
-          // Skip games where host username is invalid (Guest####, Host, Unknown, etc.)
+          // Skip games where host username is invalid (Guest####, Host, Unknown, TempUser####, etc.)
           const hostUsername = hostPlayer?.username || '';
           if (!hostUsername || 
               hostUsername === 'Host' || 
               hostUsername === 'Unknown' || 
-              hostUsername.startsWith('Guest')) {
+              hostUsername.startsWith('Guest') ||
+              hostUsername.startsWith('TempUser')) {
             console.log(`Skipping game ${gameState.gameId} with invalid host: ${hostUsername}`);
             continue;
           }

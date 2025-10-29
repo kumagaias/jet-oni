@@ -194,6 +194,12 @@ export class GameManager {
       return { success: false, error: 'Game not found' };
     }
 
+    // Auto-start game if in lobby and receiving player updates
+    if (gameState.status === 'lobby') {
+      gameState.status = 'playing';
+      gameState.startTime = Date.now();
+    }
+    
     if (gameState.status !== 'playing') {
       return { success: false, error: 'Game is not in playing state' };
     }

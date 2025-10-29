@@ -210,14 +210,16 @@ export class RealtimeSyncManager {
       return;
     }
 
-    // Throttle sending to max 60 messages/second
+    // Throttle sending to max 10 messages/second
     const now = Date.now();
-    if (now - this.lastSendTime < this.throttleInterval) {
+    const timeSinceLastSend = now - this.lastSendTime;
+    if (timeSinceLastSend < this.throttleInterval) {
       // Update stored state but don't send yet
       this.lastSentState = state;
       return;
     }
 
+    console.log(`[Realtime] Sending player state (throttled: ${timeSinceLastSend}ms since last send)`);
     this.lastSentState = state;
     this.lastSendTime = now;
 

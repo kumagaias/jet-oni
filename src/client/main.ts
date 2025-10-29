@@ -599,7 +599,6 @@ async function initGame(): Promise<void> {
         
         // Log player counts after assignment
         console.log(`After ONI assignment - ONI: ${gameState.countOniPlayers()}, Runners: ${gameState.countRunnerPlayers()}`);
-        }
         
         // Place beacon items on the map
         const buildings = cityGenerator.getBuildingData();

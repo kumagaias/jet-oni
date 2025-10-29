@@ -10,6 +10,7 @@ export interface Ladder {
   mesh: THREE.Group;
   topPosition: Vector3;
   bottomPosition: Vector3;
+  rotation: number; // Y-axis rotation in radians
 }
 
 /**
@@ -60,6 +61,7 @@ export class LadderSystem {
           mesh,
           bottomPosition: { x: position.x, y: 0, z: position.z },
           topPosition: { x: position.x, y: height, z: position.z },
+          rotation: mesh.rotation.y, // Store ladder rotation
         };
 
         this.ladders.push(ladder);
@@ -175,7 +177,22 @@ export class LadderSystem {
     progress: number,
     facingDirection: number // yaw angle
   ): Vector3 {
-    // Calculate exit position slightly away from ladder
+    // If at the top (progress >= 0.95), place player on rooftop
+    if (progress >= 0.95) {
+      // Calculate exit position based on ladder's facing direction (opposite of wall)
+      // Ladder rotation indicates which way it faces
+      const exitDistance = 1.5;
+      const exitX = ladder.position.x - Math.sin(ladder.rotation) * exitDistance;
+      const exitZ = ladder.position.z - Math.cos(ladder.rotation) * exitDistance;
+      
+      return {
+        x: exitX,
+        y: ladder.topPosition.y + 0.2, // Slightly above rooftop
+        z: exitZ,
+      };
+    }
+    
+    // Normal exit (not at top)
     const exitDistance = 1.0;
     const exitX = ladder.position.x + Math.sin(facingDirection) * exitDistance;
     const exitZ = ladder.position.z + Math.cos(facingDirection) * exitDistance;

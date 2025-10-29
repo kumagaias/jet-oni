@@ -334,19 +334,24 @@ export class DynamicObjects {
       const side = Math.floor(Math.random() * 4);
       let offsetX = 0;
       let offsetZ = 0;
+      let rotation = 0;
       
       switch (side) {
-        case 0: // Front
-          offsetZ = params.depth / 2 + 0.3;
+        case 0: // Front (facing +Z)
+          offsetZ = params.depth / 2 - 0.15; // Closer to wall
+          rotation = 0;
           break;
-        case 1: // Back
-          offsetZ = -params.depth / 2 - 0.3;
+        case 1: // Back (facing -Z)
+          offsetZ = -params.depth / 2 + 0.15; // Closer to wall
+          rotation = Math.PI;
           break;
-        case 2: // Left
-          offsetX = -params.width / 2 - 0.3;
+        case 2: // Left (facing -X)
+          offsetX = -params.width / 2 + 0.15; // Closer to wall
+          rotation = Math.PI / 2;
           break;
-        case 3: // Right
-          offsetX = params.width / 2 + 0.3;
+        case 3: // Right (facing +X)
+          offsetX = params.width / 2 - 0.15; // Closer to wall
+          rotation = -Math.PI / 2;
           break;
       }
 
@@ -356,6 +361,9 @@ export class DynamicObjects {
         0,
         building.position.z + offsetZ
       );
+      
+      // Rotate ladder 90 degrees to face the wall
+      ladder.rotation.y = rotation;
 
       this.ladders.add(ladder);
     }

@@ -49,6 +49,11 @@ export const jp: Translations = {
     ready: '準備完了！',
   },
 
+  countdown: {
+    getReady: '準備！',
+    go: 'スタート！',
+  },
+
   // ゲームHUD
   hud: {
     timer: '残り時間: {time}',

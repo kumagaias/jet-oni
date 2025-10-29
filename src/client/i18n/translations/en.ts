@@ -49,6 +49,11 @@ export const en: Translations = {
     ready: 'Ready!',
   },
 
+  countdown: {
+    getReady: 'Get Ready!',
+    go: 'GO!',
+  },
+
   // Game HUD
   hud: {
     timer: 'Time: {time}',

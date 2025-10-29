@@ -6,7 +6,7 @@ export interface Vector3 {
   z: number;
 }
 
-export type GameStatus = 'lobby' | 'playing' | 'ended';
+export type GameStatus = 'lobby' | 'countdown' | 'playing' | 'ended';
 
 export type PlayerRole = 'oni' | 'runner';
 

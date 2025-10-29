@@ -23,6 +23,7 @@ import { PlayerModel } from './player/player-model';
 import { I18n } from './i18n/i18n';
 import { UIManager } from './ui/ui-manager';
 import { UIMenu } from './ui/ui-menu';
+import { UICountdown } from './ui/ui-countdown';
 import { GameAPIClient } from './api/game-api-client';
 import { RealtimeSyncManager } from './sync/realtime-sync-manager';
 import { HostMonitor } from './game/host-monitor';
@@ -548,6 +549,9 @@ async function initGame(): Promise<void> {
       // Initialize UI menu
       const uiMenu = new UIMenu(uiManager, i18n, data.username || 'Player', gameApiClient, gameEngine);
       
+      // Initialize countdown UI
+      const uiCountdown = new UICountdown(i18n);
+      
       // Initialize HUD (but keep it hidden until game starts)
       const { UIHud } = await import('./ui/ui-hud');
       const uiHud = new UIHud(gameState, i18n);
@@ -580,7 +584,39 @@ async function initGame(): Promise<void> {
       // Track current game ID for sync
       let currentGameId: string | null = null;
       
-      // Listen for game start event
+      // Listen for game start countdown event (when host presses start button)
+      window.addEventListener('gameStartCountdown', ((e: CustomEvent) => {
+        console.log('[Countdown] Starting countdown');
+        
+        // Hide lobby screen but keep phase as 'lobby' temporarily
+        // Canvas is already visible from lobby
+        
+        // Set game config if provided
+        if (e.detail?.config) {
+          gameState.setGameConfig(e.detail.config);
+        }
+        
+        // Set game ID
+        if (e.detail?.gameId) {
+          currentGameId = e.detail.gameId as string;
+        }
+        
+        // Change phase to countdown
+        gameState.setGamePhase('countdown');
+        
+        // Start countdown (3 seconds)
+        uiCountdown.start(3, () => {
+          // Countdown complete - trigger actual game start
+          window.dispatchEvent(new CustomEvent('gameStart', {
+            detail: {
+              config: gameState.getGameConfig(),
+              gameId: currentGameId,
+            },
+          }));
+        });
+      }) as EventListener);
+      
+      // Listen for game start event (after countdown)
       window.addEventListener('gameStart', ((e: CustomEvent) => {
         console.log('[Phase Change] Game starting - setting phase to "playing"');
         

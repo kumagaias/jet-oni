@@ -127,8 +127,7 @@ export class GameAPIClient {
    * End the game and get results
    */
   async endGame(gameId: string): Promise<EndGameResponse> {
-    const request: EndGameRequest = { gameId };
-    return this.post<EndGameResponse>('/game/end', request);
+    return this.post<EndGameResponse>(`/game/${gameId}/end`, {});
   }
 
   /**

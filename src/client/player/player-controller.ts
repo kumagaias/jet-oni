@@ -139,12 +139,13 @@ export class PlayerController {
       event.preventDefault();
       
       // Only allow in dev subreddit
-      const isDevSubreddit = window.location.href.includes('r/jet_oni_dev') || 
-                             window.location.href.includes('localhost') ||
-                             window.location.href.includes('playtest');
+      const url = window.location.href.toLowerCase();
+      const isDevSubreddit = url.includes('jet_oni_dev') || 
+                             url.includes('localhost') ||
+                             url.includes('playtest');
       
       if (!isDevSubreddit) {
-        console.log('Debug features are only available in r/jet_oni_dev');
+        console.log('Debug features are only available in r/jet_oni_dev. Current URL:', window.location.href);
         return;
       }
       

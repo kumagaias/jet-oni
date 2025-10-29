@@ -203,17 +203,20 @@ async function initGame(): Promise<void> {
       
       // Toggle debug mode with F2 (only in r/jet_oni_dev)
       let debugMode = false;
-      const isDevSubreddit = window.location.href.includes('r/jet_oni_dev') || 
-                             window.location.href.includes('localhost') ||
-                             window.location.href.includes('playtest');
       
       window.addEventListener('keydown', (e) => {
         if (e.key === 'F2') {
           e.preventDefault();
           
+          // Check if in dev subreddit (check every time in case URL changes)
+          const url = window.location.href.toLowerCase();
+          const isDevSubreddit = url.includes('jet_oni_dev') || 
+                                 url.includes('localhost') ||
+                                 url.includes('playtest');
+          
           // Only allow debug mode in dev subreddit
           if (!isDevSubreddit) {
-            console.log('Debug mode is only available in r/jet_oni_dev');
+            console.log('Debug mode is only available in r/jet_oni_dev. Current URL:', window.location.href);
             return;
           }
           
@@ -581,8 +584,11 @@ async function initGame(): Promise<void> {
         // Start Realtime synchronization if gameId is provided
         if (e.detail?.gameId) {
           currentGameId = e.detail.gameId as string;
-          void realtimeSyncManager.connect(currentGameId, gameState.getLocalPlayer().id);
-          console.log(`Connecting to Realtime for game ${currentGameId}`);
+          const playerId = gameState.getLocalPlayer().id;
+          console.log(`[Realtime] Connecting to game ${currentGameId} as player ${playerId}`);
+          void realtimeSyncManager.connect(currentGameId, playerId);
+        } else {
+          console.warn('[Realtime] No gameId provided in gameStart event');
         }
         
         // Assign random ONI after a short delay to ensure all players are loaded

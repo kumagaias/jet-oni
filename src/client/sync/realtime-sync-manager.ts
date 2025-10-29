@@ -126,7 +126,7 @@ export class RealtimeSyncManager {
       this.connection = await connectRealtime({
         channel: channelName,
         onConnect: (channel) => {
-          console.log(`Connected to Realtime channel: ${channel}`);
+          console.log(`[Realtime] Connected to channel: ${channel}`);
           this.connectionState = 'connected';
           this.isRunning = true;
           this.reconnectAttempts = 0;
@@ -143,7 +143,7 @@ export class RealtimeSyncManager {
           }
         },
         onDisconnect: (channel) => {
-          console.log(`Disconnected from Realtime channel: ${channel}`);
+          console.log(`[Realtime] Disconnected from channel: ${channel}`);
           this.connectionState = 'disconnected';
           this.isRunning = false;
           
@@ -151,6 +151,7 @@ export class RealtimeSyncManager {
           this.attemptReconnect();
         },
         onMessage: (data) => {
+          console.log('[Realtime] onMessage callback triggered, data:', data);
           // Handle incoming messages
           // Type assertion is safe here as we control the message format
           this.handleMessage(data as unknown as RealtimeMessage);
@@ -204,33 +205,25 @@ export class RealtimeSyncManager {
    * Send local player state via Realtime (with throttling)
    */
   sendPlayerState(state: PlayerStateUpdate): void {
-    // Debug: Log all calls to sendPlayerState
-    console.log('[Realtime] sendPlayerState called, isRunning:', this.isRunning, 'connectionState:', this.connectionState, 'gameId:', this.gameId, 'playerId:', this.playerId);
-    
-    // Debug: Check connection state
+    // Check connection state
     if (!this.isRunning) {
-      console.warn('[Realtime] Not running, skipping send');
       this.lastSentState = state;
       return;
     }
     
     if (this.connectionState !== 'connected') {
-      console.warn('[Realtime] Not connected, state:', this.connectionState);
       this.lastSentState = state;
       return;
     }
 
-    // Throttle sending to max 10 messages/second
+    // Throttle sending
     const now = Date.now();
     const timeSinceLastSend = now - this.lastSendTime;
     if (timeSinceLastSend < this.throttleInterval) {
-      // Update stored state but don't send yet (throttled)
-      console.log(`[Realtime] Throttled (${timeSinceLastSend}ms < ${this.throttleInterval}ms)`);
       this.lastSentState = state;
       return;
     }
 
-    console.log(`[Realtime] Sending player state (${timeSinceLastSend}ms since last)`);
     this.lastSentState = state;
     this.lastSendTime = now;
 

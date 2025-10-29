@@ -3,13 +3,6 @@
  * A 3D multiplayer tag game built with Three.js and Devvit
  */
 
-// Extend Window interface for debug logging
-declare global {
-  interface Window {
-    lastPhaseLogTime?: number;
-  }
-}
-
 import * as THREE from 'three';
 import { GameEngine } from './game/game-engine';
 import { GameState } from './game/game-state';
@@ -421,13 +414,6 @@ async function initGame(): Promise<void> {
         
         // Send player state to sync manager (only during gameplay, not in lobby)
         const phase = gameState.getGamePhase();
-        
-        // Debug: Log phase check (throttled to once per 5 seconds)
-        const currentTime = Date.now();
-        if (!window.lastPhaseLogTime || currentTime - window.lastPhaseLogTime > 5000) {
-          console.log(`[Phase Check] Current phase: ${phase}, gameId: ${currentGameId}, should sync: ${phase === 'playing' && currentGameId !== null}`);
-          window.lastPhaseLogTime = currentTime;
-        }
         
         if (phase === 'playing' && currentGameId !== null) {
           const localPlayer = gameState.getLocalPlayer();

@@ -87,8 +87,10 @@ describe('UIResults', () => {
       const container = document.getElementById('results-screen');
       const text = container?.textContent || '';
       
+      // Player 1 escaped, so Runners win and only escaped players are shown
       expect(text).toContain('Player 1');
-      expect(text).toContain('Player 2');
+      // Player 2 was tagged, so they are not shown (ONI lost)
+      expect(text).not.toContain('Player 2');
     });
 
     it('should highlight winner', () => {

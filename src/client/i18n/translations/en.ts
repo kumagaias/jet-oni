@@ -109,6 +109,8 @@ export const en: Translations = {
   // Results screen
   results: {
     title: 'Game Results',
+    runnersWin: 'Runners Win!',
+    oniWins: 'ONI Wins!',
     winner: 'Winner!',
     survived: 'Survived',
     tagged: 'Tagged',

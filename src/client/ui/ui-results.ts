@@ -47,9 +47,8 @@ export class UIResults {
     }
 
     const sortedPlayers = this.gameResults.getSortedPlayers();
-    const winner = this.gameResults.getWinner();
     const escapedPlayers = this.gameResults.getEscapedPlayers();
-    const localPlayerStats = this.gameResults.getLocalPlayerStats(localPlayerId);
+    const oniPlayers = sortedPlayers.filter(p => p.isOni || p.wasTagged);
 
     // Clear previous content
     this.container.innerHTML = '';
@@ -60,8 +59,8 @@ export class UIResults {
       background: rgba(20, 20, 30, 0.95);
       border: 2px solid #4a90e2;
       border-radius: 10px;
-      padding: 30px;
-      max-width: 600px;
+      padding: 20px;
+      max-width: 500px;
       width: 90%;
       max-height: 80vh;
       overflow-y: auto;
@@ -75,67 +74,53 @@ export class UIResults {
       color: #4a90e2;
       text-align: center;
       margin: 0 0 20px 0;
-      font-size: 32px;
+      font-size: 28px;
     `;
     panel.appendChild(title);
 
-    // Local player result
-    if (localPlayerStats) {
-      const localResult = document.createElement('div');
-      localResult.style.cssText = `
-        background: ${localPlayerStats.survived ? 'rgba(76, 175, 80, 0.2)' : 'rgba(244, 67, 54, 0.2)'};
-        border: 2px solid ${localPlayerStats.survived ? '#4caf50' : '#f44336'};
-        border-radius: 8px;
-        padding: 15px;
-        margin-bottom: 20px;
-        text-align: center;
-      `;
+    // Determine winner: Runners win if anyone escaped, otherwise ONI wins
+    const runnersWin = escapedPlayers.length > 0;
+    
+    // Winner announcement
+    const winnerBox = document.createElement('div');
+    winnerBox.style.cssText = `
+      background: ${runnersWin ? 'rgba(76, 175, 80, 0.2)' : 'rgba(244, 67, 54, 0.2)'};
+      border: 2px solid ${runnersWin ? '#4caf50' : '#f44336'};
+      border-radius: 8px;
+      padding: 15px;
+      margin-bottom: 20px;
+      text-align: center;
+    `;
 
-      const resultText = document.createElement('div');
-      resultText.style.cssText = `
-        color: ${localPlayerStats.survived ? '#4caf50' : '#f44336'};
-        font-size: 24px;
-        font-weight: bold;
-        margin-bottom: 10px;
-      `;
-      resultText.textContent = localPlayerStats.survived
-        ? this.i18n.t('results.escaped')
-        : this.i18n.t('results.caught');
-      localResult.appendChild(resultText);
+    const winnerText = document.createElement('div');
+    winnerText.style.cssText = `
+      color: ${runnersWin ? '#4caf50' : '#f44336'};
+      font-size: 24px;
+      font-weight: bold;
+      margin-bottom: 10px;
+    `;
+    winnerText.textContent = runnersWin
+      ? this.i18n.t('results.runnersWin')
+      : this.i18n.t('results.oniWins');
+    winnerBox.appendChild(winnerText);
 
-      const timeText = document.createElement('div');
-      timeText.style.cssText = `
-        color: #ffffff;
-        font-size: 18px;
-      `;
-      timeText.textContent = this.i18n.t('results.survivalTime', {
-        time: this.formatTime(localPlayerStats.survivedTime),
-      });
-      localResult.appendChild(timeText);
+    panel.appendChild(winnerBox);
 
-      const rankText = document.createElement('div');
-      rankText.style.cssText = `
-        color: #aaaaaa;
-        font-size: 16px;
-        margin-top: 5px;
-      `;
-      rankText.textContent = `${this.i18n.t('results.rank')}: ${localPlayerStats.rank}`;
-      localResult.appendChild(rankText);
-
-      panel.appendChild(localResult);
-    }
-
+    // Show player list based on who won
+    const playersToShow = runnersWin ? escapedPlayers : oniPlayers;
+    
     // Player list header
     const listHeader = document.createElement('div');
     listHeader.style.cssText = `
       display: grid;
-      grid-template-columns: 50px 1fr 120px 100px;
+      grid-template-columns: 50px 1fr 100px;
       gap: 10px;
       padding: 10px;
       border-bottom: 2px solid #4a90e2;
       margin-bottom: 10px;
       color: #4a90e2;
       font-weight: bold;
+      font-size: 14px;
     `;
 
     const rankHeader = document.createElement('div');
@@ -150,39 +135,34 @@ export class UIResults {
     timeHeader.textContent = this.i18n.t('results.time');
     listHeader.appendChild(timeHeader);
 
-    const statusHeader = document.createElement('div');
-    statusHeader.textContent = this.i18n.t('results.status');
-    listHeader.appendChild(statusHeader);
-
     panel.appendChild(listHeader);
 
     // Player list
-    sortedPlayers.forEach((player, index) => {
+    playersToShow.forEach((player, index) => {
       const playerRow = document.createElement('div');
-      const isWinner = winner && player.id === winner.id;
-      const isEscaped = escapedPlayers.some(p => p.id === player.id);
       const isLocalPlayer = player.id === localPlayerId;
+      const isTopPlayer = index === 0;
 
       playerRow.style.cssText = `
         display: grid;
-        grid-template-columns: 50px 1fr 120px 100px;
+        grid-template-columns: 50px 1fr 100px;
         gap: 10px;
-        padding: 10px;
+        padding: 12px 10px;
         border-radius: 5px;
         margin-bottom: 5px;
-        background: ${isLocalPlayer ? 'rgba(74, 144, 226, 0.2)' : 'rgba(255, 255, 255, 0.05)'};
-        ${isWinner ? 'border: 2px solid gold;' : ''}
+        background: ${isLocalPlayer ? 'rgba(74, 144, 226, 0.3)' : 'rgba(255, 255, 255, 0.05)'};
+        ${isTopPlayer ? 'border: 2px solid gold;' : ''}
       `;
 
       // Rank
       const rank = document.createElement('div');
       rank.style.cssText = `
-        color: ${isWinner ? 'gold' : '#ffffff'};
-        font-weight: ${isWinner ? 'bold' : 'normal'};
-        font-size: ${isWinner ? '20px' : '16px'};
+        color: ${isTopPlayer ? 'gold' : '#ffffff'};
+        font-weight: ${isTopPlayer ? 'bold' : 'normal'};
+        font-size: ${isTopPlayer ? '20px' : '16px'};
       `;
       rank.textContent = `${index + 1}`;
-      if (isWinner) {
+      if (isTopPlayer) {
         rank.textContent += ' 👑';
       }
       playerRow.appendChild(rank);
@@ -194,31 +174,19 @@ export class UIResults {
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+        font-size: 16px;
       `;
       name.textContent = player.username;
-      if (player.isAI) {
-        name.textContent += ' (AI)';
-      }
       playerRow.appendChild(name);
 
       // Survival time
       const time = document.createElement('div');
       time.style.cssText = `
         color: #aaaaaa;
+        font-size: 14px;
       `;
       time.textContent = this.formatTime(player.survivedTime);
       playerRow.appendChild(time);
-
-      // Status
-      const status = document.createElement('div');
-      status.style.cssText = `
-        color: ${isEscaped ? '#4caf50' : '#f44336'};
-        font-weight: bold;
-      `;
-      status.textContent = isEscaped
-        ? this.i18n.t('results.survived')
-        : this.i18n.t('results.tagged');
-      playerRow.appendChild(status);
 
       panel.appendChild(playerRow);
     });

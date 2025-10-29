@@ -109,6 +109,8 @@ export const jp: Translations = {
   // 結果画面
   results: {
     title: 'ゲーム結果',
+    runnersWin: '逃げる側の勝ち！',
+    oniWins: '鬼の勝ち！',
     winner: '勝者！',
     survived: '生存',
     tagged: 'タグ付けされた',

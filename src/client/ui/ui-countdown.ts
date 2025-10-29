@@ -55,7 +55,7 @@ export class UICountdown {
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      background: rgba(0, 0, 0, 0.5);
+      background: transparent;
       z-index: 9999;
       pointer-events: none;
     `;
@@ -71,18 +71,7 @@ export class UICountdown {
       animation: pulse 1s ease-in-out;
     `;
 
-    const messageText = document.createElement('div');
-    messageText.id = 'countdown-message';
-    messageText.textContent = this.i18n.t('countdown.getReady');
-    messageText.style.cssText = `
-      font-size: 32px;
-      color: #ffffff;
-      margin-top: 20px;
-      text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
-    `;
-
     this.container.appendChild(countdownText);
-    this.container.appendChild(messageText);
 
     // Add pulse animation
     const style = document.createElement('style');
@@ -129,13 +118,13 @@ export class UICountdown {
       countdownText.style.color = '#00ff00';
     }
 
-    // Hide after 1 second
+    // Hide immediately and call onComplete
     setTimeout(() => {
       this.hide();
       if (this.onComplete) {
         this.onComplete();
       }
-    }, 1000);
+    }, 500); // Reduced from 1000ms to 500ms
   }
 
   /**

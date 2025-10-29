@@ -269,21 +269,8 @@ export class LobbyManager {
    * Start countdown timer
    */
   private startCountdown(): void {
-    if (this.countdownTimer !== null) {
-      return;
-    }
-    
-    this.countdownRemaining = this.countdownDuration;
-    this.emitEvent('countdownStarted', { duration: this.countdownDuration });
-    
-    this.countdownTimer = window.setInterval(() => {
-      this.countdownRemaining--;
-      
-      if (this.countdownRemaining <= 0) {
-        this.stopCountdown();
-        this.triggerGameStart();
-      }
-    }, 1000);
+    // Immediately trigger game start (no countdown in lobby)
+    this.triggerGameStart();
   }
 
   /**

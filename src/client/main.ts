@@ -614,6 +614,7 @@ async function initGame(): Promise<void> {
         
         // Start countdown (10 seconds)
         uiCountdown.start(10, () => {
+          console.log('[Countdown] Complete - starting game');
           // Countdown complete - trigger actual game start
           window.dispatchEvent(new CustomEvent('gameStart', {
             detail: {

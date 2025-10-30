@@ -273,22 +273,30 @@ async function initGame(): Promise<void> {
       
       // Setup game loop
       gameEngine.onUpdate((deltaTime: number) => {
-        // Get mobile control input and apply to player controller BEFORE updating player
+        // Get mobile control input and merge with keyboard input BEFORE updating player
         const buttonState = uiControls.getButtonState();
         
-        // Always apply mobile control input (even when all false, to release buttons)
+        // Get current keyboard input state
+        const currentInput = playerController.getInputState();
+        
+        // Merge mobile and keyboard input (OR operation - either input activates)
+        const mergedInput = {
+          forward: currentInput.forward || buttonState.moveForward,
+          backward: currentInput.backward || buttonState.moveBackward,
+          left: currentInput.left || buttonState.moveLeft,
+          right: currentInput.right || buttonState.moveRight,
+          dash: currentInput.dash || buttonState.dash || buttonState.jetpack,
+          jetpack: currentInput.jetpack || buttonState.dash || buttonState.jetpack,
+          jump: currentInput.jump, // Keep keyboard jump
+          beacon: currentInput.beacon, // Keep keyboard beacon
+        };
+        
+        // Apply merged input
         if (buttonState.moveForward || buttonState.moveBackward || buttonState.moveLeft || buttonState.moveRight || buttonState.dash || buttonState.jetpack) {
           console.log('[Main] Applying mobile input:', buttonState);
         }
         
-        playerController.setInputState({
-          forward: buttonState.moveForward,
-          backward: buttonState.moveBackward,
-          left: buttonState.moveLeft,
-          right: buttonState.moveRight,
-          dash: buttonState.dash || buttonState.jetpack,
-          jetpack: buttonState.dash || buttonState.jetpack,
-        });
+        playerController.setInputState(mergedInput);
         
         // Update player controller AFTER setting input state
         playerController.update(deltaTime);
@@ -758,9 +766,9 @@ async function initGame(): Promise<void> {
         // Debug: Log initial player state (once at game start)
         const allPlayersAtStart = gameState.getAllPlayers();
         
-        // Set random spawn position for local player
-        const spawnX = (Math.random() - 0.5) * 180; // Random X between -90 and 90
-        const spawnZ = (Math.random() - 0.5) * 180; // Random Z between -90 and 90
+        // Set random spawn position for local player (spread across entire map)
+        const spawnX = (Math.random() - 0.5) * 360; // Random X between -180 and 180
+        const spawnZ = (Math.random() - 0.5) * 360; // Random Z between -180 and 180
         const localPlayer = gameState.getLocalPlayer();
         localPlayer.position = { x: spawnX, y: 2, z: spawnZ };
         localPlayer.velocity = { x: 0, y: 0, z: 0 };

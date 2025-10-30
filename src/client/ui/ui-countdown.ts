@@ -91,22 +91,33 @@ export class UICountdown {
     const countdownText = document.createElement('div');
     countdownText.id = 'countdown-text';
     countdownText.style.cssText = `
-      font-size: 120px;
+      font-size: 180px;
       font-weight: bold;
-      color: #ffffff;
-      text-shadow: 0 0 20px rgba(255, 255, 255, 0.8),
-                   0 0 40px rgba(255, 136, 0, 0.6);
-      animation: pulse 1s ease-in-out;
+      color: #ff8800;
+      text-shadow: 0 0 30px rgba(255, 136, 0, 1),
+                   0 0 60px rgba(255, 136, 0, 0.8),
+                   0 0 90px rgba(255, 100, 0, 0.6);
+      animation: zoomPulse 1s ease-out;
     `;
 
     this.container.appendChild(countdownText);
 
-    // Add pulse animation
+    // Add zoom pulse animation
     const style = document.createElement('style');
     style.textContent = `
-      @keyframes pulse {
-        0%, 100% { transform: scale(1); opacity: 1; }
-        50% { transform: scale(1.2); opacity: 0.8; }
+      @keyframes zoomPulse {
+        0% { 
+          transform: scale(0.3); 
+          opacity: 0;
+        }
+        50% { 
+          transform: scale(1.3); 
+          opacity: 1;
+        }
+        100% { 
+          transform: scale(1); 
+          opacity: 1;
+        }
       }
     `;
     document.head.appendChild(style);
@@ -121,10 +132,10 @@ export class UICountdown {
     const countdownText = document.getElementById('countdown-text');
     if (countdownText) {
       countdownText.textContent = this.countdownValue.toString();
-      // Restart animation
+      // Restart zoom animation
       countdownText.style.animation = 'none';
       setTimeout(() => {
-        countdownText.style.animation = 'pulse 1s ease-in-out';
+        countdownText.style.animation = 'zoomPulse 1s ease-out';
       }, 10);
     }
   }

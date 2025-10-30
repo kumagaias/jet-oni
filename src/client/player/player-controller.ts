@@ -311,7 +311,9 @@ export class PlayerController {
    * Update player movement based on input
    */
   public update(deltaTime: number): void {
-    if (!this.gameState.isPlaying()) return;
+    // Allow movement during countdown and playing phases
+    const phase = this.gameState.getGamePhase();
+    if (phase !== 'countdown' && phase !== 'playing') return;
 
     const player = this.gameState.getLocalPlayer();
     

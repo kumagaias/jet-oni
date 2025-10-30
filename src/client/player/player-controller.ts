@@ -350,11 +350,13 @@ export class PlayerController {
 
     const player = this.gameState.getLocalPlayer();
     
+    // Save original keyboard input
+    const originalKeyboardInput = { ...this.inputState };
+    
     // Merge keyboard and mobile input for this frame
     const mergedInput = this.getInputState();
     
-    // Temporarily use merged input for this update
-    const originalInput = { ...this.inputState };
+    // Temporarily replace inputState with merged input
     this.inputState = mergedInput;
     
     // Handle keyboard rotation (A/D keys)
@@ -378,6 +380,8 @@ export class PlayerController {
     // Handle ladder climbing
     if (this.handleLadderClimbing(deltaTime)) {
       // If climbing, skip normal movement
+      // Restore keyboard input before returning
+      this.inputState = originalKeyboardInput;
       this.inputState.mouseX = 0;
       this.inputState.mouseY = 0;
       return;
@@ -417,6 +421,9 @@ export class PlayerController {
 
     // Note: Position update is now handled by PlayerPhysics in main.ts
 
+    // Restore original keyboard input state
+    this.inputState = originalKeyboardInput;
+    
     // Reset mouse delta
     this.inputState.mouseX = 0;
     this.inputState.mouseY = 0;

@@ -263,6 +263,15 @@ export class RedisStorage {
     // Get all active game IDs
     const gameIds = await this.getActiveGames();
     
+    console.log('[Redis] listGames - Active game IDs:', gameIds);
+    
+    // Check for duplicates in gameIds
+    const uniqueGameIds = new Set(gameIds);
+    if (gameIds.length !== uniqueGameIds.size) {
+      console.warn('[Redis] Duplicate game IDs detected in active games!');
+      console.warn('[Redis] Total:', gameIds.length, 'Unique:', uniqueGameIds.size);
+    }
+    
     if (gameIds.length === 0) {
       return [];
     }
@@ -299,6 +308,8 @@ export class RedisStorage {
     if (expiredGameIds.length > 0) {
       await this.batchRemoveActiveGames(expiredGameIds);
     }
+    
+    console.log('[Redis] listGames - Returning', gameStates.length, 'lobby games');
     
     return gameStates;
   }

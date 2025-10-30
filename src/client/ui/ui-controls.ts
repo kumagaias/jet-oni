@@ -24,6 +24,7 @@ export class UIControls {
   private isMobile: boolean;
 
   constructor(_gameState: GameState, _i18n: I18n) {
+    console.log('[UIControls] Constructor called');
     this.buttonState = {
       dash: false,
       jetpack: false,
@@ -36,6 +37,9 @@ export class UIControls {
     
     // Detect if mobile device
     this.isMobile = this.detectMobile();
+    console.log('[UIControls] Mobile detected:', this.isMobile);
+    console.log('[UIControls] User agent:', navigator.userAgent);
+    console.log('[UIControls] Window width:', window.innerWidth);
     
     // Initialize controls
     this.init();

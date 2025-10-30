@@ -34,11 +34,17 @@ import { jp } from './i18n/translations/jp';
 import { InitResponse } from '../shared/types/api';
 import { MAX_FUEL } from '../shared/constants';
 
+// Debug: Log that main.ts is executing
+console.log('[Main] main.ts executing');
+console.log('[Main] User agent:', navigator.userAgent);
+console.log('[Main] Window size:', window.innerWidth, 'x', window.innerHeight);
+
 // Create translations object
 const translations = { en, jp };
 
 // Initialize i18n system
 const i18n = new I18n(translations);
+console.log('[Main] i18n initialized');
 
 // Initialize UI manager
 const uiManager = new UIManager();
@@ -595,9 +601,13 @@ async function initGame(): Promise<void> {
       uiHud.hide(); // Hide until game starts
       
       // Initialize UI controls for mobile
+      console.log('[Main] About to create UIControls...');
       const { UIControls } = await import('./ui/ui-controls');
+      console.log('[Main] UIControls imported');
       const uiControls = new UIControls(gameState, i18n);
+      console.log('[Main] UIControls instance created');
       uiControls.hide(); // Hide until game starts
+      console.log('[Main] UIControls hidden');
       
       // Add HUD update to game loop
       let lastGameEndCheck = 0;

@@ -151,7 +151,8 @@ export class RealtimeSyncManager {
           this.attemptReconnect();
         },
         onMessage: (data) => {
-          console.log('[Realtime] onMessage callback triggered, data:', data);
+          console.log('[Realtime] onMessage callback triggered');
+          console.log('[Realtime] Message data:', JSON.stringify(data));
           // Handle incoming messages
           // Type assertion is safe here as we control the message format
           this.handleMessage(data as unknown as RealtimeMessage);
@@ -254,6 +255,7 @@ export class RealtimeSyncManager {
     }
 
     // Send via server API (Devvit Web requires server-side realtime.send)
+    console.log(`[Realtime] Sending player state for ${this.playerId} to game ${this.gameId}`);
     fetch('/api/realtime/broadcast', {
       method: 'POST',
       headers: {
@@ -263,9 +265,17 @@ export class RealtimeSyncManager {
         gameId: this.gameId,
         message,
       }),
-    }).catch((error) => {
-      console.error('Failed to broadcast player state:', error);
-    });
+    })
+      .then((response) => {
+        if (!response.ok) {
+          console.error(`[Realtime] Broadcast failed with status ${response.status}`);
+        } else {
+          console.log('[Realtime] Broadcast successful');
+        }
+      })
+      .catch((error) => {
+        console.error('[Realtime] Failed to broadcast player state:', error);
+      });
   }
 
   /**

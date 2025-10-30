@@ -274,28 +274,22 @@ async function initGame(): Promise<void> {
       
       // Setup game loop
       gameEngine.onUpdate((deltaTime: number) => {
-        // Get mobile control input BEFORE updating player
+        // Get mobile control input and apply to player controller
         const buttonState = uiControls.getButtonState();
         
-        // Apply mobile input only when buttons are actually pressed
-        // This prevents overriding keyboard input with false values
-        const mobileOverrides: Partial<InputState> = {};
+        // Set mobile input state (separate from keyboard)
+        playerController.setMobileInputState({
+          forward: buttonState.moveForward,
+          backward: buttonState.moveBackward,
+          left: buttonState.moveLeft,
+          right: buttonState.moveRight,
+          dash: buttonState.dash || buttonState.jetpack,
+          jetpack: buttonState.dash || buttonState.jetpack,
+          jump: false,
+          beacon: buttonState.beacon,
+        });
         
-        if (buttonState.moveForward) mobileOverrides.forward = true;
-        if (buttonState.moveBackward) mobileOverrides.backward = true;
-        if (buttonState.moveLeft) mobileOverrides.left = true;
-        if (buttonState.moveRight) mobileOverrides.right = true;
-        if (buttonState.dash || buttonState.jetpack) {
-          mobileOverrides.dash = true;
-          mobileOverrides.jetpack = true;
-        }
-        
-        // Apply mobile overrides only if any button is pressed
-        if (Object.keys(mobileOverrides).length > 0) {
-          playerController.setInputState(mobileOverrides);
-        }
-        
-        // Update player controller (keyboard input is handled internally)
+        // Update player controller (will merge keyboard + mobile internally)
         playerController.update(deltaTime);
         
         // Check if player became ONI (only after game has started)

@@ -1,12 +1,10 @@
 import { GameState } from '../game/game-state';
 import { InputState } from '../../shared/types/game';
-import { MobileControls, MobileInputState } from '../ui/mobile-controls';
+import { MobileControls } from '../ui/mobile-controls';
 import { LadderSystem, LadderClimbState } from '../environment/ladder-system';
 import {
-  PLAYER_SPEED,
   DASH_SPEED,
   CAMERA_PITCH_LIMIT,
-  MAP_SIZE,
   JETPACK_FUEL_CONSUMPTION,
   JETPACK_FORCE,
   JUMP_FORCE,
@@ -21,7 +19,8 @@ import {
  */
 export class PlayerController {
   private gameState: GameState;
-  private inputState: InputState;
+  private inputState: InputState; // Keyboard input
+  private mobileInputState: InputState; // Mobile input (separate)
   private isPointerLocked = false;
   private mouseSensitivity = 0.004; // Increased from 0.002
   private keyboardRotationSpeed = 0.05; // Rotation speed for A/D keys
@@ -40,6 +39,18 @@ export class PlayerController {
   constructor(gameState: GameState) {
     this.gameState = gameState;
     this.inputState = {
+      forward: false,
+      backward: false,
+      left: false,
+      right: false,
+      jump: false,
+      dash: false,
+      jetpack: false,
+      beacon: false,
+      mouseX: 0,
+      mouseY: 0,
+    };
+    this.mobileInputState = {
       forward: false,
       backward: false,
       left: false,
@@ -267,17 +278,38 @@ export class PlayerController {
   }
 
   /**
-   * Get current input state
+   * Get current input state (merged keyboard + mobile)
    */
   public getInputState(): InputState {
-    return { ...this.inputState };
+    // Merge keyboard and mobile input with OR operation
+    return {
+      forward: this.inputState.forward || this.mobileInputState.forward,
+      backward: this.inputState.backward || this.mobileInputState.backward,
+      left: this.inputState.left || this.mobileInputState.left,
+      right: this.inputState.right || this.mobileInputState.right,
+      jump: this.inputState.jump || this.mobileInputState.jump,
+      dash: this.inputState.dash || this.mobileInputState.dash,
+      jetpack: this.inputState.jetpack || this.mobileInputState.jetpack,
+      beacon: this.inputState.beacon || this.mobileInputState.beacon,
+      mouseX: this.inputState.mouseX || this.mobileInputState.mouseX || 0,
+      mouseY: this.inputState.mouseY || this.mobileInputState.mouseY || 0,
+    };
+  }
+
+  /**
+   * Set mobile input state (for external control like mobile UI)
+   * This does NOT override keyboard input
+   */
+  public setMobileInputState(state: Partial<InputState>): void {
+    Object.assign(this.mobileInputState, state);
   }
 
   /**
    * Set input state (for external control like mobile UI)
+   * @deprecated Use setMobileInputState instead
    */
   public setInputState(state: Partial<InputState>): void {
-    Object.assign(this.inputState, state);
+    this.setMobileInputState(state);
   }
 
   /**
@@ -317,6 +349,13 @@ export class PlayerController {
     if (phase !== 'countdown' && phase !== 'playing') return;
 
     const player = this.gameState.getLocalPlayer();
+    
+    // Merge keyboard and mobile input for this frame
+    const mergedInput = this.getInputState();
+    
+    // Temporarily use merged input for this update
+    const originalInput = { ...this.inputState };
+    this.inputState = mergedInput;
     
     // Handle keyboard rotation (A/D keys)
     if (this.inputState.left) {
@@ -528,10 +567,6 @@ export class PlayerController {
     // Calculate forward/backward direction (camera's forward is -Z in local space)
     const forwardX = -Math.sin(yaw);
     const forwardZ = -Math.cos(yaw);
-    
-    // Calculate right direction (perpendicular to forward)
-    const rightX = Math.cos(yaw);
-    const rightZ = -Math.sin(yaw);
     
     // Combine input directions
     // Note: A/D keys now only rotate view, not move left/right

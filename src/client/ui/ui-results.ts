@@ -82,6 +82,21 @@ export class UIResults {
     // Determine winner: Runners win if anyone escaped, otherwise ONI wins
     const runnersWin = escapedPlayers.length > 0;
     
+    // Victory image
+    const victoryImage = document.createElement('img');
+    victoryImage.src = runnersWin ? '/assets/runner_win.jpg' : '/assets/oni_win.jpg';
+    victoryImage.alt = runnersWin ? 'Runners Win!' : 'ONI Wins!';
+    victoryImage.style.cssText = `
+      width: 100%;
+      max-width: 400px;
+      height: auto;
+      border-radius: 8px;
+      margin: 0 auto 20px auto;
+      display: block;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    `;
+    panel.appendChild(victoryImage);
+    
     // Winner announcement
     const winnerBox = document.createElement('div');
     winnerBox.style.cssText = `

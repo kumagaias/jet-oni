@@ -711,7 +711,22 @@ export class UIMenu {
           isFull: game.currentPlayers >= game.totalPlayers,
         }));
       
-      this.renderJoinGameScreen(games);
+      // Debug: Check for duplicates
+      const gameIds = games.map(g => g.id);
+      const uniqueGameIds = new Set(gameIds);
+      if (gameIds.length !== uniqueGameIds.size) {
+        console.warn('[Join Game] Duplicate games detected!');
+        console.warn('[Join Game] Total games:', gameIds.length);
+        console.warn('[Join Game] Unique games:', uniqueGameIds.size);
+        console.warn('[Join Game] Game IDs:', gameIds);
+      }
+      
+      // Remove duplicates (use Map to keep first occurrence)
+      const uniqueGames = Array.from(
+        new Map(games.map(game => [game.id, game])).values()
+      );
+      
+      this.renderJoinGameScreen(uniqueGames);
     } catch (error) {
       console.error('Failed to fetch game list:', error);
       this.showErrorMessage(this.i18n.t('error.connectionFailed'));

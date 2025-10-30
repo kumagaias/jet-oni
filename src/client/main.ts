@@ -108,19 +108,19 @@ async function initGame(): Promise<void> {
       console.log('[Phase Change] Initializing - setting phase to "lobby"');
       gameState.setGamePhase('lobby');
       
-      // Generate city environment with random seed (will be synced via gameId later)
+      // Generate city environment with fixed seed (will be regenerated with gameId when game starts)
       console.log('Generating city...');
-      // Use timestamp as temporary seed (will be replaced with gameId when game starts)
-      const tempSeed = `city-${Date.now()}`;
-      const cityGenerator = new CityGenerator(tempSeed);
-      const city = cityGenerator.generateCity();
+      // Use fixed seed for initial lobby view
+      const initialSeed = 'lobby-preview-city';
+      const cityGenerator = new CityGenerator(initialSeed);
+      let city = cityGenerator.generateCity();
       gameEngine.addToScene(city);
-      console.log('City generated with temporary seed:', tempSeed);
+      console.log('City generated with initial seed:', initialSeed);
       
       // Generate dynamic objects (cars, pedestrians, ladders)
       console.log('Generating dynamic objects...');
       const dynamicObjects = new DynamicObjects();
-      const dynamicGroup = dynamicObjects.initialize(cityGenerator.getBuildings());
+      let dynamicGroup = dynamicObjects.initialize(cityGenerator.getBuildings());
       gameEngine.addToScene(dynamicGroup);
       console.log('Dynamic objects generated');
       
@@ -180,10 +180,11 @@ async function initGame(): Promise<void> {
       const addAIPlayers = (count: number) => {
         for (let i = 0; i < count; i++) {
           const aiId = `ai-${i}`;
+          // Spread AI players across the map (200x200 area)
           const startPos = {
-            x: (Math.random() - 0.5) * 40,
+            x: (Math.random() - 0.5) * 200,
             y: 2,
-            z: (Math.random() - 0.5) * 40,
+            z: (Math.random() - 0.5) * 200,
           };
           
           gameState.updateRemotePlayer({
@@ -637,6 +638,36 @@ async function initGame(): Promise<void> {
         gameStarted = true;
         
         console.log('[Phase Change] Game starting - setting phase to "playing"');
+        
+        // Regenerate city with gameId as seed for consistent map across all players
+        if (e.detail?.gameId) {
+          const gameId = e.detail.gameId as string;
+          console.log(`[Map] Regenerating city with gameId seed: ${gameId}`);
+          
+          // Remove old city
+          gameEngine.removeFromScene(city);
+          
+          // Generate new city with gameId as seed
+          const newCityGenerator = new CityGenerator(gameId);
+          city = newCityGenerator.generateCity();
+          gameEngine.addToScene(city);
+          
+          // Update collision system with new buildings
+          const newBuildingData: BuildingData[] = newCityGenerator.getBuildingData();
+          collisionSystem.registerBuildings(newBuildingData);
+          playerPhysics.registerBuildings(newBuildingData);
+          
+          // Regenerate dynamic objects
+          gameEngine.removeFromScene(dynamicGroup);
+          const newDynamicObjects = new DynamicObjects();
+          dynamicGroup = newDynamicObjects.initialize(newCityGenerator.getBuildings());
+          gameEngine.addToScene(dynamicGroup);
+          
+          // Update ladder system
+          ladderSystem.registerLadders(newDynamicObjects.getLadders());
+          
+          console.log(`[Map] City regenerated with ${newBuildingData.length} buildings`);
+        }
         
         // Show canvas and resume game engine
         const canvas = document.getElementById('bg') as HTMLCanvasElement;

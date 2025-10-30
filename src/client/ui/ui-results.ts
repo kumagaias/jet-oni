@@ -62,10 +62,11 @@ export class UIResults {
       padding: 20px;
       max-width: 500px;
       width: 90%;
-      max-height: 85vh;
+      max-height: 90vh;
       display: flex;
       flex-direction: column;
       box-shadow: 0 0 20px rgba(74, 144, 226, 0.5);
+      overflow: hidden;
     `;
 
     // Title
@@ -131,6 +132,8 @@ export class UIResults {
       flex: 1;
       overflow-y: auto;
       margin-bottom: 10px;
+      min-height: 0;
+      max-height: 300px;
     `;
     
     // Player list header
@@ -224,7 +227,7 @@ export class UIResults {
     backButton.style.cssText = `
       width: 100%;
       padding: 15px;
-      margin-top: 20px;
+      margin-top: 10px;
       background: #4a90e2;
       color: white;
       border: none;
@@ -232,6 +235,7 @@ export class UIResults {
       font-size: 18px;
       cursor: pointer;
       transition: background 0.3s;
+      flex-shrink: 0;
     `;
     backButton.onmouseover = () => {
       backButton.style.background = '#357abd';
@@ -240,18 +244,22 @@ export class UIResults {
       backButton.style.background = '#4a90e2';
     };
     backButton.onclick = () => {
-      
       // Prevent multiple clicks
       if (backButton.disabled) {
         return;
       }
       backButton.disabled = true;
+      backButton.textContent = 'Loading...';
       
-      if (this.onBackToMenu) {
-        this.onBackToMenu();
-      }
-      
+      // Hide immediately
       this.hide();
+      
+      // Call callback after a short delay to ensure UI updates
+      setTimeout(() => {
+        if (this.onBackToMenu) {
+          this.onBackToMenu();
+        }
+      }, 100);
     };
     panel.appendChild(backButton);
 

@@ -128,7 +128,7 @@ describe('UIResults', () => {
   });
 
   describe('setOnBackToMenu', () => {
-    it('should call callback when back button is clicked', () => {
+    it('should call callback when back button is clicked', async () => {
       const callback = vi.fn();
       
       uiResults.create();
@@ -137,6 +137,9 @@ describe('UIResults', () => {
       
       const backButton = document.querySelector('button') as HTMLButtonElement;
       backButton?.click();
+      
+      // Wait for setTimeout to complete
+      await new Promise(resolve => setTimeout(resolve, 150));
       
       expect(callback).toHaveBeenCalled();
     });

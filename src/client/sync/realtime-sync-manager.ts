@@ -121,7 +121,8 @@ export class RealtimeSyncManager {
 
     try {
       // Connect to game-specific channel
-      const channelName = `game:${gameId}`;
+      // Use simple channel name without colon to test
+      const channelName = `game_${gameId}`;
       
       console.log(`[Realtime] Attempting to connect to channel: ${channelName}`);
       

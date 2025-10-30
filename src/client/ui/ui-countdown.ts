@@ -111,34 +111,47 @@ export class UICountdown {
       this.intervalId = null;
     }
 
-    // Show "GO!" message
+    // Show "GO!" message briefly
     const countdownText = document.getElementById('countdown-text');
     if (countdownText) {
       countdownText.textContent = this.i18n.t('countdown.go');
       countdownText.style.color = '#00ff00';
     }
 
-    // Hide immediately and call onComplete
+    // Hide after 300ms and call onComplete
     setTimeout(() => {
       this.hide();
       if (this.onComplete) {
         this.onComplete();
       }
-    }, 500); // Reduced from 1000ms to 500ms
+    }, 300); // Reduced to 300ms for faster transition
   }
 
   /**
    * Hide countdown
    */
   public hide(): void {
+    // Clear interval first
+    if (this.intervalId !== null) {
+      clearInterval(this.intervalId);
+      this.intervalId = null;
+    }
+
+    // Remove container
     if (this.container) {
       this.container.remove();
       this.container = null;
     }
 
-    if (this.intervalId !== null) {
-      clearInterval(this.intervalId);
-      this.intervalId = null;
+    // Also remove by ID as a fallback (in case container reference is lost)
+    const overlay = document.getElementById('countdown-overlay');
+    if (overlay) {
+      overlay.remove();
+    }
+
+    const text = document.getElementById('countdown-text');
+    if (text) {
+      text.remove();
     }
   }
 

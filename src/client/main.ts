@@ -277,24 +277,24 @@ async function initGame(): Promise<void> {
         // Get mobile control input BEFORE updating player
         const buttonState = uiControls.getButtonState();
         
-        // Apply mobile control input directly (keyboard input is handled separately by PlayerController)
-        // Only override if mobile button is actually pressed
-        const mobileInput: Partial<InputState> = {};
+        // Apply mobile control input (set both true and false explicitly)
+        // This ensures buttons are released when not pressed
+        const mobileInput: Partial<InputState> = {
+          forward: buttonState.moveForward,
+          backward: buttonState.moveBackward,
+          left: buttonState.moveLeft,
+          right: buttonState.moveRight,
+          dash: buttonState.dash || buttonState.jetpack,
+          jetpack: buttonState.dash || buttonState.jetpack,
+        };
         
-        if (buttonState.moveForward) mobileInput.forward = true;
-        if (buttonState.moveBackward) mobileInput.backward = true;
-        if (buttonState.moveLeft) mobileInput.left = true;
-        if (buttonState.moveRight) mobileInput.right = true;
-        if (buttonState.dash || buttonState.jetpack) {
-          mobileInput.dash = true;
-          mobileInput.jetpack = true;
+        // Log if mobile input is active
+        if (buttonState.moveForward || buttonState.moveBackward || buttonState.moveLeft || buttonState.moveRight || buttonState.dash || buttonState.jetpack) {
+          console.log('[Main] Mobile input active:', buttonState);
         }
         
-        // Apply mobile input if any button is pressed
-        if (Object.keys(mobileInput).length > 0) {
-          console.log('[Main] Applying mobile input:', buttonState);
-          playerController.setInputState(mobileInput);
-        }
+        // Always apply mobile input to override any stuck states
+        playerController.setInputState(mobileInput);
         
         // Update player controller AFTER setting input state
         playerController.update(deltaTime);

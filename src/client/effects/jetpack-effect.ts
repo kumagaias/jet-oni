@@ -177,9 +177,12 @@ export class JetpackEffect {
       geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
       geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
       geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
-      geometry.attributes.position.needsUpdate = true;
-      geometry.attributes.color.needsUpdate = true;
-      geometry.attributes.size.needsUpdate = true;
+      const posAttr = geometry.attributes.position;
+      const colorAttr = geometry.attributes.color;
+      const sizeAttr = geometry.attributes.size;
+      if (posAttr) posAttr.needsUpdate = true;
+      if (colorAttr) colorAttr.needsUpdate = true;
+      if (sizeAttr) sizeAttr.needsUpdate = true;
     }
   }
 

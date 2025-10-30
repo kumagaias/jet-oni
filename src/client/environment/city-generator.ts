@@ -520,7 +520,8 @@ export class CityGenerator {
       0x8b7355, // Brown
       0x4a5f6a, // Blue-gray
     ];
-    return colors[Math.floor(this.rng.next() * colors.length)];
+    const color = colors[Math.floor(this.rng.next() * colors.length)];
+    return color ?? 0x808080;
   }
 
   /**
@@ -534,7 +535,8 @@ export class CityGenerator {
       0xffdab9, // Peach
       0xd2b48c, // Tan
     ];
-    return colors[Math.floor(this.rng.next() * colors.length)];
+    const color = colors[Math.floor(this.rng.next() * colors.length)];
+    return color ?? 0xf5deb3;
   }
 
   /**

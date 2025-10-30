@@ -61,8 +61,14 @@ export class UIControls {
    * Initialize mobile controls
    */
   public init(): void {
-    if (!this.isMobile) return;
+    console.log('[UIControls] init() called, isMobile:', this.isMobile);
+    if (!this.isMobile) {
+      console.log('[UIControls] Not mobile, skipping init');
+      return;
+    }
 
+    console.log('[UIControls] Creating mobile controls...');
+    
     // Create control container
     this.container = document.createElement('div');
     this.container.id = 'ability-controls';
@@ -77,6 +83,7 @@ export class UIControls {
       z-index: 600;
     `;
     document.body.appendChild(this.container);
+    console.log('[UIControls] Container created and added to body');
 
     // Create dash/jetpack button (bottom)
     this.dashButton = this.createAbilityButton(
@@ -97,9 +104,12 @@ export class UIControls {
       }
     );
     this.container.appendChild(this.dashButton);
+    console.log('[UIControls] Dash button created and added');
     
     // Create D-pad for movement
     this.createDPad();
+    console.log('[UIControls] D-pad created');
+    console.log('[UIControls] Init complete');
   }
   
   /**
@@ -380,6 +390,12 @@ export class UIControls {
   public getButtonState(): ControlButtonState {
     const state = { ...this.buttonState };
     
+    // Log if any button is pressed
+    const anyPressed = Object.values(state).some(v => v === true);
+    if (anyPressed) {
+      console.log('[UIControls] getButtonState() - Active buttons:', state);
+    }
+    
     // Reset beacon after reading (it's a one-time press)
     this.buttonState.beacon = false;
     
@@ -390,15 +406,24 @@ export class UIControls {
    * Show controls
    */
   public show(): void {
+    console.log('[UIControls] show() called');
+    console.log('[UIControls] Container exists:', !!this.container);
+    console.log('[UIControls] isMobile:', this.isMobile);
+    
     if (this.container) {
       this.container.style.display = 'flex';
+      console.log('[UIControls] Container display set to flex');
     }
     
     // Show D-pad
     const dpad = document.getElementById('dpad-controls');
+    console.log('[UIControls] D-pad element exists:', !!dpad);
     if (dpad) {
       dpad.style.display = 'block';
+      console.log('[UIControls] D-pad display set to block');
     }
+    
+    console.log('[UIControls] Show complete');
   }
 
   /**

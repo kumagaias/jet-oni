@@ -273,21 +273,22 @@ async function initGame(): Promise<void> {
       
       // Setup game loop
       gameEngine.onUpdate((deltaTime: number) => {
-        // Get mobile control input and merge with keyboard input BEFORE updating player
+        // Get mobile control input and apply to player controller BEFORE updating player
         const buttonState = uiControls.getButtonState();
         
-        // Apply mobile control input to player controller
+        // Always apply mobile control input (even when all false, to release buttons)
         if (buttonState.moveForward || buttonState.moveBackward || buttonState.moveLeft || buttonState.moveRight || buttonState.dash || buttonState.jetpack) {
           console.log('[Main] Applying mobile input:', buttonState);
-          playerController.setInputState({
-            forward: buttonState.moveForward,
-            backward: buttonState.moveBackward,
-            left: buttonState.moveLeft,
-            right: buttonState.moveRight,
-            dash: buttonState.dash || buttonState.jetpack,
-            jetpack: buttonState.dash || buttonState.jetpack,
-          });
         }
+        
+        playerController.setInputState({
+          forward: buttonState.moveForward,
+          backward: buttonState.moveBackward,
+          left: buttonState.moveLeft,
+          right: buttonState.moveRight,
+          dash: buttonState.dash || buttonState.jetpack,
+          jetpack: buttonState.dash || buttonState.jetpack,
+        });
         
         // Update player controller AFTER setting input state
         playerController.update(deltaTime);

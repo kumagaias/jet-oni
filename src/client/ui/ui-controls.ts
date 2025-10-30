@@ -46,12 +46,12 @@ export class UIControls {
   }
 
   /**
-   * Detect if device is mobile
+   * Detect if device is mobile or should show controls
    */
   private detectMobile(): boolean {
-    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
-      navigator.userAgent
-    ) || window.innerWidth < 768;
+    // Always show controls for easier gameplay on all devices
+    // Players can use keyboard (WASD/Space) or click/touch the on-screen controls
+    return true;
   }
 
   /**
@@ -203,19 +203,42 @@ export class UIControls {
       `;
       button.appendChild(keyLabel);
       
-      // Touch events for continuous movement
-      button.addEventListener('touchstart', (e) => {
-        e.preventDefault();
+      // Touch and mouse events for continuous movement
+      const handleStart = () => {
         button.style.background = 'rgba(255, 136, 0, 0.8)';
         button.style.transform = `${dir.transform} scale(0.9)`;
         this.buttonState[dir.action as keyof ControlButtonState] = true;
+      };
+      
+      const handleEnd = () => {
+        button.style.background = 'rgba(255, 136, 0, 0.5)';
+        button.style.transform = dir.transform;
+        this.buttonState[dir.action as keyof ControlButtonState] = false;
+      };
+      
+      button.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        handleStart();
       });
       
       button.addEventListener('touchend', (e) => {
         e.preventDefault();
-        button.style.background = 'rgba(255, 136, 0, 0.5)';
-        button.style.transform = dir.transform;
-        this.buttonState[dir.action as keyof ControlButtonState] = false;
+        handleEnd();
+      });
+      
+      button.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        handleStart();
+      });
+      
+      button.addEventListener('mouseup', (e) => {
+        e.preventDefault();
+        handleEnd();
+      });
+      
+      button.addEventListener('mouseleave', () => {
+        // Release button if mouse leaves while pressed
+        handleEnd();
       });
       
       button.addEventListener('touchcancel', (e) => {
@@ -288,32 +311,48 @@ export class UIControls {
     button.dataset.bgColor = backgroundColor;
     button.dataset.borderColor = borderColor;
 
-    // Touch events
-    button.addEventListener('touchstart', (e) => {
-      e.preventDefault();
+    // Touch and mouse events
+    const handlePress = () => {
       if (button.classList.contains('disabled')) return;
-      
-      // Scale animation
       button.style.transform = 'scale(0.9)';
       button.style.background = backgroundColor.replace('0.5', '0.8');
       onPress();
+    };
+    
+    const handleRelease = () => {
+      if (button.classList.contains('disabled')) return;
+      button.style.transform = 'scale(1)';
+      button.style.background = backgroundColor;
+      onRelease();
+    };
+    
+    button.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      handlePress();
     });
 
     button.addEventListener('touchend', (e) => {
       e.preventDefault();
-      if (button.classList.contains('disabled')) return;
-      
-      // Reset scale
-      button.style.transform = 'scale(1)';
-      button.style.background = backgroundColor;
-      onRelease();
+      handleRelease();
     });
 
     button.addEventListener('touchcancel', (e) => {
       e.preventDefault();
-      button.style.transform = 'scale(1)';
-      button.style.background = backgroundColor;
-      onRelease();
+      handleRelease();
+    });
+    
+    button.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      handlePress();
+    });
+    
+    button.addEventListener('mouseup', (e) => {
+      e.preventDefault();
+      handleRelease();
+    });
+    
+    button.addEventListener('mouseleave', () => {
+      handleRelease();
     });
 
     return button;

@@ -123,10 +123,24 @@ export class RealtimeSyncManager {
       // Connect to game-specific channel
       const channelName = `game:${gameId}`;
       
+      console.log(`[Realtime] Attempting to connect to channel: ${channelName}`);
+      
+      const onMessageHandler = (data: unknown) => {
+        console.log('[Realtime] ⚡ onMessage callback triggered!');
+        console.log('[Realtime] Message type:', typeof data);
+        console.log('[Realtime] Message data:', JSON.stringify(data));
+        // Handle incoming messages
+        // Type assertion is safe here as we control the message format
+        this.handleMessage(data as unknown as RealtimeMessage);
+      };
+      
+      console.log('[Realtime] onMessage handler created:', typeof onMessageHandler);
+      
       this.connection = await connectRealtime({
         channel: channelName,
         onConnect: (channel) => {
-          console.log(`[Realtime] Connected to channel: ${channel}`);
+          console.log(`[Realtime] ✅ Connected to channel: ${channel}`);
+          console.log(`[Realtime] Connection state: ${this.connectionState} -> connected`);
           this.connectionState = 'connected';
           this.isRunning = true;
           this.reconnectAttempts = 0;
@@ -139,25 +153,22 @@ export class RealtimeSyncManager {
           
           // Send initial state if available
           if (this.lastSentState) {
+            console.log('[Realtime] Sending initial state after connection');
             this.sendPlayerState(this.lastSentState);
           }
         },
         onDisconnect: (channel) => {
-          console.log(`[Realtime] Disconnected from channel: ${channel}`);
+          console.log(`[Realtime] ❌ Disconnected from channel: ${channel}`);
           this.connectionState = 'disconnected';
           this.isRunning = false;
           
           // Attempt reconnection
           this.attemptReconnect();
         },
-        onMessage: (data) => {
-          console.log('[Realtime] onMessage callback triggered');
-          console.log('[Realtime] Message data:', JSON.stringify(data));
-          // Handle incoming messages
-          // Type assertion is safe here as we control the message format
-          this.handleMessage(data as unknown as RealtimeMessage);
-        },
+        onMessage: onMessageHandler,
       });
+      
+      console.log('[Realtime] Connection object created:', this.connection ? 'success' : 'failed');
       
       console.log(`RealtimeSyncManager connecting to ${channelName}`);
     } catch (error) {

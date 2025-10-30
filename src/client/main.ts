@@ -277,15 +277,20 @@ async function initGame(): Promise<void> {
         // Get mobile control input BEFORE updating player
         const buttonState = uiControls.getButtonState();
         
-        // Apply mobile control input (set both true and false explicitly)
-        // This ensures buttons are released when not pressed
-        const mobileInput: Partial<InputState> = {
-          forward: buttonState.moveForward,
-          backward: buttonState.moveBackward,
-          left: buttonState.moveLeft,
-          right: buttonState.moveRight,
-          dash: buttonState.dash || buttonState.jetpack,
-          jetpack: buttonState.dash || buttonState.jetpack,
+        // Get current keyboard input state
+        const keyboardInput = playerController.getInputState();
+        
+        // Merge keyboard and mobile input with OR operation
+        // Either keyboard OR mobile can activate an input
+        const mergedInput: InputState = {
+          forward: keyboardInput.forward || buttonState.moveForward,
+          backward: keyboardInput.backward || buttonState.moveBackward,
+          left: keyboardInput.left || buttonState.moveLeft,
+          right: keyboardInput.right || buttonState.moveRight,
+          dash: keyboardInput.dash || buttonState.dash || buttonState.jetpack,
+          jetpack: keyboardInput.jetpack || buttonState.dash || buttonState.jetpack,
+          jump: keyboardInput.jump,
+          beacon: keyboardInput.beacon,
         };
         
         // Log if mobile input is active
@@ -293,8 +298,8 @@ async function initGame(): Promise<void> {
           console.log('[Main] Mobile input active:', buttonState);
         }
         
-        // Always apply mobile input to override any stuck states
-        playerController.setInputState(mobileInput);
+        // Apply merged input
+        playerController.setInputState(mergedInput);
         
         // Update player controller AFTER setting input state
         playerController.update(deltaTime);

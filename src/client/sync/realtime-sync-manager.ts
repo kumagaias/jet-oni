@@ -22,20 +22,27 @@ export interface PlayerStateUpdate {
  * Realtime message format
  */
 export interface RealtimeMessage {
-  type: 'player-update';
+  type: 'player-update' | 'game-start';
   playerId: string;
-  position: Vector3;
-  velocity: Vector3;
-  rotation: Rotation;
-  fuel: number;
-  isOni: boolean;
-  isDashing: boolean;
-  isJetpacking: boolean;
-  isOnSurface: boolean;
+  position?: Vector3;
+  velocity?: Vector3;
+  rotation?: Rotation;
+  fuel?: number;
+  isOni?: boolean;
+  isDashing?: boolean;
+  isJetpacking?: boolean;
+  isOnSurface?: boolean;
   beaconCooldown?: number;
   survivedTime?: number;
   wasTagged?: boolean;
   timestamp: number;
+  // Game start specific fields
+  startTimestamp?: number;
+  config?: {
+    totalPlayers: number;
+    roundDuration: number;
+    rounds: number;
+  };
 }
 
 /**
@@ -215,6 +222,46 @@ export class RealtimeSyncManager {
   }
 
   /**
+   * Send game start message (host only)
+   */
+  sendGameStart(config: { totalPlayers: number; roundDuration: number; rounds: number }): void {
+    if (!this.isRunning || this.connectionState !== 'connected') {
+      console.warn('[Realtime] Cannot send game-start: not connected');
+      return;
+    }
+
+    const message: RealtimeMessage = {
+      type: 'game-start',
+      playerId: this.playerId!,
+      timestamp: Date.now(),
+      startTimestamp: Date.now(),
+      config,
+    };
+
+    console.log('[Realtime] Sending game-start message');
+    fetch('/api/realtime/broadcast', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        gameId: this.gameId,
+        message,
+      }),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          console.error(`[Realtime] Game-start broadcast failed with status ${response.status}`);
+        } else {
+          console.log('[Realtime] Game-start broadcast successful');
+        }
+      })
+      .catch((error) => {
+        console.error('[Realtime] Failed to broadcast game-start:', error);
+      });
+  }
+
+  /**
    * Send local player state via Realtime (with throttling)
    */
   sendPlayerState(state: PlayerStateUpdate): void {
@@ -295,6 +342,22 @@ export class RealtimeSyncManager {
    */
   private handleMessage(data: RealtimeMessage): void {
     console.log('[Realtime] Received message:', data.type, 'from', data.playerId);
+    
+    // Handle game-start messages (from host)
+    if (data.type === 'game-start') {
+      console.log('[Realtime] Received game-start message from host');
+      // Dispatch gameStartCountdown event for non-host players
+      if (data.playerId !== this.playerId) {
+        window.dispatchEvent(new CustomEvent('gameStartCountdown', {
+          detail: {
+            config: data.config,
+            gameId: this.gameId,
+            startTimestamp: data.startTimestamp,
+          },
+        }));
+      }
+      return;
+    }
     
     if (data.type !== 'player-update') {
       return;

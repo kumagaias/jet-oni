@@ -587,6 +587,13 @@ async function initGame(): Promise<void> {
       window.addEventListener('gameStartCountdown', ((e: CustomEvent) => {
         console.log('[Countdown] Starting countdown');
         
+        // If this is the host (no startTimestamp in detail), broadcast game-start to all players
+        if (!e.detail?.startTimestamp && isHost) {
+          console.log('[Countdown] Host broadcasting game-start message');
+          const config = e.detail?.config || gameState.getGameConfig();
+          realtimeSyncManager.sendGameStart(config);
+        }
+        
         // Hide lobby screen (overlay)
         const overlay = document.querySelector('.overlay') as HTMLElement;
         if (overlay) {

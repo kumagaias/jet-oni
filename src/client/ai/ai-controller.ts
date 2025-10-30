@@ -59,6 +59,7 @@ export class AIController {
   private config: AIConfig;
   private behaviorSystem: AIBehaviorSystem;
   private abilityTimers: Map<string, number> = new Map();
+  private assignedTargets: Map<string, string> = new Map(); // Map of oniId -> runnerId
 
   constructor(gameState: GameState, config: Partial<AIConfig> = {}) {
     this.gameState = gameState;
@@ -76,12 +77,33 @@ export class AIController {
   public update(deltaTime: number): void {
     const players = this.gameState.getAllPlayers();
     
+    // Clean up assigned targets for ONIs that no longer exist or are no longer ONI
+    const currentOniIds = new Set(players.filter(p => p.isAI && p.isOni).map(p => p.id));
+    for (const oniId of Array.from(this.assignedTargets.keys())) {
+      if (!currentOniIds.has(oniId)) {
+        this.assignedTargets.delete(oniId);
+      }
+    }
+    
+    // Clean up targets that no longer exist or became ONI
+    const currentRunnerIds = new Set(players.filter(p => !p.isOni).map(p => p.id));
+    for (const [oniId, runnerId] of Array.from(this.assignedTargets.entries())) {
+      if (!currentRunnerIds.has(runnerId)) {
+        this.assignedTargets.delete(oniId);
+      }
+    }
+    
     for (const player of players) {
       // Skip human players
       if (!player.isAI) continue;
       
       // Make decision for this AI player
       const decision = this.makeDecision(player, players, deltaTime);
+      
+      // Update assigned target if this is an ONI
+      if (player.isOni && decision.targetPlayerId) {
+        this.assignedTargets.set(player.id, decision.targetPlayerId);
+      }
       
       // Apply decision to player state
       this.applyDecision(player, decision, deltaTime);
@@ -115,8 +137,12 @@ export class AIController {
     allPlayers: Player[],
     deltaTime: number
   ): AIDecision {
-    // Find nearest runner
-    const nearestRunner = this.behaviorSystem.findNearestRunner(aiPlayer, allPlayers);
+    // Find nearest runner (with target distribution to avoid clustering)
+    const nearestRunner = this.behaviorSystem.findNearestRunner(
+      aiPlayer, 
+      allPlayers,
+      this.assignedTargets
+    );
     
     if (!nearestRunner) {
       // No runners found, wander

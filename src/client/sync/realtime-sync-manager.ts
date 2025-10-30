@@ -83,22 +83,22 @@ export class RealtimeSyncManager {
   private playerId: string | null = null;
   private isRunning = false;
   private connection: RealtimeConnection | null = null;
-  
+
   private interpolationDuration: number;
   private predictionEnabled: boolean;
   private disconnectTimeout: number;
   private maxReconnectAttempts: number;
   private throttleInterval: number;
-  
+
   private remotePlayers: Map<string, RemotePlayer> = new Map();
   private updateCallbacks: Array<(players: RemotePlayer[]) => void> = [];
   private disconnectCallbacks: Array<(playerId: string) => void> = [];
   private connectCallbacks: Array<() => void> = [];
-  
+
   private lastSentState: PlayerStateUpdate | null = null;
   private lastSendTime: number = 0;
   private lastReceiveTime: number = Date.now();
-  
+
   // Connection state tracking
   private connectionState: 'disconnected' | 'connecting' | 'connected' = 'disconnected';
   private reconnectAttempts: number = 0;
@@ -130,9 +130,9 @@ export class RealtimeSyncManager {
       // Connect to game-specific channel
       // Use simple channel name without colon to test
       const channelName = `game_${gameId}`;
-      
+
       console.log(`[Realtime] Attempting to connect to channel: ${channelName}`);
-      
+
       const onMessageHandler = (data: unknown) => {
         console.log('[Realtime] ⚡ onMessage callback triggered!');
         console.log('[Realtime] Message type:', typeof data);
@@ -141,9 +141,9 @@ export class RealtimeSyncManager {
         // Type assertion is safe here as we control the message format
         this.handleMessage(data as unknown as RealtimeMessage);
       };
-      
+
       console.log('[Realtime] onMessage handler created:', typeof onMessageHandler);
-      
+
       this.connection = await connectRealtime({
         channel: channelName,
         onConnect: (channel) => {
@@ -153,12 +153,12 @@ export class RealtimeSyncManager {
           this.isRunning = true;
           this.reconnectAttempts = 0;
           this.lastReceiveTime = Date.now();
-          
+
           // Notify connect callbacks
           for (const callback of this.connectCallbacks) {
             callback();
           }
-          
+
           // Send initial state if available
           if (this.lastSentState) {
             console.log('[Realtime] Sending initial state after connection');
@@ -169,15 +169,15 @@ export class RealtimeSyncManager {
           console.log(`[Realtime] ❌ Disconnected from channel: ${channel}`);
           this.connectionState = 'disconnected';
           this.isRunning = false;
-          
+
           // Attempt reconnection
           this.attemptReconnect();
         },
         onMessage: onMessageHandler,
       });
-      
+
       console.log('[Realtime] Connection object created:', this.connection ? 'success' : 'failed');
-      
+
       console.log(`RealtimeSyncManager connecting to ${channelName}`);
     } catch (error) {
       console.error('Failed to connect to Realtime:', error);
@@ -270,7 +270,7 @@ export class RealtimeSyncManager {
       this.lastSentState = state;
       return;
     }
-    
+
     if (this.connectionState !== 'connected') {
       this.lastSentState = state;
       return;
@@ -342,23 +342,25 @@ export class RealtimeSyncManager {
    */
   private handleMessage(data: RealtimeMessage): void {
     console.log('[Realtime] Received message:', data.type, 'from', data.playerId);
-    
+
     // Handle game-start messages (from host)
     if (data.type === 'game-start') {
       console.log('[Realtime] Received game-start message from host');
       // Dispatch gameStartCountdown event for non-host players
       if (data.playerId !== this.playerId) {
-        window.dispatchEvent(new CustomEvent('gameStartCountdown', {
-          detail: {
-            config: data.config,
-            gameId: this.gameId,
-            startTimestamp: data.startTimestamp,
-          },
-        }));
+        window.dispatchEvent(
+          new CustomEvent('gameStartCountdown', {
+            detail: {
+              config: data.config,
+              gameId: this.gameId,
+              startTimestamp: data.startTimestamp,
+            },
+          })
+        );
       }
       return;
     }
-    
+
     if (data.type !== 'player-update') {
       return;
     }
@@ -376,52 +378,62 @@ export class RealtimeSyncManager {
     const existing = this.remotePlayers.get(data.playerId);
 
     if (existing) {
-      // Update existing player
-      existing.targetPosition = { ...data.position };
-      existing.targetVelocity = { ...data.velocity };
-      existing.targetRotation = { ...data.rotation };
-      existing.fuel = data.fuel;
-      existing.isOni = data.isOni;
-      existing.isDashing = data.isDashing;
-      existing.isJetpacking = data.isJetpacking;
-      existing.isOnSurface = data.isOnSurface;
-      existing.lastUpdateTime = now;
-      existing.interpolationProgress = 0;
-      
-      // Update optional fields
-      if (data.beaconCooldown !== undefined) {
-        existing.beaconCooldown = data.beaconCooldown;
-      }
-      if (data.survivedTime !== undefined) {
-        existing.survivedTime = data.survivedTime;
-      }
-      if (data.wasTagged !== undefined) {
-        existing.wasTagged = data.wasTagged;
+      // Update existing player - check for required fields
+      if (data.position && data.velocity && data.rotation && 
+          data.fuel !== undefined && data.isOni !== undefined &&
+          data.isDashing !== undefined && data.isJetpacking !== undefined &&
+          data.isOnSurface !== undefined) {
+        existing.targetPosition = { ...data.position };
+        existing.targetVelocity = { ...data.velocity };
+        existing.targetRotation = { ...data.rotation };
+        existing.fuel = data.fuel;
+        existing.isOni = data.isOni;
+        existing.isDashing = data.isDashing;
+        existing.isJetpacking = data.isJetpacking;
+        existing.isOnSurface = data.isOnSurface;
+        existing.lastUpdateTime = now;
+        existing.interpolationProgress = 0;
+
+        // Update optional fields
+        if (data.beaconCooldown !== undefined) {
+          existing.beaconCooldown = data.beaconCooldown;
+        }
+        if (data.survivedTime !== undefined) {
+          existing.survivedTime = data.survivedTime;
+        }
+        if (data.wasTagged !== undefined) {
+          existing.wasTagged = data.wasTagged;
+        }
       }
     } else {
-      // Add new remote player
-      const remotePlayer: RemotePlayer = {
-        id: data.playerId,
-        username: `Player ${data.playerId.substring(0, 8)}`, // Placeholder username
-        position: { ...data.position },
-        velocity: { ...data.velocity },
-        rotation: { ...data.rotation },
-        fuel: data.fuel,
-        isOni: data.isOni,
-        isAI: false,
-        isDashing: data.isDashing,
-        isJetpacking: data.isJetpacking,
-        isOnSurface: data.isOnSurface,
-        beaconCooldown: data.beaconCooldown ?? 0,
-        survivedTime: data.survivedTime ?? 0,
-        wasTagged: data.wasTagged ?? false,
-        targetPosition: { ...data.position },
-        targetVelocity: { ...data.velocity },
-        targetRotation: { ...data.rotation },
-        lastUpdateTime: now,
-        interpolationProgress: 0,
-      };
-      this.remotePlayers.set(data.playerId, remotePlayer);
+      // Add new remote player - check for required fields
+      if (data.position && data.velocity && data.rotation && 
+          data.fuel !== undefined && data.isOni !== undefined &&
+          data.isDashing !== undefined && data.isJetpacking !== undefined &&
+          data.isOnSurface !== undefined) {
+        const remotePlayer: RemotePlayer = {
+          id: data.playerId,
+          username: `Player ${data.playerId.substring(0, 8)}`, // Placeholder username
+          position: { ...data.position },
+          velocity: { ...data.velocity },
+          rotation: { ...data.rotation },
+          fuel: data.fuel,
+          isOni: data.isOni,
+          isAI: false,
+          isDashing: data.isDashing,
+          isJetpacking: data.isJetpacking,
+          isOnSurface: data.isOnSurface,
+          beaconCooldown: data.beaconCooldown ?? 0,
+          survivedTime: data.survivedTime ?? 0,
+          wasTagged: data.wasTagged ?? false,
+          targetPosition: { ...data.position },
+          targetVelocity: { ...data.velocity },
+          targetRotation: { ...data.rotation },
+          lastUpdateTime: now,
+          interpolationProgress: 0,
+        };
+        this.remotePlayers.set(data.playerId, remotePlayer);
+      }
     }
 
     // Notify callbacks
@@ -444,7 +456,9 @@ export class RealtimeSyncManager {
     this.reconnectAttempts++;
     const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts - 1), 10000); // Exponential backoff, max 10s
 
-    console.log(`Attempting reconnect ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms`);
+    console.log(
+      `Attempting reconnect ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms`
+    );
 
     this.reconnectTimeout = window.setTimeout(() => {
       void this.connect(this.gameId!, this.playerId!);
@@ -478,17 +492,14 @@ export class RealtimeSyncManager {
    */
   updateInterpolation(deltaTime: number): void {
     const now = Date.now();
-    
+
     // Check for disconnected players
     this.checkForDisconnectedPlayers(now);
-    
+
     for (const player of this.remotePlayers.values()) {
       // Update interpolation progress
       const timeSinceUpdate = now - player.lastUpdateTime;
-      player.interpolationProgress = Math.min(
-        timeSinceUpdate / this.interpolationDuration,
-        1.0
-      );
+      player.interpolationProgress = Math.min(timeSinceUpdate / this.interpolationDuration, 1.0);
 
       // Linear interpolation
       player.position = this.lerp(
@@ -589,12 +600,14 @@ export class RealtimeSyncManager {
 
     for (const [playerId, player] of this.remotePlayers.entries()) {
       const timeSinceUpdate = now - player.lastUpdateTime;
-      
+
       // If player hasn't updated in disconnectTimeout, consider disconnected
       if (timeSinceUpdate > this.disconnectTimeout) {
-        console.warn(`Player ${playerId} (${player.username}) disconnected (timeout: ${timeSinceUpdate}ms)`);
+        console.warn(
+          `Player ${playerId} (${player.username}) disconnected (timeout: ${timeSinceUpdate}ms)`
+        );
         playersToRemove.push(playerId);
-        
+
         // Notify disconnect callbacks
         for (const callback of this.disconnectCallbacks) {
           callback(playerId);

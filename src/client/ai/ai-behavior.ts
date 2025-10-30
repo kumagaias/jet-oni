@@ -89,23 +89,51 @@ export class AIBehaviorSystem {
   }
 
   /**
-   * Find nearest runner to ONI
+   * Find nearest runner to ONI (with target distribution)
    */
   public findNearestRunner(
     aiPlayer: Player,
-    allPlayers: Player[]
+    allPlayers: Player[],
+    assignedTargets?: Map<string, string> // Map of oniId -> runnerId
   ): Player | null {
+    const runners = allPlayers.filter(p => !p.isOni && p.id !== aiPlayer.id);
+    
+    if (runners.length === 0) {
+      return null;
+    }
+    
+    // If target distribution is enabled, try to find an unassigned runner
+    if (assignedTargets) {
+      // Get runners that are not already being chased
+      const assignedRunnerIds = new Set(Array.from(assignedTargets.values()));
+      const unassignedRunners = runners.filter(r => !assignedRunnerIds.has(r.id));
+      
+      // If there are unassigned runners, pick the nearest one
+      if (unassignedRunners.length > 0) {
+        let nearestRunner: Player | null = null;
+        let minDistance = Infinity;
+        
+        for (const runner of unassignedRunners) {
+          const distance = this.calculateDistance(aiPlayer.position, runner.position);
+          if (distance < minDistance) {
+            minDistance = distance;
+            nearestRunner = runner;
+          }
+        }
+        
+        return nearestRunner;
+      }
+    }
+    
+    // Fallback: find nearest runner (even if assigned to another ONI)
     let nearestRunner: Player | null = null;
     let minDistance = Infinity;
     
-    for (const player of allPlayers) {
-      // Skip self, ONI players
-      if (player.id === aiPlayer.id || player.isOni) continue;
-      
-      const distance = this.calculateDistance(aiPlayer.position, player.position);
+    for (const runner of runners) {
+      const distance = this.calculateDistance(aiPlayer.position, runner.position);
       if (distance < minDistance) {
         minDistance = distance;
-        nearestRunner = player;
+        nearestRunner = runner;
       }
     }
     

@@ -385,8 +385,10 @@ async function initGame(): Promise<void> {
         beaconVisual.update(gameState.getAllPlayers(), isBeaconActive, localPlayer.id);
         beaconVisual.animate(deltaTime);
         
-        // Update tag range visual (show ONI tagging range)
-        tagRangeVisual.update(gameState.getAllPlayers());
+        // Update tag range visual (show ONI tagging range) - only during gameplay
+        if (gameState.getGamePhase() === 'playing' || gameState.getGamePhase() === 'countdown') {
+          tagRangeVisual.update(gameState.getAllPlayers());
+        }
         
         // Update jetpack effect (show jetpack particles for all players)
         jetpackEffect.update(gameState.getAllPlayers(), deltaTime);
@@ -955,6 +957,15 @@ async function initGame(): Promise<void> {
                 gameHasStarted = false;
                 wasOni = false;
                 
+                // Clean up visual effects
+                tagRangeVisual.dispose();
+                
+                // Remove ONI overlay
+                const oniOverlay = document.getElementById('oni-overlay');
+                if (oniOverlay) {
+                  oniOverlay.remove();
+                }
+                
                 // Hide HUD and controls
                 uiHud.hide();
                 uiControls.hide();
@@ -1013,6 +1024,9 @@ async function initGame(): Promise<void> {
         // Reset game state
         gameState.setGamePhase('ended');
         currentGameId = null;
+        
+        // Clean up visual effects
+        tagRangeVisual.dispose();
         
         // Hide HUD and controls
         uiHud.hide();

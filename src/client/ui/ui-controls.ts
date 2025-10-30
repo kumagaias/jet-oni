@@ -24,7 +24,6 @@ export class UIControls {
   private isMobile: boolean;
 
   constructor(_gameState: GameState, _i18n: I18n) {
-    console.log('[UIControls] Constructor called');
     this.buttonState = {
       dash: false,
       jetpack: false,
@@ -37,9 +36,6 @@ export class UIControls {
     
     // Detect if mobile device
     this.isMobile = this.detectMobile();
-    console.log('[UIControls] Mobile detected:', this.isMobile);
-    console.log('[UIControls] User agent:', navigator.userAgent);
-    console.log('[UIControls] Window width:', window.innerWidth);
     
     // Initialize controls
     this.init();
@@ -65,13 +61,9 @@ export class UIControls {
    * Initialize mobile controls
    */
   public init(): void {
-    console.log('[UIControls] init() called, isMobile:', this.isMobile);
     if (!this.isMobile) {
-      console.log('[UIControls] Not mobile, skipping init');
       return;
     }
-
-    console.log('[UIControls] Creating mobile controls...');
     
     // Create control container
     this.container = document.createElement('div');
@@ -87,7 +79,6 @@ export class UIControls {
       z-index: 600;
     `;
     document.body.appendChild(this.container);
-    console.log('[UIControls] Container created and added to body');
 
     // Create dash/jetpack button (bottom)
     this.dashButton = this.createAbilityButton(
@@ -96,24 +87,18 @@ export class UIControls {
       'rgba(0, 150, 255, 0.5)',
       '#0096ff',
       () => {
-        console.log('[UIControls] Dash/Jetpack button pressed');
         this.buttonState.dash = true;
         this.buttonState.jetpack = true;
-        console.log('[UIControls] Button state:', this.buttonState);
       },
       () => {
-        console.log('[UIControls] Dash/Jetpack button released');
         this.buttonState.dash = false;
         this.buttonState.jetpack = false;
       }
     );
     this.container.appendChild(this.dashButton);
-    console.log('[UIControls] Dash button created and added');
     
     // Create D-pad for movement
     this.createDPad();
-    console.log('[UIControls] D-pad created');
-    console.log('[UIControls] Init complete');
   }
   
   /**
@@ -205,19 +190,15 @@ export class UIControls {
       
       // Touch and mouse events for continuous movement
       const handleStart = () => {
-        console.log(`[UIControls] D-pad ${dir.key} START - setting ${dir.action} to TRUE`);
         button.style.background = 'rgba(255, 136, 0, 0.8)';
         button.style.transform = `${dir.transform} scale(0.9)`;
         this.buttonState[dir.action as keyof ControlButtonState] = true;
-        console.log(`[UIControls] Button state after START:`, this.buttonState);
       };
       
       const handleEnd = () => {
-        console.log(`[UIControls] D-pad ${dir.key} END - setting ${dir.action} to FALSE`);
         button.style.background = 'rgba(255, 136, 0, 0.5)';
         button.style.transform = dir.transform;
         this.buttonState[dir.action as keyof ControlButtonState] = false;
-        console.log(`[UIControls] Button state after END:`, this.buttonState);
       };
       
       button.addEventListener('touchstart', (e) => {
@@ -451,12 +432,6 @@ export class UIControls {
   public getButtonState(): ControlButtonState {
     const state = { ...this.buttonState };
     
-    // Log if any button is pressed
-    const anyPressed = Object.values(state).some(v => v === true);
-    if (anyPressed) {
-      console.log('[UIControls] getButtonState() - Active buttons:', state);
-    }
-    
     // Reset beacon after reading (it's a one-time press)
     this.buttonState.beacon = false;
     
@@ -467,24 +442,15 @@ export class UIControls {
    * Show controls
    */
   public show(): void {
-    console.log('[UIControls] show() called');
-    console.log('[UIControls] Container exists:', !!this.container);
-    console.log('[UIControls] isMobile:', this.isMobile);
-    
     if (this.container) {
       this.container.style.display = 'flex';
-      console.log('[UIControls] Container display set to flex');
     }
     
     // Show D-pad
     const dpad = document.getElementById('dpad-controls');
-    console.log('[UIControls] D-pad element exists:', !!dpad);
     if (dpad) {
       dpad.style.display = 'block';
-      console.log('[UIControls] D-pad display set to block');
     }
-    
-    console.log('[UIControls] Show complete');
   }
 
   /**

@@ -132,6 +132,23 @@ export class UICountdown {
     const countdownText = document.getElementById('countdown-text');
     if (countdownText) {
       countdownText.textContent = this.countdownValue.toString();
+      
+      // Change color to orange for 3, 2, 1
+      if (this.countdownValue <= 3) {
+        countdownText.style.color = '#ff8800';
+        countdownText.style.textShadow = `
+          0 0 30px rgba(255, 136, 0, 1),
+          0 0 60px rgba(255, 136, 0, 0.8),
+          0 0 90px rgba(255, 100, 0, 0.6)
+        `;
+      } else {
+        countdownText.style.color = '#ffffff';
+        countdownText.style.textShadow = `
+          0 0 20px rgba(255, 255, 255, 0.8),
+          0 0 40px rgba(255, 136, 0, 0.6)
+        `;
+      }
+      
       // Restart zoom animation
       countdownText.style.animation = 'none';
       setTimeout(() => {
@@ -141,7 +158,7 @@ export class UICountdown {
   }
 
   /**
-   * Complete countdown
+   * Complete countdown and show game start message
    */
   private complete(): void {
     // Stop interval
@@ -150,11 +167,17 @@ export class UICountdown {
       this.intervalId = null;
     }
 
-    // Show "GO!" message briefly
+    // Show "Game Start!!" message
     const countdownText = document.getElementById('countdown-text');
     if (countdownText) {
-      countdownText.textContent = this.i18n.t('countdown.go');
-      countdownText.style.color = '#00ff00';
+      countdownText.textContent = 'Game Start!!';
+      countdownText.style.color = '#ff8800';
+      countdownText.style.fontSize = '100px';
+      countdownText.style.textShadow = `
+        0 0 30px rgba(255, 136, 0, 1),
+        0 0 60px rgba(255, 136, 0, 0.8),
+        0 0 90px rgba(255, 100, 0, 0.6)
+      `;
     }
 
     // Hide after 300ms and call onComplete

@@ -803,6 +803,11 @@ async function initGame(): Promise<void> {
                 gameState.setLocalPlayerIsOni(true);
                 // Update wasOni to prevent "Became ONI" message
                 wasOni = true;
+                
+                // Show ONI role message
+                setTimeout(() => {
+                  toast.show('You are ONI! Tag all runners with jetpack!', 'warning', 5000);
+                }, 1500);
               } else {
                 // Remote/AI player is ONI
                 const remotePlayer = gameState.getPlayer(oniPlayer.id);
@@ -820,6 +825,11 @@ async function initGame(): Promise<void> {
             // Ensure local player is set as runner if not selected as ONI
             if (!oniPlayers.some(p => p.id === gameState.getLocalPlayer().id)) {
               gameState.setLocalPlayerIsOni(false);
+              
+              // Show Runner role message
+              setTimeout(() => {
+                toast.show('You are RUNNER! Survive and avoid ONI with dash!', 'info', 5000);
+              }, 1500);
             }
           }
         }, 100); // 100ms delay to ensure AI players are added

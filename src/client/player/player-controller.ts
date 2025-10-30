@@ -153,8 +153,9 @@ export class PlayerController {
       return;
     }
 
-    // Ignore if not playing
-    if (!this.gameState.isPlaying()) return;
+    // Allow input during countdown and playing phases
+    const phase = this.gameState.getGamePhase();
+    if (phase !== 'countdown' && phase !== 'playing') return;
 
     switch (event.code) {
       case 'KeyW':

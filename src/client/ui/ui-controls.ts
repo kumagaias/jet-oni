@@ -229,6 +229,13 @@ export class UIControls {
       button.addEventListener('mousedown', (e) => {
         e.preventDefault();
         handleStart();
+        
+        // Add global mouseup listener to ensure release is detected
+        const globalMouseUp = () => {
+          handleEnd();
+          document.removeEventListener('mouseup', globalMouseUp);
+        };
+        document.addEventListener('mouseup', globalMouseUp);
       });
       
       button.addEventListener('mouseup', (e) => {
@@ -344,6 +351,13 @@ export class UIControls {
     button.addEventListener('mousedown', (e) => {
       e.preventDefault();
       handlePress();
+      
+      // Add global mouseup listener to ensure release is detected
+      const globalMouseUp = () => {
+        handleRelease();
+        document.removeEventListener('mouseup', globalMouseUp);
+      };
+      document.addEventListener('mouseup', globalMouseUp);
     });
     
     button.addEventListener('mouseup', (e) => {

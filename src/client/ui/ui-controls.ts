@@ -205,15 +205,19 @@ export class UIControls {
       
       // Touch and mouse events for continuous movement
       const handleStart = () => {
+        console.log(`[UIControls] D-pad ${dir.key} START - setting ${dir.action} to TRUE`);
         button.style.background = 'rgba(255, 136, 0, 0.8)';
         button.style.transform = `${dir.transform} scale(0.9)`;
         this.buttonState[dir.action as keyof ControlButtonState] = true;
+        console.log(`[UIControls] Button state after START:`, this.buttonState);
       };
       
       const handleEnd = () => {
+        console.log(`[UIControls] D-pad ${dir.key} END - setting ${dir.action} to FALSE`);
         button.style.background = 'rgba(255, 136, 0, 0.5)';
         button.style.transform = dir.transform;
         this.buttonState[dir.action as keyof ControlButtonState] = false;
+        console.log(`[UIControls] Button state after END:`, this.buttonState);
       };
       
       button.addEventListener('touchstart', (e) => {

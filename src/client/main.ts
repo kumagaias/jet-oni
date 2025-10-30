@@ -28,6 +28,7 @@ import { UILoading } from './ui/ui-loading';
 import { ToastNotification } from './ui/toast-notification';
 import { GameAPIClient } from './api/game-api-client';
 import { RealtimeSyncManager } from './sync/realtime-sync-manager';
+import { InputState } from '../shared/types/game';
 import { HostMonitor } from './game/host-monitor';
 import { en } from './i18n/translations/en';
 import { jp } from './i18n/translations/jp';
@@ -273,30 +274,27 @@ async function initGame(): Promise<void> {
       
       // Setup game loop
       gameEngine.onUpdate((deltaTime: number) => {
-        // Get mobile control input and merge with keyboard input BEFORE updating player
+        // Get mobile control input BEFORE updating player
         const buttonState = uiControls.getButtonState();
         
-        // Get current keyboard input state
-        const currentInput = playerController.getInputState();
+        // Apply mobile control input directly (keyboard input is handled separately by PlayerController)
+        // Only override if mobile button is actually pressed
+        const mobileInput: Partial<InputState> = {};
         
-        // Merge mobile and keyboard input (OR operation - either input activates)
-        const mergedInput = {
-          forward: currentInput.forward || buttonState.moveForward,
-          backward: currentInput.backward || buttonState.moveBackward,
-          left: currentInput.left || buttonState.moveLeft,
-          right: currentInput.right || buttonState.moveRight,
-          dash: currentInput.dash || buttonState.dash || buttonState.jetpack,
-          jetpack: currentInput.jetpack || buttonState.dash || buttonState.jetpack,
-          jump: currentInput.jump, // Keep keyboard jump
-          beacon: currentInput.beacon, // Keep keyboard beacon
-        };
-        
-        // Apply merged input
-        if (buttonState.moveForward || buttonState.moveBackward || buttonState.moveLeft || buttonState.moveRight || buttonState.dash || buttonState.jetpack) {
-          console.log('[Main] Applying mobile input:', buttonState);
+        if (buttonState.moveForward) mobileInput.forward = true;
+        if (buttonState.moveBackward) mobileInput.backward = true;
+        if (buttonState.moveLeft) mobileInput.left = true;
+        if (buttonState.moveRight) mobileInput.right = true;
+        if (buttonState.dash || buttonState.jetpack) {
+          mobileInput.dash = true;
+          mobileInput.jetpack = true;
         }
         
-        playerController.setInputState(mergedInput);
+        // Apply mobile input if any button is pressed
+        if (Object.keys(mobileInput).length > 0) {
+          console.log('[Main] Applying mobile input:', buttonState);
+          playerController.setInputState(mobileInput);
+        }
         
         // Update player controller AFTER setting input state
         playerController.update(deltaTime);

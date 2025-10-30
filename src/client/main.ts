@@ -277,31 +277,25 @@ async function initGame(): Promise<void> {
         // Get mobile control input BEFORE updating player
         const buttonState = uiControls.getButtonState();
         
-        // Get current keyboard input state
-        const keyboardInput = playerController.getInputState();
+        // Apply mobile input only when buttons are actually pressed
+        // This prevents overriding keyboard input with false values
+        const mobileOverrides: Partial<InputState> = {};
         
-        // Merge keyboard and mobile input with OR operation
-        // Either keyboard OR mobile can activate an input
-        const mergedInput: InputState = {
-          forward: keyboardInput.forward || buttonState.moveForward,
-          backward: keyboardInput.backward || buttonState.moveBackward,
-          left: keyboardInput.left || buttonState.moveLeft,
-          right: keyboardInput.right || buttonState.moveRight,
-          dash: keyboardInput.dash || buttonState.dash || buttonState.jetpack,
-          jetpack: keyboardInput.jetpack || buttonState.dash || buttonState.jetpack,
-          jump: keyboardInput.jump,
-          beacon: keyboardInput.beacon,
-        };
-        
-        // Log if mobile input is active
-        if (buttonState.moveForward || buttonState.moveBackward || buttonState.moveLeft || buttonState.moveRight || buttonState.dash || buttonState.jetpack) {
-          console.log('[Main] Mobile input active:', buttonState);
+        if (buttonState.moveForward) mobileOverrides.forward = true;
+        if (buttonState.moveBackward) mobileOverrides.backward = true;
+        if (buttonState.moveLeft) mobileOverrides.left = true;
+        if (buttonState.moveRight) mobileOverrides.right = true;
+        if (buttonState.dash || buttonState.jetpack) {
+          mobileOverrides.dash = true;
+          mobileOverrides.jetpack = true;
         }
         
-        // Apply merged input
-        playerController.setInputState(mergedInput);
+        // Apply mobile overrides only if any button is pressed
+        if (Object.keys(mobileOverrides).length > 0) {
+          playerController.setInputState(mobileOverrides);
+        }
         
-        // Update player controller AFTER setting input state
+        // Update player controller (keyboard input is handled internally)
         playerController.update(deltaTime);
         
         // Check if player became ONI (only after game has started)

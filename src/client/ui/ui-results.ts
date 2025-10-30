@@ -84,7 +84,7 @@ export class UIResults {
     
     // Victory image
     const victoryImage = document.createElement('img');
-    victoryImage.src = runnersWin ? '/assets/runner_win.jpg' : '/assets/oni_win.jpg';
+    victoryImage.src = runnersWin ? '/runner_win.jpg' : '/oni_win.jpg';
     victoryImage.alt = runnersWin ? 'Runners Win!' : 'ONI Wins!';
     victoryImage.style.cssText = `
       width: 100%;

@@ -1,5 +1,5 @@
 import { Vector3 } from '../../shared/types/game';
-import { GRAVITY, MAP_SIZE, WATER_SPEED_MULTIPLIER } from '../../shared/constants';
+import { GRAVITY, MAP_SIZE, WATER_SPEED_MULTIPLIER, WATER_SINK_DEPTH } from '../../shared/constants';
 
 /**
  * Surface type for landing detection
@@ -143,9 +143,11 @@ export class PlayerPhysics {
 
     const tolerance = 0.5; // Distance threshold for landing
 
-    // Check ground
+    // Check ground (with water sink if in water)
     if (position.y <= tolerance) {
-      return { isOnSurface: true, surfaceType: 'ground', surfaceHeight: 0 };
+      const inWater = this.isInWater(position);
+      const groundHeight = inWater ? -WATER_SINK_DEPTH : 0;
+      return { isOnSurface: true, surfaceType: inWater ? 'water' : 'ground', surfaceHeight: groundHeight };
     }
 
     // Check bridges

@@ -225,11 +225,9 @@ export class UIResults {
       backButton.style.background = '#4a90e2';
     };
     backButton.onclick = () => {
-      console.log('[UIResults] Back button clicked');
       
       // Prevent multiple clicks
       if (backButton.disabled) {
-        console.log('[UIResults] Button already clicked, ignoring');
         return;
       }
       backButton.disabled = true;

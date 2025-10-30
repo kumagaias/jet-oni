@@ -15,6 +15,7 @@ export const RUNNER_FUEL_RECOVERY = 20; // per second on surface while stationar
 // Physics
 export const GRAVITY = 20;
 export const JUMP_FORCE = 10;
+export const RUNNER_JUMP_MULTIPLIER = 1.5; // Runners jump 1.5x higher than oni
 export const JETPACK_FORCE = 21; // Must be greater than GRAVITY to fly upward
 
 // Tagging
@@ -43,6 +44,7 @@ export const MAP_HEIGHT = 100; // units
 export const BUILDING_COUNT = 60;
 export const HOUSE_COUNT = 40;
 export const WATER_SPEED_MULTIPLIER = 0.5;
+export const WATER_SINK_DEPTH = 0.3; // How much entities sink into water (units)
 
 // Camera
 export const CAMERA_HEIGHT = 1.7; // eye level in meters

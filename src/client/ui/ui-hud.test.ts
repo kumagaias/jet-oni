@@ -129,7 +129,8 @@ describe('UIHud', () => {
 
       const fuelBar = document.getElementById('hud-fuel-bar');
       
-      expect(fuelBar?.style.width).toBe('50%');
+      // Fuel gauge is vertical, so check height instead of width
+      expect(fuelBar?.style.height).toBe('50%');
     });
 
     it('should display empty fuel at 0%', () => {
@@ -138,7 +139,8 @@ describe('UIHud', () => {
 
       const fuelBar = document.getElementById('hud-fuel-bar');
       
-      expect(fuelBar?.style.width).toBe('0%');
+      // Fuel gauge is vertical, so check height instead of width
+      expect(fuelBar?.style.height).toBe('0%');
     });
 
     it('should change color when fuel is low', () => {

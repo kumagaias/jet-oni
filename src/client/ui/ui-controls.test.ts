@@ -62,23 +62,8 @@ describe('UIControls', () => {
       const container = document.getElementById('ability-controls');
       const buttons = container?.querySelectorAll('div');
       
+      // Should have at least 1 button (dash/jetpack)
       expect(buttons?.length).toBeGreaterThan(0);
-    });
-
-    it('should create beacon button', () => {
-      const container = document.getElementById('ability-controls');
-      const buttons = container?.querySelectorAll('div');
-      
-      // Should have 2 buttons (dash and beacon)
-      expect(buttons?.length).toBe(2);
-    });
-
-    it('should hide beacon button initially', () => {
-      const container = document.getElementById('ability-controls');
-      const buttons = container?.querySelectorAll('div');
-      const beaconButton = buttons?.[1] as HTMLElement;
-      
-      expect(beaconButton?.style.display).toBe('none');
     });
   });
 
@@ -149,6 +134,9 @@ describe('UIControls', () => {
 
   describe('Update with Game State', () => {
     it('should show dash button for runner', () => {
+      // Show controls first so update() can modify them
+      controls.show();
+      
       const localPlayer = gameState.getLocalPlayer();
       localPlayer.isOni = false;
       localPlayer.fuel = 100;
@@ -157,11 +145,15 @@ describe('UIControls', () => {
       
       const container = document.getElementById('ability-controls');
       const dashButton = container?.querySelector('div') as HTMLElement;
+      const icon = dashButton?.children[0] as HTMLElement;
       
-      expect(dashButton?.textContent).toBe('⚡️');
+      expect(icon?.textContent).toBe('🏃‍➡️');
     });
 
     it('should show jetpack button for oni', () => {
+      // Show controls first so update() can modify them
+      controls.show();
+      
       const localPlayer = gameState.getLocalPlayer();
       localPlayer.isOni = true;
       localPlayer.fuel = 100;
@@ -170,41 +162,12 @@ describe('UIControls', () => {
       
       const container = document.getElementById('ability-controls');
       const dashButton = container?.querySelector('div') as HTMLElement;
+      const icon = dashButton?.children[0] as HTMLElement;
       
-      expect(dashButton?.textContent).toBe('🔥');
+      expect(icon?.textContent).toBe('🚀');
     });
 
-    it('should hide beacon button (beacon is now item-based)', () => {
-      // Set game state to playing so update works
-      gameState.setGamePhase('playing');
-      
-      const localPlayer = gameState.getLocalPlayer();
-      localPlayer.isOni = true;
-      localPlayer.fuel = 100;
-      
-      controls.update(gameState);
-      
-      const container = document.getElementById('ability-controls');
-      const buttons = container?.querySelectorAll('div');
-      const beaconButton = buttons?.[1] as HTMLElement;
-      
-      // Beacon button should be hidden (beacon is now item-based)
-      expect(beaconButton?.style.display).toBe('none');
-    });
 
-    it('should hide beacon button for runner', () => {
-      const localPlayer = gameState.getLocalPlayer();
-      localPlayer.isOni = false;
-      localPlayer.fuel = 100;
-      
-      controls.update(gameState);
-      
-      const container = document.getElementById('ability-controls');
-      const buttons = container?.querySelectorAll('div');
-      const beaconButton = buttons?.[1] as HTMLElement;
-      
-      expect(beaconButton?.style.display).toBe('none');
-    });
 
     it('should disable button when fuel is zero', () => {
       // Set game state to playing so update works
@@ -226,7 +189,6 @@ describe('UIControls', () => {
 
   describe('Visibility', () => {
     it('should show controls', () => {
-      controls.hide();
       controls.show();
       
       const container = document.getElementById('ability-controls');
@@ -234,8 +196,10 @@ describe('UIControls', () => {
     });
 
     it('should hide controls', () => {
+      // Show first, then hide
+      controls.show();
       const container = document.getElementById('ability-controls');
-      expect(container?.style.display).toBe('flex'); // Initially visible
+      expect(container?.style.display).toBe('flex');
       
       controls.hide();
       expect(container?.style.display).toBe('none');

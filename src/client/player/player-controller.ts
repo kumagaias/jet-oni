@@ -10,6 +10,7 @@ import {
   JETPACK_FUEL_CONSUMPTION,
   JETPACK_FORCE,
   JUMP_FORCE,
+  RUNNER_JUMP_MULTIPLIER,
   DASH_FUEL_CONSUMPTION,
   ONI_FUEL_RECOVERY,
   RUNNER_FUEL_RECOVERY,
@@ -101,7 +102,6 @@ export class PlayerController {
         // In sandboxed environment, skip pointer lock and use fallback
         this.isPointerLocked = true;
         this.usePointerLockFallback = true;
-        console.log('Using fallback mouse control (sandboxed environment)');
       } else if (document.pointerLockElement !== canvas) {
         // Try to request pointer lock in non-sandboxed environment
         canvas.requestPointerLock().catch(() => {
@@ -118,7 +118,7 @@ export class PlayerController {
     document.addEventListener('pointerlockchange', () => {
       this.isPointerLocked = document.pointerLockElement === canvas;
       if (this.isPointerLocked && !isSandboxed) {
-        console.log('Pointer lock enabled');
+        // Pointer locked successfully
       }
     });
 
@@ -145,13 +145,11 @@ export class PlayerController {
                              url.includes('playtest');
       
       if (!isDevSubreddit) {
-        console.log('Debug features are only available in r/jet_oni_dev. Current URL:', window.location.href);
         return;
       }
       
       const player = this.gameState.getLocalPlayer();
       this.gameState.setLocalPlayerIsOni(!player.isOni);
-      console.log(`[DEBUG] Switched to ${player.isOni ? 'Runner' : 'ONI'}`);
       return;
     }
 
@@ -272,6 +270,13 @@ export class PlayerController {
    */
   public getInputState(): InputState {
     return { ...this.inputState };
+  }
+
+  /**
+   * Set input state (for external control like mobile UI)
+   */
+  public setInputState(state: Partial<InputState>): void {
+    Object.assign(this.inputState, state);
   }
 
   /**
@@ -437,7 +442,7 @@ export class PlayerController {
     if (!player.isOni && this.inputState.jump && player.isOnSurface && !this.wasJumping) {
       const newVelocity = {
         ...player.velocity,
-        y: JUMP_FORCE,
+        y: JUMP_FORCE * RUNNER_JUMP_MULTIPLIER, // Runners jump 1.5x higher
       };
       this.gameState.setLocalPlayerVelocity(newVelocity);
     }

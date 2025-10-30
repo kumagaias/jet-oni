@@ -96,15 +96,18 @@ export class UIHud {
       border-radius: 8px;
     `;
 
-    // Fuel gauge container
+    // Fuel gauge container - vertical on right side
     this.fuelContainer = document.createElement('div');
     this.fuelContainer.id = 'hud-fuel-container';
     this.fuelContainer.style.cssText = `
       position: absolute;
-      bottom: 30px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 300px;
+      top: 50%;
+      right: 20px;
+      transform: translateY(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
     `;
 
     // Fuel label
@@ -114,31 +117,34 @@ export class UIHud {
       font-weight: bold;
       color: #ffffff;
       text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
-      margin-bottom: 5px;
       text-align: center;
+      writing-mode: vertical-rl;
+      text-orientation: mixed;
     `;
     this.fuelLabel.textContent = this.i18n.t('hud.fuel');
 
-    // Fuel bar background
+    // Fuel bar background - vertical
     const fuelBarBg = document.createElement('div');
     fuelBarBg.style.cssText = `
-      width: 100%;
-      height: 20px;
+      width: 30px;
+      height: 200px;
       background-color: rgba(0, 0, 0, 0.5);
       border: 2px solid #ffffff;
-      border-radius: 10px;
+      border-radius: 15px;
       overflow: hidden;
       position: relative;
+      display: flex;
+      flex-direction: column-reverse;
     `;
 
-    // Fuel bar fill
+    // Fuel bar fill - vertical (fills from bottom to top)
     this.fuelBar = document.createElement('div');
     this.fuelBar.id = 'hud-fuel-bar';
     this.fuelBar.style.cssText = `
       width: 100%;
       height: 100%;
-      background: linear-gradient(90deg, #00ff00, #ffff00, #ff0000);
-      transition: width 0.2s ease;
+      background: linear-gradient(180deg, #ff0000, #ffff00, #00ff00);
+      transition: height 0.2s ease;
     `;
 
     // Fuel text (hidden)
@@ -270,37 +276,38 @@ export class UIHud {
   }
 
   /**
-   * Update fuel gauge
+   * Update fuel gauge (vertical)
    */
   private updateFuel(fuel: number): void {
     if (!this.fuelBar || !this.fuelText || !this.fuelLabel) return;
 
     const localPlayer = this.gameState.getLocalPlayer();
     const fuelPercent = (fuel / MAX_FUEL) * 100;
-    this.fuelBar.style.width = `${fuelPercent}%`;
+    // For vertical gauge, use height instead of width
+    this.fuelBar.style.height = `${fuelPercent}%`;
 
     // Update label based on role
     if (localPlayer.isOni) {
       this.fuelLabel.textContent = 'ONI';
       this.fuelLabel.style.color = '#ffa500';
-      // ONI - Orange gradient
+      // ONI - Orange gradient (vertical: bottom to top)
       if (fuel < 25) {
         this.fuelBar.style.background = '#ff4500';
       } else if (fuel < 50) {
-        this.fuelBar.style.background = 'linear-gradient(90deg, #ff4500, #ffa500)';
+        this.fuelBar.style.background = 'linear-gradient(180deg, #ff4500, #ffa500)';
       } else {
-        this.fuelBar.style.background = 'linear-gradient(90deg, #ffa500, #ff8c00)';
+        this.fuelBar.style.background = 'linear-gradient(180deg, #ffa500, #ff8c00)';
       }
     } else {
       this.fuelLabel.textContent = 'RUNNER';
       this.fuelLabel.style.color = '#00ff00';
-      // RUNNER - Green gradient
+      // RUNNER - Green gradient (vertical: bottom to top)
       if (fuel < 25) {
         this.fuelBar.style.background = '#00ff00';
       } else if (fuel < 50) {
-        this.fuelBar.style.background = 'linear-gradient(90deg, #00ff00, #7fff00)';
+        this.fuelBar.style.background = 'linear-gradient(180deg, #00ff00, #7fff00)';
       } else {
-        this.fuelBar.style.background = 'linear-gradient(90deg, #00ff00, #32cd32)';
+        this.fuelBar.style.background = 'linear-gradient(180deg, #00ff00, #32cd32)';
       }
     }
   }

@@ -15,28 +15,56 @@ export class UICountdown {
   }
 
   /**
-   * Start countdown
+   * Start countdown with timestamp synchronization
    */
-  public start(seconds: number, onComplete: () => void): void {
+  public start(seconds: number, onComplete: () => void, startTimestamp?: number): void {
     this.countdownValue = seconds;
     this.onComplete = onComplete;
 
     // Create container
     this.create();
 
-    // Update display
-    this.updateDisplay();
+    // If startTimestamp provided, use it for synchronization
+    if (startTimestamp) {
+      const endTime = startTimestamp + seconds * 1000;
+      
+      // Update display immediately
+      const remaining = Math.ceil((endTime - Date.now()) / 1000);
+      this.countdownValue = Math.max(0, remaining);
+      this.updateDisplay();
+      
+      // Use requestAnimationFrame for smoother updates
+      const updateCountdown = () => {
+        const remaining = Math.ceil((endTime - Date.now()) / 1000);
+        const newValue = Math.max(0, remaining);
+        
+        if (newValue !== this.countdownValue) {
+          this.countdownValue = newValue;
+          this.updateDisplay();
+        }
+        
+        if (this.countdownValue <= 0) {
+          this.complete();
+        } else {
+          requestAnimationFrame(updateCountdown);
+        }
+      };
+      
+      requestAnimationFrame(updateCountdown);
+    } else {
+      // Fallback to interval-based countdown
+      this.updateDisplay();
+      
+      this.intervalId = window.setInterval(() => {
+        this.countdownValue--;
 
-    // Start countdown
-    this.intervalId = window.setInterval(() => {
-      this.countdownValue--;
-
-      if (this.countdownValue <= 0) {
-        this.complete();
-      } else {
-        this.updateDisplay();
-      }
-    }, 1000);
+        if (this.countdownValue <= 0) {
+          this.complete();
+        } else {
+          this.updateDisplay();
+        }
+      }, 1000);
+    }
   }
 
   /**

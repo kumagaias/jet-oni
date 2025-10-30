@@ -115,7 +115,7 @@ describe('PlayerController', () => {
       controller.update(0.1);
 
       const velocity = gameState.getLocalPlayer().velocity;
-      expect(velocity.y).toBe(JUMP_FORCE);
+      expect(velocity.y).toBe(JUMP_FORCE * 1.5); // Runners jump 1.5x higher
     });
 
     it('should not jump when not on surface', () => {

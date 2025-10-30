@@ -4,30 +4,34 @@
  */
 
 import type { GameState } from '../game/game-state';
-import { I18n } from '../i18n/i18n';
+import type { I18n } from '../i18n/i18n';
 
 export interface ControlButtonState {
   dash: boolean;
   jetpack: boolean;
   beacon: boolean;
+  // Movement controls
+  moveForward: boolean;
+  moveBackward: boolean;
+  moveLeft: boolean;
+  moveRight: boolean;
 }
 
 export class UIControls {
   private container: HTMLElement | null = null;
   private dashButton: HTMLElement | null = null;
-  private beaconButton: HTMLElement | null = null;
   private buttonState: ControlButtonState;
   private isMobile: boolean;
-  private i18n: I18n;
-  private gameState: GameState;
 
-  constructor(gameState: GameState, i18n: I18n) {
-    this.gameState = gameState;
-    this.i18n = i18n;
+  constructor(_gameState: GameState, _i18n: I18n) {
     this.buttonState = {
       dash: false,
       jetpack: false,
       beacon: false,
+      moveForward: false,
+      moveBackward: false,
+      moveLeft: false,
+      moveRight: false,
     };
     
     // Detect if mobile device
@@ -66,7 +70,7 @@ export class UIControls {
       position: fixed;
       bottom: 20px;
       right: 20px;
-      display: flex;
+      display: none;
       flex-direction: column;
       gap: 15px;
       pointer-events: none;
@@ -77,35 +81,140 @@ export class UIControls {
     // Create dash/jetpack button (bottom)
     this.dashButton = this.createAbilityButton(
       '🚀',
+      'SPACE',
       'rgba(0, 150, 255, 0.5)',
       '#0096ff',
       () => {
+        console.log('[UIControls] Dash/Jetpack button pressed');
         this.buttonState.dash = true;
         this.buttonState.jetpack = true;
+        console.log('[UIControls] Button state:', this.buttonState);
       },
       () => {
+        console.log('[UIControls] Dash/Jetpack button released');
         this.buttonState.dash = false;
         this.buttonState.jetpack = false;
       }
     );
     this.container.appendChild(this.dashButton);
-
-    // Create beacon button (top)
-    this.beaconButton = this.createAbilityButton(
-      '📡',
-      'rgba(255, 0, 0, 0.5)',
-      '#ff0000',
-      () => {
-        this.buttonState.beacon = true;
-      },
-      () => {
-        this.buttonState.beacon = false;
-      }
-    );
-    this.container.appendChild(this.beaconButton);
-
-    // Initially hide beacon button (only for oni)
-    this.beaconButton.style.display = 'none';
+    
+    // Create D-pad for movement
+    this.createDPad();
+  }
+  
+  /**
+   * Create D-pad for movement controls
+   */
+  private createDPad(): void {
+    const dpadContainer = document.createElement('div');
+    dpadContainer.id = 'dpad-controls';
+    dpadContainer.style.cssText = `
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      width: 150px;
+      height: 150px;
+      display: none;
+      pointer-events: none;
+      z-index: 600;
+    `;
+    
+    // Create center circle (visual only)
+    const center = document.createElement('div');
+    center.style.cssText = `
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 40px;
+      height: 40px;
+      background: rgba(100, 100, 100, 0.3);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 50%;
+    `;
+    dpadContainer.appendChild(center);
+    
+    // Create directional buttons
+    const directions = [
+      { key: 'up', label: '▲', keyLabel: 'W', top: '0', left: '50%', transform: 'translateX(-50%)', action: 'moveForward' },
+      { key: 'down', label: '▼', keyLabel: 'S', bottom: '0', left: '50%', transform: 'translateX(-50%)', action: 'moveBackward' },
+      { key: 'left', label: '◀', keyLabel: 'A', top: '50%', left: '0', transform: 'translateY(-50%)', action: 'moveLeft' },
+      { key: 'right', label: '▶', keyLabel: 'D', top: '50%', right: '0', transform: 'translateY(-50%)', action: 'moveRight' },
+    ];
+    
+    directions.forEach(dir => {
+      const button = document.createElement('div');
+      button.style.cssText = `
+        position: absolute;
+        ${dir.top ? `top: ${dir.top};` : ''}
+        ${dir.bottom ? `bottom: ${dir.bottom};` : ''}
+        ${dir.left ? `left: ${dir.left};` : ''}
+        ${dir.right ? `right: ${dir.right};` : ''}
+        transform: ${dir.transform};
+        width: 50px;
+        height: 50px;
+        background: rgba(255, 136, 0, 0.5);
+        border: 2px solid #ff8800;
+        border-radius: 8px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 24px;
+        pointer-events: auto;
+        user-select: none;
+        touch-action: none;
+        cursor: pointer;
+        transition: all 0.1s ease;
+      `;
+      
+      // Arrow symbol
+      const arrow = document.createElement('div');
+      arrow.textContent = dir.label;
+      arrow.style.cssText = `
+        font-size: 24px;
+        line-height: 1;
+      `;
+      button.appendChild(arrow);
+      
+      // WASD key label
+      const keyLabel = document.createElement('div');
+      keyLabel.textContent = dir.keyLabel;
+      keyLabel.style.cssText = `
+        font-size: 10px;
+        opacity: 0.6;
+        margin-top: 2px;
+        font-family: monospace;
+      `;
+      button.appendChild(keyLabel);
+      
+      // Touch events for continuous movement
+      button.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        button.style.background = 'rgba(255, 136, 0, 0.8)';
+        button.style.transform = `${dir.transform} scale(0.9)`;
+        this.buttonState[dir.action as keyof ControlButtonState] = true;
+      });
+      
+      button.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        button.style.background = 'rgba(255, 136, 0, 0.5)';
+        button.style.transform = dir.transform;
+        this.buttonState[dir.action as keyof ControlButtonState] = false;
+      });
+      
+      button.addEventListener('touchcancel', (e) => {
+        e.preventDefault();
+        button.style.background = 'rgba(255, 136, 0, 0.5)';
+        button.style.transform = dir.transform;
+        this.buttonState[dir.action as keyof ControlButtonState] = false;
+      });
+      
+      dpadContainer.appendChild(button);
+    });
+    
+    document.body.appendChild(dpadContainer);
   }
 
   /**
@@ -113,13 +222,13 @@ export class UIControls {
    */
   private createAbilityButton(
     label: string,
+    keyLabel: string,
     backgroundColor: string,
     borderColor: string,
     onPress: () => void,
     onRelease: () => void
   ): HTMLElement {
     const button = document.createElement('div');
-    button.textContent = label;
     button.style.cssText = `
       width: 70px;
       height: 70px;
@@ -127,6 +236,7 @@ export class UIControls {
       border: 3px solid ${borderColor};
       border-radius: 50%;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
       color: white;
@@ -139,6 +249,26 @@ export class UIControls {
       transition: transform 0.1s ease, opacity 0.2s ease;
       cursor: pointer;
     `;
+    
+    // Icon
+    const icon = document.createElement('div');
+    icon.textContent = label;
+    icon.style.cssText = `
+      font-size: 32px;
+      line-height: 1;
+    `;
+    button.appendChild(icon);
+    
+    // Key label
+    const key = document.createElement('div');
+    key.textContent = keyLabel;
+    key.style.cssText = `
+      font-size: 9px;
+      opacity: 0.6;
+      margin-top: 2px;
+      font-family: monospace;
+    `;
+    button.appendChild(key);
 
     // Store original colors
     button.dataset.bgColor = backgroundColor;
@@ -186,14 +316,18 @@ export class UIControls {
 
     // Update dash/jetpack button
     if (this.dashButton) {
-      if (localPlayer.isOni) {
-        // Oni mode - show as jetpack
-        this.dashButton.textContent = '🔥';
-        this.updateButtonColor(this.dashButton, 'rgba(255, 100, 0, 0.5)', '#ff6400');
-      } else {
-        // Runner mode - show as dash
-        this.dashButton.textContent = '⚡️';
-        this.updateButtonColor(this.dashButton, 'rgba(0, 150, 255, 0.5)', '#0096ff');
+      // Update icon (first child)
+      const icon = this.dashButton.children[0] as HTMLElement;
+      if (icon) {
+        if (localPlayer.isOni) {
+          // Oni mode - rocket for jetpack
+          icon.textContent = '🚀';
+          this.updateButtonColor(this.dashButton, 'rgba(255, 100, 0, 0.5)', '#ff6400');
+        } else {
+          // Runner mode - running person for dash
+          icon.textContent = '🏃‍➡️';
+          this.updateButtonColor(this.dashButton, 'rgba(0, 150, 255, 0.5)', '#0096ff');
+        }
       }
 
       // Disable if no fuel
@@ -204,10 +338,6 @@ export class UIControls {
       }
     }
 
-    // Hide beacon button (beacon is now item-based, auto-collected)
-    if (this.beaconButton) {
-      this.beaconButton.style.display = 'none';
-    }
   }
 
   /**
@@ -263,6 +393,12 @@ export class UIControls {
     if (this.container) {
       this.container.style.display = 'flex';
     }
+    
+    // Show D-pad
+    const dpad = document.getElementById('dpad-controls');
+    if (dpad) {
+      dpad.style.display = 'block';
+    }
   }
 
   /**
@@ -271,6 +407,12 @@ export class UIControls {
   public hide(): void {
     if (this.container) {
       this.container.style.display = 'none';
+    }
+    
+    // Hide D-pad
+    const dpad = document.getElementById('dpad-controls');
+    if (dpad) {
+      dpad.style.display = 'none';
     }
   }
 
@@ -283,6 +425,5 @@ export class UIControls {
       this.container = null;
     }
     this.dashButton = null;
-    this.beaconButton = null;
   }
 }

@@ -131,24 +131,15 @@ export class RealtimeSyncManager {
       // Use simple channel name without colon to test
       const channelName = `game_${gameId}`;
 
-      console.log(`[Realtime] Attempting to connect to channel: ${channelName}`);
-
       const onMessageHandler = (data: unknown) => {
-        console.log('[Realtime] ⚡ onMessage callback triggered!');
-        console.log('[Realtime] Message type:', typeof data);
-        console.log('[Realtime] Message data:', JSON.stringify(data));
         // Handle incoming messages
         // Type assertion is safe here as we control the message format
         this.handleMessage(data as unknown as RealtimeMessage);
       };
 
-      console.log('[Realtime] onMessage handler created:', typeof onMessageHandler);
-
       this.connection = await connectRealtime({
         channel: channelName,
         onConnect: (channel) => {
-          console.log(`[Realtime] ✅ Connected to channel: ${channel}`);
-          console.log(`[Realtime] Connection state: ${this.connectionState} -> connected`);
           this.connectionState = 'connected';
           this.isRunning = true;
           this.reconnectAttempts = 0;
@@ -161,12 +152,10 @@ export class RealtimeSyncManager {
 
           // Send initial state if available
           if (this.lastSentState) {
-            console.log('[Realtime] Sending initial state after connection');
             this.sendPlayerState(this.lastSentState);
           }
         },
         onDisconnect: (channel) => {
-          console.log(`[Realtime] ❌ Disconnected from channel: ${channel}`);
           this.connectionState = 'disconnected';
           this.isRunning = false;
 
@@ -176,9 +165,7 @@ export class RealtimeSyncManager {
         onMessage: onMessageHandler,
       });
 
-      console.log('[Realtime] Connection object created:', this.connection ? 'success' : 'failed');
 
-      console.log(`RealtimeSyncManager connecting to ${channelName}`);
     } catch (error) {
       console.error('Failed to connect to Realtime:', error);
       this.connectionState = 'disconnected';
@@ -218,7 +205,6 @@ export class RealtimeSyncManager {
     this.lastSentState = null;
     this.reconnectAttempts = 0;
 
-    console.log('RealtimeSyncManager disconnected');
   }
 
   /**
@@ -238,7 +224,6 @@ export class RealtimeSyncManager {
       config,
     };
 
-    console.log('[Realtime] Sending game-start message');
     fetch('/api/realtime/broadcast', {
       method: 'POST',
       headers: {
@@ -252,9 +237,8 @@ export class RealtimeSyncManager {
       .then((response) => {
         if (!response.ok) {
           console.error(`[Realtime] Game-start broadcast failed with status ${response.status}`);
-        } else {
-          console.log('[Realtime] Game-start broadcast successful');
         }
+        // Success - no action needed
       })
       .catch((error) => {
         console.error('[Realtime] Failed to broadcast game-start:', error);
@@ -314,7 +298,6 @@ export class RealtimeSyncManager {
     }
 
     // Send via server API (Devvit Web requires server-side realtime.send)
-    console.log(`[Realtime] Sending player state for ${this.playerId} to game ${this.gameId}`);
     fetch('/api/realtime/broadcast', {
       method: 'POST',
       headers: {
@@ -328,9 +311,8 @@ export class RealtimeSyncManager {
       .then((response) => {
         if (!response.ok) {
           console.error(`[Realtime] Broadcast failed with status ${response.status}`);
-        } else {
-          console.log('[Realtime] Broadcast successful');
         }
+        // Success - no action needed
       })
       .catch((error) => {
         console.error('[Realtime] Failed to broadcast player state:', error);
@@ -341,11 +323,9 @@ export class RealtimeSyncManager {
    * Handle incoming Realtime message
    */
   private handleMessage(data: RealtimeMessage): void {
-    console.log('[Realtime] Received message:', data.type, 'from', data.playerId);
 
     // Handle game-start messages (from host)
     if (data.type === 'game-start') {
-      console.log('[Realtime] Received game-start message from host');
       // Dispatch gameStartCountdown event for non-host players
       if (data.playerId !== this.playerId) {
         window.dispatchEvent(
@@ -367,13 +347,11 @@ export class RealtimeSyncManager {
 
     // Skip messages from local player
     if (data.playerId === this.playerId) {
-      console.log('[Realtime] Skipping own message');
       return;
     }
 
     const now = Date.now();
     this.lastReceiveTime = now;
-    console.log('[Realtime] Processing remote player update:', data.playerId);
 
     const existing = this.remotePlayers.get(data.playerId);
 
@@ -455,10 +433,6 @@ export class RealtimeSyncManager {
 
     this.reconnectAttempts++;
     const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts - 1), 10000); // Exponential backoff, max 10s
-
-    console.log(
-      `Attempting reconnect ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms`
-    );
 
     this.reconnectTimeout = window.setTimeout(() => {
       void this.connect(this.gameId!, this.playerId!);

@@ -31,7 +31,6 @@ export class HostMonitor {
       }
     }, this.HEARTBEAT_INTERVAL);
 
-    console.log('[HostMonitor] Started as host, sending heartbeats');
   }
 
   /**
@@ -45,7 +44,6 @@ export class HostMonitor {
       void this.checkHostStatus();
     }, this.CHECK_INTERVAL);
 
-    console.log('[HostMonitor] Started as participant, monitoring host');
   }
 
   /**
@@ -107,7 +105,6 @@ export class HostMonitor {
     }
 
     this.currentGameId = null;
-    console.log('[HostMonitor] Stopped monitoring');
   }
 
   /**
@@ -124,7 +121,6 @@ export class HostMonitor {
 
     try {
       await this.gameApiClient.deleteGame(gameId);
-      console.log('[HostMonitor] Game deleted successfully:', gameId);
     } catch (error) {
       console.error('[HostMonitor] Failed to delete game:', error);
     }

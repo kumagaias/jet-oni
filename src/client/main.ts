@@ -24,6 +24,8 @@ import { I18n } from './i18n/i18n';
 import { UIManager } from './ui/ui-manager';
 import { UIMenu } from './ui/ui-menu';
 import { UICountdown } from './ui/ui-countdown';
+import { UILoading } from './ui/ui-loading';
+import { ToastNotification } from './ui/toast-notification';
 import { GameAPIClient } from './api/game-api-client';
 import { RealtimeSyncManager } from './sync/realtime-sync-manager';
 import { HostMonitor } from './game/host-monitor';
@@ -52,6 +54,10 @@ const gameEngine = new GameEngine(canvas);
 
 // Fetch user info and initialize game
 async function initGame(): Promise<void> {
+  // Show loading screen
+  const uiLoading = new UILoading();
+  uiLoading.show();
+  
   try {
     // Fetch initial data from server
     const response = await fetch('/api/init');
@@ -105,36 +111,29 @@ async function initGame(): Promise<void> {
       const gameState = new GameState(playerId);
       
       // Start in lobby state
-      console.log('[Phase Change] Initializing - setting phase to "lobby"');
       gameState.setGamePhase('lobby');
       
       // Generate city environment with fixed seed (will be regenerated with gameId when game starts)
-      console.log('Generating city...');
       // Use fixed seed for initial lobby view
       const initialSeed = 'lobby-preview-city';
       const cityGenerator = new CityGenerator(initialSeed);
       let city = cityGenerator.generateCity();
       gameEngine.addToScene(city);
-      console.log('City generated with initial seed:', initialSeed);
       
       // Generate dynamic objects (cars, pedestrians, ladders)
-      console.log('Generating dynamic objects...');
       const dynamicObjects = new DynamicObjects();
       let dynamicGroup = dynamicObjects.initialize(cityGenerator.getBuildings());
       gameEngine.addToScene(dynamicGroup);
-      console.log('Dynamic objects generated');
       
       // Initialize ladder system
       const ladderSystem = new LadderSystem();
       ladderSystem.registerLadders(dynamicObjects.getLadders());
-      console.log(`Registered ${ladderSystem.getLadders().length} ladders`);
       
       // Initialize collision system
       const collisionSystem = new CollisionSystem();
       // Get building data directly from city generator (already in correct format)
       const buildingData: BuildingData[] = cityGenerator.getBuildingData();
       collisionSystem.registerBuildings(buildingData);
-      console.log(`Registered ${buildingData.length} buildings for collision`);
       
       // Initialize player physics
       const playerPhysics = new PlayerPhysics();
@@ -151,7 +150,6 @@ async function initGame(): Promise<void> {
       // Initialize tag system
       const tagSystem = new TagSystem(gameState);
       tagSystem.onTag((event) => {
-        console.log(`Player ${event.taggerId} tagged ${event.taggedId}! Survived: ${event.survivedTime.toFixed(1)}s`);
       });
       
       // Initialize beacon item system
@@ -160,14 +158,22 @@ async function initGame(): Promise<void> {
       // Initialize beacon visual (for showing player locations when beacon is active)
       const beaconVisual = new BeaconVisual(gameEngine.getScene());
       
+      // Initialize tag range visual (shows ONI tagging range)
+      const { TagRangeVisual } = await import('./effects/tag-range-visual');
+      const tagRangeVisual = new TagRangeVisual(gameEngine.getScene());
+      
+      // Initialize jetpack effect (shows jetpack particles)
+      const { JetpackEffect } = await import('./effects/jetpack-effect');
+      const jetpackEffect = new JetpackEffect(gameEngine.getScene());
+      
       // Track beacon state
       let beaconActiveUntil = 0;
       const BEACON_DURATION = 10; // seconds
       
       // Initialize car system
       const carSystem = new CarSystem(gameEngine.getScene());
+      carSystem.setPlayerPhysics(playerPhysics);
       carSystem.init();
-      console.log('Car system initialized');
       
       // Initialize AI system
       const aiController = new AIController(gameState);
@@ -210,7 +216,6 @@ async function initGame(): Promise<void> {
           gameEngine.addToScene(aiModel.getModel());
           aiPlayerModels.set(aiId, aiModel);
         }
-        console.log(`Added ${count} AI players with 3D models`);
       };
       
       // Create debug info element (initially hidden)
@@ -248,13 +253,11 @@ async function initGame(): Promise<void> {
           
           // Only allow debug mode in dev subreddit
           if (!isDevSubreddit) {
-            console.log('Debug mode is only available in r/jet_oni_dev. Current URL:', window.location.href);
             return;
           }
           
           debugMode = !debugMode;
           debugInfo.style.display = debugMode ? 'block' : 'none';
-          console.log(`Debug mode: ${debugMode ? 'ON' : 'OFF'}`);
         }
       });
       
@@ -264,27 +267,30 @@ async function initGame(): Promise<void> {
       
       // Setup game loop
       gameEngine.onUpdate((deltaTime: number) => {
-        // Update player controller
-        playerController.update(deltaTime);
-        
-        // Get mobile control input and merge with keyboard input
+        // Get mobile control input and merge with keyboard input BEFORE updating player
         const buttonState = uiControls.getButtonState();
-        if (buttonState.dash || buttonState.jetpack) {
-          // Simulate SHIFT key press for dash/jetpack
-          const inputState = playerController.getInputState();
-          inputState.dash = true;
-          inputState.jetpack = true;
+        
+        // Apply mobile control input to player controller
+        if (buttonState.moveForward || buttonState.moveBackward || buttonState.moveLeft || buttonState.moveRight || buttonState.dash || buttonState.jetpack) {
+          console.log('[Main] Applying mobile input:', buttonState);
+          playerController.setInputState({
+            forward: buttonState.moveForward,
+            backward: buttonState.moveBackward,
+            left: buttonState.moveLeft,
+            right: buttonState.moveRight,
+            dash: buttonState.dash || buttonState.jetpack,
+            jetpack: buttonState.dash || buttonState.jetpack,
+          });
         }
-        if (buttonState.beacon) {
-          // Simulate B key press for beacon
-          const inputState = playerController.getInputState();
-          inputState.beacon = true;
-        }
+        
+        // Update player controller AFTER setting input state
+        playerController.update(deltaTime);
         
         // Check if player became ONI (only after game has started)
         const localPlayer = gameState.getLocalPlayer();
         if (gameHasStarted && localPlayer.isOni && !wasOni) {
-          console.log('Became ONI');
+          // Show toast message when becoming ONI
+          toast.show(i18n.t('game.becameOni'), 'warning');
         }
         wasOni = localPlayer.isOni;
         
@@ -318,7 +324,6 @@ async function initGame(): Promise<void> {
           beaconItem.collectItem(collectedBeacon.id);
           // Activate beacon for 10 seconds
           beaconActiveUntil = Date.now() + BEACON_DURATION * 1000;
-          console.log('Beacon collected! Activated for 10 seconds');
         }
         
         // Animate beacon items
@@ -374,14 +379,25 @@ async function initGame(): Promise<void> {
         beaconVisual.update(gameState.getAllPlayers(), isBeaconActive, localPlayer.id);
         beaconVisual.animate(deltaTime);
         
+        // Update tag range visual (show ONI tagging range)
+        tagRangeVisual.update(gameState.getAllPlayers());
+        
+        // Update jetpack effect (show jetpack particles for all players)
+        jetpackEffect.update(gameState.getAllPlayers(), deltaTime);
+        
         // Update dynamic objects (cars, pedestrians)
         dynamicObjects.update(deltaTime);
         
         // Update car system
         carSystem.update(deltaTime);
         
-        // Update collision system with car positions
-        collisionSystem.updateDynamicObjects(carSystem.getDynamicObjects());
+        // Update collision system with car positions (only during gameplay)
+        if (gameState.getGamePhase() === 'playing') {
+          collisionSystem.updateDynamicObjects(carSystem.getDynamicObjects());
+        } else {
+          // Clear dynamic objects during countdown
+          collisionSystem.updateDynamicObjects([]);
+        }
         
         // Apply physics to player (skip if climbing)
         if (!localPlayer.isClimbing) {
@@ -478,13 +494,11 @@ async function initGame(): Promise<void> {
       
       // Register callback for player disconnection
       realtimeSyncManager.onPlayerDisconnect(async (playerId) => {
-        console.log(`Player ${playerId} disconnected`);
         
         // If we have a current game, notify server to replace with AI
         if (currentGameId) {
           try {
             await gameApiClient.replacePlayerWithAI(currentGameId, playerId);
-            console.log(`Replaced disconnected player ${playerId} with AI`);
           } catch (error) {
             console.error(`Failed to replace player ${playerId} with AI:`, error);
           }
@@ -548,6 +562,30 @@ async function initGame(): Promise<void> {
       // Initialize UI menu
       const uiMenu = new UIMenu(uiManager, i18n, data.username || 'Player', gameApiClient, gameEngine);
       
+      // Initialize toast notification
+      const toast = new ToastNotification(i18n);
+      toast.init();
+      
+      // Set up tag event handler to show toast notifications
+      tagSystem.onTag((event) => {
+        const localPlayerId = gameState.getLocalPlayer().id;
+        
+        if (event.taggedId === localPlayerId) {
+          // Local player got tagged
+          const tagger = gameState.getPlayer(event.taggerId);
+          const taggerName = tagger?.username || 'Someone';
+          toast.showGotTagged(taggerName);
+        } else if (event.taggerId === localPlayerId) {
+          // Local player tagged someone
+          const tagged = gameState.getPlayer(event.taggedId);
+          const taggedName = tagged?.username || 'Someone';
+          toast.showTagged(taggedName);
+        }
+      });
+      
+      // Hide loading screen after UI is ready
+      uiLoading.hide();
+      
       // Initialize countdown UI
       const uiCountdown = new UICountdown(i18n);
       
@@ -573,7 +611,6 @@ async function initGame(): Promise<void> {
           if (now - lastGameEndCheck > 1000) {
             lastGameEndCheck = now;
             if (gameState.shouldGameEnd()) {
-              console.log('Game should end - triggering gameEnd event');
               window.dispatchEvent(new Event('gameEnd'));
             }
           }
@@ -585,11 +622,9 @@ async function initGame(): Promise<void> {
       
       // Listen for game start countdown event (when host presses start button)
       window.addEventListener('gameStartCountdown', ((e: CustomEvent) => {
-        console.log('[Countdown] Starting countdown');
         
         // If this is the host (no startTimestamp in detail), broadcast game-start to all players
         if (!e.detail?.startTimestamp && isHost) {
-          console.log('[Countdown] Host broadcasting game-start message');
           const config = e.detail?.config || gameState.getGameConfig();
           realtimeSyncManager.sendGameStart(config);
         }
@@ -620,9 +655,9 @@ async function initGame(): Promise<void> {
         // Change phase to countdown
         gameState.setGamePhase('countdown');
         
-        // Start countdown (10 seconds)
+        // Start countdown (10 seconds) with timestamp synchronization
+        const startTimestamp = e.detail?.startTimestamp || Date.now();
         uiCountdown.start(10, () => {
-          console.log('[Countdown] Complete - starting game');
           // Countdown complete - trigger actual game start
           window.dispatchEvent(new CustomEvent('gameStart', {
             detail: {
@@ -630,7 +665,7 @@ async function initGame(): Promise<void> {
               gameId: currentGameId,
             },
           }));
-        });
+        }, startTimestamp);
       }) as EventListener);
       
       // Track if game has been started to prevent duplicate starts
@@ -639,17 +674,14 @@ async function initGame(): Promise<void> {
       // Listen for game start event (after countdown)
       window.addEventListener('gameStart', ((e: CustomEvent) => {
         if (gameStarted) {
-          console.log('[Game Start] Already started, ignoring duplicate event');
           return;
         }
         gameStarted = true;
         
-        console.log('[Phase Change] Game starting - setting phase to "playing"');
         
         // Regenerate city with gameId as seed for consistent map across all players
         if (e.detail?.gameId) {
           const gameId = e.detail.gameId as string;
-          console.log(`[Map] Regenerating city with gameId seed: ${gameId}`);
           
           // Remove old city
           gameEngine.removeFromScene(city);
@@ -673,7 +705,6 @@ async function initGame(): Promise<void> {
           // Update ladder system
           ladderSystem.registerLadders(newDynamicObjects.getLadders());
           
-          console.log(`[Map] City regenerated with ${newBuildingData.length} buildings`);
         }
         
         // Show canvas and resume game engine
@@ -686,7 +717,6 @@ async function initGame(): Promise<void> {
         // Set game config if provided
         if (e.detail?.config) {
           gameState.setGameConfig(e.detail.config);
-          console.log(`Game config set: ${e.detail.config.roundDuration}s duration, ${e.detail.config.totalPlayers} players`);
         } else {
           // Default config if not provided
           gameState.setGameConfig({
@@ -694,7 +724,6 @@ async function initGame(): Promise<void> {
             roundDuration: 300,
             rounds: 1,
           });
-          console.log('Using default game config: 300s duration, 6 players');
         }
         
         // Ensure AI players are added before game starts
@@ -702,13 +731,11 @@ async function initGame(): Promise<void> {
         const currentPlayerCount = gameState.getAllPlayers().length;
         const aiNeeded = (config?.totalPlayers ?? 6) - currentPlayerCount;
         if (aiNeeded > 0) {
-          console.log(`[Game Start] Adding ${aiNeeded} AI players`);
           addAIPlayers(aiNeeded);
         }
         
         gameState.setGamePhase('playing');
         gameHasStarted = true; // Mark that game has started
-        console.log('[Phase Change] Phase set to "playing", gameHasStarted:', gameHasStarted);
         
         // Reset tag system grace period
         tagSystem.resetGameStartTime();
@@ -719,9 +746,6 @@ async function initGame(): Promise<void> {
         
         // Debug: Log initial player state (once at game start)
         const allPlayersAtStart = gameState.getAllPlayers();
-        console.log('[Game Start] Local player isOni:', gameState.getLocalPlayer().isOni);
-        console.log('[Game Start] ONI count:', gameState.countOniPlayers(), 'Runners:', gameState.countRunnerPlayers());
-        console.log('[Game Start] All players:', allPlayersAtStart.length, allPlayersAtStart.map(p => ({ id: p.id, username: p.username, isAI: p.isAI })));
         
         // Set random spawn position for local player
         const spawnX = (Math.random() - 0.5) * 180; // Random X between -90 and 90
@@ -729,13 +753,11 @@ async function initGame(): Promise<void> {
         const localPlayer = gameState.getLocalPlayer();
         localPlayer.position = { x: spawnX, y: 2, z: spawnZ };
         localPlayer.velocity = { x: 0, y: 0, z: 0 };
-        console.log(`Spawned at (${spawnX.toFixed(1)}, 2, ${spawnZ.toFixed(1)})`);
         
         // Start Realtime synchronization if gameId is provided
         if (e.detail?.gameId) {
           currentGameId = e.detail.gameId as string;
           const playerId = gameState.getLocalPlayer().id;
-          console.log(`[Realtime] Connecting to game ${currentGameId} as player ${playerId}`);
           void realtimeSyncManager.connect(currentGameId, playerId);
         } else {
           console.warn('[Realtime] No gameId provided in gameStart event');
@@ -746,12 +768,10 @@ async function initGame(): Promise<void> {
         // For now, each client assigns ONI independently (will be synced via Realtime)
         setTimeout(() => {
           const allPlayers = gameState.getAllPlayers();
-          console.log('[ONI Assignment] Total players:', allPlayers.length);
           
           if (allPlayers.length > 0) {
             // Calculate number of ONI: minimum 2, or 1/3 of total players (rounded up)
             const oniCount = Math.max(2, Math.ceil(allPlayers.length / 3));
-            console.log(`[ONI Assignment] Assigning ${oniCount} ONI out of ${allPlayers.length} players`);
             
             // Shuffle players and select first N as ONI
             const shuffled = [...allPlayers].sort(() => Math.random() - 0.5);
@@ -762,7 +782,6 @@ async function initGame(): Promise<void> {
               if (oniPlayer.id === gameState.getLocalPlayer().id) {
                 // Local player is ONI
                 gameState.setLocalPlayerIsOni(true);
-                console.log('You are ONI!');
                 // Update wasOni to prevent "Became ONI" message
                 wasOni = true;
               } else {
@@ -775,7 +794,6 @@ async function initGame(): Promise<void> {
                   if (aiModel) {
                     aiModel.setIsOni(true);
                   }
-                  console.log(`${oniPlayer.username} is ONI!`);
                 }
               }
             });
@@ -790,16 +808,13 @@ async function initGame(): Promise<void> {
         // Place beacon items on the map
         const buildings = cityGenerator.getBuildingData();
         beaconItem.placeItems(buildings);
-        console.log('Beacon items placed on map');
       }) as EventListener);
       
       // Listen for lobby exit event (when host leaves lobby)
       window.addEventListener('lobbyExit', (async () => {
-        console.log('[Lobby Exit] Host leaving lobby');
         
         // If host, delete the game
         if (isHost && currentGameId) {
-          console.log('[Lobby Exit] Deleting game as host');
           await hostMonitor.deleteGameOnExit();
         }
         
@@ -811,14 +826,11 @@ async function initGame(): Promise<void> {
       
       // Listen for lobby event (when user creates a game)
       window.addEventListener('showLobby', (async (e: CustomEvent) => {
-        console.log('[Phase Change] Showing lobby - setting phase to "lobby"');
         
         // Clean up previous game state first
-        console.log('[Lobby] Cleaning up previous game state...');
         
         // Disconnect from Realtime if connected
         if (currentGameId) {
-          console.log('[Lobby] Disconnecting from Realtime...');
           await realtimeSyncManager.disconnect();
           currentGameId = null;
         }
@@ -848,7 +860,6 @@ async function initGame(): Promise<void> {
         gameState.setLocalPlayerVelocity({ x: 0, y: 0, z: 0 });
         gameState.setLocalPlayerIsOni(false);
         
-        console.log('[Lobby] Cleanup complete');
         
         // Hide canvas during lobby
         const canvas = document.getElementById('bg') as HTMLCanvasElement;
@@ -868,10 +879,8 @@ async function initGame(): Promise<void> {
           
           // Start host monitoring
           if (isHost) {
-            console.log('[Lobby] Starting as host');
             hostMonitor.startAsHost(gameId);
           } else {
-            console.log('[Lobby] Starting as participant');
             hostMonitor.startAsParticipant(gameId);
           }
         }
@@ -888,17 +897,14 @@ async function initGame(): Promise<void> {
       
       // Listen for game end event
       window.addEventListener('gameEnd', async () => {
-        console.log('[Phase Change] Game ending - setting phase to "ended"');
         
         // Disconnect from Realtime
-        console.log('[Game End] Disconnecting from Realtime...');
         await realtimeSyncManager.disconnect();
         
         // Call endGame API if we have a game ID
         if (currentGameId) {
           try {
             const endGameResponse = await gameApiClient.endGame(currentGameId);
-            console.log('Game ended successfully:', endGameResponse);
             
             // Show results screen with game results
             if (endGameResponse.success && endGameResponse.results) {
@@ -919,7 +925,6 @@ async function initGame(): Promise<void> {
               
               // Set callback to return to menu
               uiResults.setOnBackToMenu(() => {
-                console.log('[Back to Menu] Starting cleanup...');
                 
                 // Hide and destroy results screen
                 uiResults.hide();
@@ -970,13 +975,11 @@ async function initGame(): Promise<void> {
                 const overlay = document.querySelector('.overlay') as HTMLElement;
                 if (overlay) {
                   overlay.style.display = 'flex';
-                  console.log('[Back to Menu] Overlay display set to flex');
                 }
                 
                 // Show title screen
                 uiMenu.showTitleScreen();
                 
-                console.log('[Back to Menu] Cleanup complete, title screen should be visible');
               });
               
               uiResults.show(gameState.getLocalPlayer().id);
@@ -995,14 +998,12 @@ async function initGame(): Promise<void> {
         uiHud.hide();
         uiControls.hide();
         
-        console.log('Realtime disconnected');
       });
       
       uiMenu.showTitleScreen();
       
       // Start game loop (will be paused by showTitleScreen)
       gameEngine.start();
-      console.log('Game started');
       
     } else {
       console.error('Invalid response from server');
@@ -1010,6 +1011,7 @@ async function initGame(): Promise<void> {
     }
   } catch (err) {
     console.error('Error initializing game:', err);
+    uiLoading.hide();
     showError('Failed to connect to server');
   }
 }

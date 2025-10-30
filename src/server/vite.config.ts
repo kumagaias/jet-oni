@@ -9,7 +9,7 @@ export default defineConfig({
     ssr: 'index.ts',
     outDir: '../../dist/server',
     target: 'node22',
-    sourcemap: true,
+    sourcemap: false, // Disable source maps to reduce bundle size
     rollupOptions: {
       external: [...builtinModules],
 

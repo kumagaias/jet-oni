@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { Vector3 } from '../../shared/types/game';
 import { DynamicObject } from './collision-system';
+import { WATER_SINK_DEPTH } from '../../shared/constants';
+import { PlayerPhysics } from '../player/player-physics';
 
 /**
  * Car data for rendering and collision
@@ -24,9 +26,17 @@ export class CarSystem {
   private scene: THREE.Scene;
   private carCount = 20;
   private roadPositions = [-120, -60, 0, 60, 120]; // Match road grid
+  private playerPhysics: PlayerPhysics | null = null;
 
   constructor(scene: THREE.Scene) {
     this.scene = scene;
+  }
+
+  /**
+   * Set player physics reference for water detection
+   */
+  public setPlayerPhysics(physics: PlayerPhysics): void {
+    this.playerPhysics = physics;
   }
 
   /**
@@ -157,6 +167,13 @@ export class CarSystem {
         car.velocity.x = 0;
         car.velocity.z = car.speed;
       }
+
+      // Check if car is in water and adjust height
+      let yPosition = 0.5; // Default car height
+      if (this.playerPhysics && this.playerPhysics.isInWater(car.position)) {
+        yPosition = 0.5 - WATER_SINK_DEPTH; // Sink into water
+      }
+      car.position.y = yPosition;
 
       // Update mesh position
       car.mesh.position.set(car.position.x, car.position.y, car.position.z);

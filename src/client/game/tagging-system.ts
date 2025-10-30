@@ -62,14 +62,12 @@ export class TaggingSystem {
 
       // Check if within tagging distance
       if (distance <= TAG_DISTANCE) {
-        console.log(`[Tag] Distance ${distance.toFixed(2)} <= ${TAG_DISTANCE}, tagging ${player.username}`);
         // Tag the player
         const tagEvent = this.tagPlayer(localPlayer.id, player.id);
         this.lastTagTime = now;
         return tagEvent;
       } else if (distance < TAG_DISTANCE * 2) {
         // Log near-miss for debugging
-        console.log(`[Tag] Near miss: ${player.username} at distance ${distance.toFixed(2)} (need ${TAG_DISTANCE})`);
       }
     }
 

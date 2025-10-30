@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [],
   build: {
     outDir: '../../dist/client',
-    sourcemap: true,
+    sourcemap: false, // Disable source maps to reduce bundle size
     chunkSizeWarningLimit: 1500,
   },
 });

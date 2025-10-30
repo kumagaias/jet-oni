@@ -478,7 +478,7 @@ export class GameState {
     const allOni = this.areAllPlayersOni();
     
     if (timeRunOut || allOni) {
-      console.log(`Game should end - timeRunOut: ${timeRunOut}, allOni: ${allOni}, elapsed: ${this.getElapsedTime().toFixed(1)}s, runners: ${this.countRunnerPlayers()}, oni: ${this.countOniPlayers()}, remotePlayers: ${this.remotePlayers.size}`);
+      // Game should end
     }
     
     return timeRunOut || allOni;

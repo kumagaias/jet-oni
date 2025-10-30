@@ -74,25 +74,21 @@ export class UIMenu {
     
     // Handle player joined
     this.lobbyManager.on('playerJoined', (data) => {
-      console.log('Player joined:', data);
       this.updateLobbyDisplay();
     });
     
     // Handle player left
     this.lobbyManager.on('playerLeft', (data) => {
-      console.log('Player left:', data);
       this.updateLobbyDisplay();
     });
     
     // Handle countdown started
     this.lobbyManager.on('countdownStarted', () => {
-      console.log('Countdown started');
       this.updateLobbyDisplay();
     });
     
     // Handle game starting
     this.lobbyManager.on('gameStarting', () => {
-      console.log('Game starting');
       this.startGame();
     });
   }

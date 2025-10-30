@@ -104,7 +104,6 @@ describe('RealtimeSyncManager Performance Tests', () => {
       // Average frame time should be well under target (16.67ms)
       expect(avgFrameTime).toBeLessThan(targetFrameTime);
       
-      console.log(`Average frame time with ${playerCount} players: ${avgFrameTime.toFixed(2)}ms`);
     });
   });
 
@@ -133,7 +132,6 @@ describe('RealtimeSyncManager Performance Tests', () => {
       // Send latency should be minimal (< 1ms for local operation)
       expect(latency).toBeLessThan(1);
       
-      console.log(`Message send latency: ${latency.toFixed(3)}ms`);
     });
 
     it('should measure interpolation update latency', () => {
@@ -149,7 +147,6 @@ describe('RealtimeSyncManager Performance Tests', () => {
       // Interpolation should be fast (< 1ms)
       expect(latency).toBeLessThan(1);
       
-      console.log(`Interpolation update latency: ${latency.toFixed(3)}ms`);
     });
 
     it('should measure end-to-end latency simulation', async () => {
@@ -185,7 +182,6 @@ describe('RealtimeSyncManager Performance Tests', () => {
       // Total latency should be minimal (mostly from setTimeout)
       expect(totalLatency).toBeGreaterThan(0);
       
-      console.log(`End-to-end latency: ${totalLatency.toFixed(2)}ms`);
     });
   });
 
@@ -222,7 +218,6 @@ describe('RealtimeSyncManager Performance Tests', () => {
       // Should be able to send many messages per second
       expect(messagesPerSecond).toBeGreaterThan(0);
       
-      console.log(`Messages per second: ${messagesPerSecond.toFixed(0)}`);
     });
 
     it('should respect throttle limit', async () => {
@@ -287,7 +282,6 @@ describe('RealtimeSyncManager Performance Tests', () => {
       // Should handle burst quickly
       expect(duration).toBeLessThan(100); // Less than 100ms for 50 messages
       
-      console.log(`Burst send time (${burstSize} messages): ${duration.toFixed(2)}ms`);
     });
   });
 
@@ -335,7 +329,6 @@ describe('RealtimeSyncManager Performance Tests', () => {
       // Should be fast
       expect(duration).toBeLessThan(1000); // Less than 1 second for 1000 updates
       
-      console.log(`${updateCount} interpolation updates: ${duration.toFixed(2)}ms`);
     });
 
     it('should efficiently manage remote player list', () => {
@@ -357,7 +350,6 @@ describe('RealtimeSyncManager Performance Tests', () => {
       // Should be very fast
       expect(duration).toBeLessThan(100); // Less than 100ms for 1000 calls
       
-      console.log(`${iterations} getRemotePlayers calls: ${duration.toFixed(2)}ms`);
     });
   });
 
@@ -391,9 +383,8 @@ describe('RealtimeSyncManager Performance Tests', () => {
       }
 
       // Log results
-      console.log('Scalability test results:');
       for (const result of results) {
-        console.log(`  ${result.count} players: ${result.time.toFixed(3)}ms`);
+        // Results logged for debugging
       }
 
       // All should complete quickly
@@ -442,10 +433,6 @@ describe('RealtimeSyncManager Performance Tests', () => {
       const maxTime = Math.max(...frameTimes);
       const minTime = Math.min(...frameTimes);
 
-      console.log(`Performance under load (${playerCount} players, ${frameCount} frames):`);
-      console.log(`  Average: ${avgTime.toFixed(3)}ms`);
-      console.log(`  Min: ${minTime.toFixed(3)}ms`);
-      console.log(`  Max: ${maxTime.toFixed(3)}ms`);
 
       // Performance should be consistent
       expect(avgTime).toBeLessThan(16.67); // Under 60 FPS target

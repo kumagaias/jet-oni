@@ -782,8 +782,8 @@ async function initGame(): Promise<void> {
           const allPlayers = gameState.getAllPlayers();
           
           if (allPlayers.length > 0) {
-            // Calculate number of ONI: minimum 2, or 1/3 of total players (rounded up)
-            const oniCount = Math.max(2, Math.ceil(allPlayers.length / 3));
+            // Calculate number of ONI: 1 oni for every 3 players (rounded down)
+            const oniCount = Math.max(1, Math.floor(allPlayers.length / 3));
             
             // Shuffle players and select first N as ONI
             const shuffled = [...allPlayers].sort(() => Math.random() - 0.5);

@@ -349,7 +349,7 @@ describe('Game Flow Integration', () => {
       const oniCount = allPlayers.filter((p) => p.isOni).length;
       const runnerCount = allPlayers.filter((p) => !p.isOni).length;
 
-      expect(oniCount).toBe(1);
+      expect(oniCount).toBe(1); // 4 players => 1 oni (4/3 = 1.33, floor = 1)
       expect(runnerCount).toBe(3);
     });
   });

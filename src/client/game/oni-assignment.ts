@@ -7,15 +7,16 @@ import { MIN_ONI_COUNT, MIN_TOTAL_PLAYERS } from '../../shared/constants';
 export class OniAssignment {
   /**
    * Calculate the number of oni players based on total player count
-   * Minimum 1 oni, scales with player count
+   * 1 oni for every 3 players (rounded down)
+   * Examples: 6 players => 2 oni, 8 players => 2 oni, 10 players => 3 oni
    */
   public static calculateOniCount(totalPlayers: number): number {
     if (totalPlayers < MIN_TOTAL_PLAYERS) {
       throw new Error(`Minimum ${MIN_TOTAL_PLAYERS} players required`);
     }
 
-    // Scale oni count: 1 for 4-7 players, 2 for 8-11, 3 for 12-15, etc.
-    const oniCount = Math.max(MIN_ONI_COUNT, Math.floor(totalPlayers / 4));
+    // 1 oni for every 3 players (rounded down)
+    const oniCount = Math.max(MIN_ONI_COUNT, Math.floor(totalPlayers / 3));
     
     // Ensure at least 1 runner remains
     return Math.min(oniCount, totalPlayers - 1);

@@ -32,30 +32,33 @@ describe('OniAssignment', () => {
       expect(() => OniAssignment.calculateOniCount(3)).toThrow();
     });
 
-    it('should return minimum 1 oni for 4-7 players', () => {
+    it('should return 1 oni for 4-5 players', () => {
       expect(OniAssignment.calculateOniCount(4)).toBe(1);
       expect(OniAssignment.calculateOniCount(5)).toBe(1);
-      expect(OniAssignment.calculateOniCount(7)).toBe(1);
     });
 
-    it('should return minimum 1 oni for 6 players', () => {
-      expect(OniAssignment.calculateOniCount(6)).toBe(1);
-    });
-
-    it('should return 2 oni for 8 players', () => {
+    it('should return 2 oni for 6-8 players', () => {
+      expect(OniAssignment.calculateOniCount(6)).toBe(2);
+      expect(OniAssignment.calculateOniCount(7)).toBe(2);
       expect(OniAssignment.calculateOniCount(8)).toBe(2);
     });
 
-    it('should return 3 oni for 12 players', () => {
-      expect(OniAssignment.calculateOniCount(12)).toBe(3);
+    it('should return 3 oni for 9-11 players', () => {
+      expect(OniAssignment.calculateOniCount(9)).toBe(3);
+      expect(OniAssignment.calculateOniCount(10)).toBe(3);
+      expect(OniAssignment.calculateOniCount(11)).toBe(3);
     });
 
-    it('should return 4 oni for 16 players', () => {
-      expect(OniAssignment.calculateOniCount(16)).toBe(4);
+    it('should return 4 oni for 12-14 players', () => {
+      expect(OniAssignment.calculateOniCount(12)).toBe(4);
+      expect(OniAssignment.calculateOniCount(13)).toBe(4);
+      expect(OniAssignment.calculateOniCount(14)).toBe(4);
     });
 
-    it('should return 5 oni for 20 players', () => {
-      expect(OniAssignment.calculateOniCount(20)).toBe(5);
+    it('should return 6 oni for 18-20 players', () => {
+      expect(OniAssignment.calculateOniCount(18)).toBe(6);
+      expect(OniAssignment.calculateOniCount(19)).toBe(6);
+      expect(OniAssignment.calculateOniCount(20)).toBe(6);
     });
 
     it('should ensure at least 1 runner remains', () => {
@@ -88,7 +91,7 @@ describe('OniAssignment', () => {
       OniAssignment.assignRandomOni(players);
       
       const oniCount = players.filter(p => p.isOni).length;
-      expect(oniCount).toBe(1);
+      expect(oniCount).toBe(2);
     });
 
     it('should assign correct number of oni for 10 players', () => {
@@ -96,7 +99,7 @@ describe('OniAssignment', () => {
       OniAssignment.assignRandomOni(players);
       
       const oniCount = players.filter(p => p.isOni).length;
-      expect(oniCount).toBe(2);
+      expect(oniCount).toBe(3);
     });
 
     it('should assign correct number of oni for 15 players', () => {
@@ -104,11 +107,11 @@ describe('OniAssignment', () => {
       OniAssignment.assignRandomOni(players);
       
       const oniCount = players.filter(p => p.isOni).length;
-      expect(oniCount).toBe(3);
+      expect(oniCount).toBe(5);
     });
 
     it('should mark remaining players as runners', () => {
-      const players = createPlayers(8);
+      const players = createPlayers(9);
       OniAssignment.assignRandomOni(players);
       
       const runnerCount = players.filter(p => !p.isOni).length;
@@ -209,10 +212,11 @@ describe('OniAssignment', () => {
 
     it('should return correct count for valid player counts', () => {
       expect(OniAssignment.getRecommendedOniCount(4)).toBe(1);
-      expect(OniAssignment.getRecommendedOniCount(6)).toBe(1);
+      expect(OniAssignment.getRecommendedOniCount(6)).toBe(2);
       expect(OniAssignment.getRecommendedOniCount(8)).toBe(2);
-      expect(OniAssignment.getRecommendedOniCount(12)).toBe(3);
-      expect(OniAssignment.getRecommendedOniCount(20)).toBe(5);
+      expect(OniAssignment.getRecommendedOniCount(10)).toBe(3);
+      expect(OniAssignment.getRecommendedOniCount(12)).toBe(4);
+      expect(OniAssignment.getRecommendedOniCount(20)).toBe(6);
     });
   });
 

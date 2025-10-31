@@ -23,7 +23,7 @@ export const TAG_DISTANCE = 5.0; // units (increased for easier tagging)
 
 // Beacon ability
 export const BEACON_INITIAL_DELAY = 30; // seconds after becoming oni
-export const BEACON_DURATION = 10; // seconds
+export const BEACON_DURATION = 15; // seconds
 export const BEACON_COOLDOWN = 30; // seconds
 
 // Game timing

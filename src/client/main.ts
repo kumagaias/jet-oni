@@ -175,7 +175,7 @@ async function initGame(): Promise<void> {
       
       // Track beacon state
       let beaconActiveUntil = 0;
-      const BEACON_DURATION = 10; // seconds
+      const BEACON_DURATION = 15; // seconds
       
       // Initialize car system
       const carSystem = new CarSystem(gameEngine.getScene());
@@ -328,8 +328,10 @@ async function initGame(): Promise<void> {
         const collectedBeacon = beaconItem.checkCollection(localPlayer.position, localPlayer.isOni);
         if (collectedBeacon) {
           beaconItem.collectItem(collectedBeacon.id);
-          // Activate beacon for 10 seconds
+          // Activate beacon for 15 seconds
           beaconActiveUntil = Date.now() + BEACON_DURATION * 1000;
+          // Show toast message
+          toast.show('Runner positions revealed for 15 seconds!', 'info', 3000);
         }
         
         // Animate beacon items

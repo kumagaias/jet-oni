@@ -59,10 +59,11 @@ export class TagRangeVisual {
         this.rangeSpheres.set(player.id, sphere);
       }
 
-      // Update sphere position
+      // Update sphere position to match player center
+      // Player model is 2 units tall, so center is at y + 1
       sphere.position.set(
         player.position.x,
-        player.position.y + 1, // Center at player height
+        player.position.y + 1, // Center at player model center (2 units tall / 2)
         player.position.z
       );
     }

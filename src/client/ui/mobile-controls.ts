@@ -83,7 +83,7 @@ export class MobileControls {
     });
 
     // Create jump button (bottom right, left of dash)
-    this.jumpButton = this.createButton('SPACE', 'bottom: 80px; right: 90px;', () => {
+    this.jumpButton = this.createButton('SPACE', 'bottom: 80px; right: 100px;', () => {
       this.inputState.jump = true;
     }, () => {
       this.inputState.jump = false;
@@ -91,7 +91,7 @@ export class MobileControls {
     container.appendChild(this.jumpButton);
 
     // Create dash button (bottom right)
-    this.dashButton = this.createButton('🏃', 'bottom: 80px; right: 20px;', () => {
+    this.dashButton = this.createButton('SHIFT', 'bottom: 80px; right: 20px;', () => {
       this.inputState.dash = true;
     }, () => {
       this.inputState.dash = false;

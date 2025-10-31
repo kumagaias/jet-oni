@@ -1129,11 +1129,7 @@ export class UIMenu {
           text-align: center;
         ">
           <p id="lobby-player-count" style="color: #ff8800; font-size: 36px; font-weight: bold; margin: 10px 0;">
-            ${currentPlayers}
-          </p>
-          
-          <p style="color: #aaa; font-size: 14px; margin-bottom: 5px;">
-            ${this.i18n.t('lobby.players', { current: currentPlayers, max: maxPlayers })}
+            ${currentPlayers} / ${maxPlayers}
           </p>
           
           <p style="color: #666; font-size: 12px; margin-bottom: 15px;">

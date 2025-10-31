@@ -47,8 +47,14 @@ export class UIResults {
     }
 
     const sortedPlayers = this.gameResults.getSortedPlayers();
-    const escapedPlayers = this.gameResults.getEscapedPlayers();
-    const oniPlayers = sortedPlayers.filter(p => p.isOni || p.wasTagged);
+    
+    // Get players who were never tagged (true runners)
+    const neverTaggedPlayers = sortedPlayers.filter(p => !p.wasTagged);
+    
+    // Get ONI players (never tagged, started as ONI or tagged many)
+    const oniPlayers = sortedPlayers
+      .filter(p => !p.wasTagged) // Only players who were never tagged
+      .sort((a, b) => b.tagCount - a.tagCount); // Sort by tag count
 
     // Clear previous content
     this.container.innerHTML = '';
@@ -66,7 +72,8 @@ export class UIResults {
       display: flex;
       flex-direction: column;
       box-shadow: 0 0 20px rgba(74, 144, 226, 0.5);
-      overflow: hidden;
+      overflow-y: auto;
+      overflow-x: hidden;
     `;
 
     // Title
@@ -80,12 +87,12 @@ export class UIResults {
     `;
     panel.appendChild(title);
 
-    // Determine winner: Runners win if anyone escaped, otherwise ONI wins
-    const runnersWin = escapedPlayers.length > 0;
+    // Determine winner: Runners win if anyone escaped (never tagged), otherwise ONI wins
+    const runnersWin = neverTaggedPlayers.length > 0;
     
     // Victory image
     const victoryImage = document.createElement('img');
-    victoryImage.src = runnersWin ? '/runner_win.jpg' : '/oni_win.jpg';
+    victoryImage.src = runnersWin ? '/runners_win.jpg' : '/oni_win.jpg';
     victoryImage.alt = runnersWin ? 'Runners Win!' : 'ONI Wins!';
     victoryImage.style.cssText = `
       width: 100%;
@@ -112,7 +119,7 @@ export class UIResults {
     const winnerText = document.createElement('div');
     winnerText.style.cssText = `
       color: ${runnersWin ? '#4caf50' : '#f44336'};
-      font-size: 24px;
+      font-size: 18px;
       font-weight: bold;
       margin-bottom: 10px;
     `;
@@ -124,16 +131,16 @@ export class UIResults {
     panel.appendChild(winnerBox);
 
     // Show player list based on who won
-    const playersToShow = runnersWin ? escapedPlayers : oniPlayers;
+    // Runners win: Show all players who were never tagged (sorted by survive time)
+    // ONI win: Show only ONI players who were never tagged (sorted by tag count)
+    const playersToShow = runnersWin 
+      ? neverTaggedPlayers.sort((a, b) => b.survivedTime - a.survivedTime)
+      : oniPlayers;
     
-    // Create scrollable container for player list
+    // Create container for player list (no fixed height, will scroll with panel)
     const playerListContainer = document.createElement('div');
     playerListContainer.style.cssText = `
-      flex: 1;
-      overflow-y: auto;
       margin-bottom: 10px;
-      min-height: 0;
-      max-height: 300px;
     `;
     
     // Player list header
@@ -159,7 +166,7 @@ export class UIResults {
     listHeader.appendChild(playerHeader);
 
     const timeHeader = document.createElement('div');
-    timeHeader.textContent = this.i18n.t('results.time');
+    timeHeader.textContent = runnersWin ? this.i18n.t('results.time') : 'Tags';
     listHeader.appendChild(timeHeader);
 
     playerListContainer.appendChild(listHeader);
@@ -206,14 +213,20 @@ export class UIResults {
       name.textContent = player.username;
       playerRow.appendChild(name);
 
-      // Survival time
-      const time = document.createElement('div');
-      time.style.cssText = `
+      // Survival time or tag count
+      const stat = document.createElement('div');
+      stat.style.cssText = `
         color: #aaaaaa;
         font-size: 14px;
       `;
-      time.textContent = this.formatTime(player.survivedTime);
-      playerRow.appendChild(time);
+      if (runnersWin) {
+        // Show survival time for runners
+        stat.textContent = this.formatTime(player.survivedTime);
+      } else {
+        // Show tag count for ONI
+        stat.textContent = `${player.tagCount} tags`;
+      }
+      playerRow.appendChild(stat);
 
       playerListContainer.appendChild(playerRow);
     });
@@ -235,7 +248,6 @@ export class UIResults {
       font-size: 18px;
       cursor: pointer;
       transition: background 0.3s;
-      flex-shrink: 0;
     `;
     backButton.onmouseover = () => {
       backButton.style.background = '#357abd';
@@ -251,15 +263,13 @@ export class UIResults {
       backButton.disabled = true;
       backButton.textContent = 'Loading...';
       
-      // Hide immediately
+      // Hide results screen first
       this.hide();
       
-      // Call callback after a short delay to ensure UI updates
-      setTimeout(() => {
-        if (this.onBackToMenu) {
-          this.onBackToMenu();
-        }
-      }, 100);
+      // Call callback to return to title screen
+      if (this.onBackToMenu) {
+        this.onBackToMenu();
+      }
     };
     panel.appendChild(backButton);
 

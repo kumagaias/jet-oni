@@ -20,6 +20,8 @@ export class TagSystem {
   private onTagCallback?: (event: TagEvent) => void;
   private gameStartTime: number = 0;
   private readonly TAG_GRACE_PERIOD = 3000; // 3 seconds grace period after game start
+  private recentTags: Map<string, number> = new Map(); // Track recent tags to prevent duplicates
+  private readonly TAG_COOLDOWN = 1000; // 1 second cooldown between tags for same player
 
   constructor(gameState: GameState) {
     this.gameState = gameState;
@@ -135,9 +137,11 @@ export class TagSystem {
           isAI: false,
           position: localPlayer.position,
           velocity: localPlayer.velocity,
+          rotation: localPlayer.rotation,
           fuel: localPlayer.fuel,
           survivedTime: localPlayer.survivedTime,
           wasTagged: false,
+          tagCount: 0,
           isOnSurface: localPlayer.isOnSurface,
           isDashing: localPlayer.isDashing,
           isJetpacking: localPlayer.isJetpacking,
@@ -163,9 +167,11 @@ export class TagSystem {
           isAI: false,
           position: localPlayer.position,
           velocity: localPlayer.velocity,
+          rotation: localPlayer.rotation,
           fuel: localPlayer.fuel,
           survivedTime: localPlayer.survivedTime,
           wasTagged: false,
+          tagCount: 0,
           isOnSurface: localPlayer.isOnSurface,
           isDashing: localPlayer.isDashing,
           isJetpacking: localPlayer.isJetpacking,
@@ -195,7 +201,33 @@ export class TagSystem {
    * Perform a tag
    */
   private performTag(taggerId: string, taggedId: string): void {
+    // Check if this player was recently tagged (prevent duplicate tags)
+    const tagKey = `${taggerId}-${taggedId}`;
+    const now = Date.now();
+    const lastTagTime = this.recentTags.get(tagKey);
+    
+    if (lastTagTime && now - lastTagTime < this.TAG_COOLDOWN) {
+      // Tag is too recent, ignore
+      return;
+    }
+    
+    // Record this tag
+    this.recentTags.set(tagKey, now);
+    
+    // Clean up old tags (older than cooldown period)
+    for (const [key, time] of this.recentTags.entries()) {
+      if (now - time > this.TAG_COOLDOWN) {
+        this.recentTags.delete(key);
+      }
+    }
+    
     const survivedTime = this.recordSurvivedTime(taggedId);
+    
+    // Increment tagger's tag count
+    const tagger = this.gameState.getPlayer(taggerId);
+    if (tagger) {
+      tagger.tagCount = (tagger.tagCount || 0) + 1;
+    }
     
     // Convert tagged player to oni
     this.convertToOni(taggedId);

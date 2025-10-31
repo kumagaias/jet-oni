@@ -6,6 +6,8 @@ import * as THREE from 'three';
 export class PlayerModel {
   private model: THREE.Group;
   private isOni: boolean;
+  private nameTag: THREE.Sprite | null = null;
+  private nameTagCanvas: HTMLCanvasElement | null = null;
 
   constructor(isOni: boolean = false) {
     this.isOni = isOni;
@@ -96,6 +98,84 @@ export class PlayerModel {
   }
 
   /**
+   * Create name tag sprite
+   */
+  private createNameTag(name: string): THREE.Sprite {
+    // Create canvas for text
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    if (!context) {
+      throw new Error('Failed to get canvas context');
+    }
+
+    // Set canvas size
+    canvas.width = 512;
+    canvas.height = 128;
+
+    // Configure text style
+    context.font = 'Bold 48px Arial';
+    context.fillStyle = 'rgba(0, 0, 0, 0.6)';
+    context.textAlign = 'center';
+    context.textBaseline = 'middle';
+
+    // Draw background
+    const textWidth = context.measureText(name).width;
+    const padding = 20;
+    const bgWidth = textWidth + padding * 2;
+    const bgHeight = 60;
+    const bgX = (canvas.width - bgWidth) / 2;
+    const bgY = (canvas.height - bgHeight) / 2;
+
+    context.fillStyle = 'rgba(0, 0, 0, 0.6)';
+    context.fillRect(bgX, bgY, bgWidth, bgHeight);
+
+    // Draw text
+    context.fillStyle = 'white';
+    context.fillText(name, canvas.width / 2, canvas.height / 2);
+
+    // Create texture from canvas
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.needsUpdate = true;
+
+    // Create sprite material
+    const spriteMaterial = new THREE.SpriteMaterial({
+      map: texture,
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+    });
+
+    // Create sprite
+    const sprite = new THREE.Sprite(spriteMaterial);
+    sprite.scale.set(2, 0.5, 1); // Width, Height, Depth
+    sprite.position.y = 3.2; // Above the marker
+
+    // Store canvas reference for cleanup
+    this.nameTagCanvas = canvas;
+
+    return sprite;
+  }
+
+  /**
+   * Set player name (creates name tag above head)
+   */
+  public setName(name: string): void {
+    // Remove existing name tag if any
+    if (this.nameTag) {
+      this.model.remove(this.nameTag);
+      if (this.nameTag.material.map) {
+        this.nameTag.material.map.dispose();
+      }
+      this.nameTag.material.dispose();
+      this.nameTag = null;
+    }
+
+    // Create new name tag
+    this.nameTag = this.createNameTag(name);
+    this.model.add(this.nameTag);
+  }
+
+  /**
    * Get the 3D model
    */
   public getModel(): THREE.Group {
@@ -147,6 +227,15 @@ export class PlayerModel {
    * Dispose of the model
    */
   public dispose(): void {
+    // Dispose name tag
+    if (this.nameTag) {
+      if (this.nameTag.material.map) {
+        this.nameTag.material.map.dispose();
+      }
+      this.nameTag.material.dispose();
+    }
+
+    // Dispose model
     this.model.traverse((object) => {
       if (object instanceof THREE.Mesh) {
         object.geometry.dispose();

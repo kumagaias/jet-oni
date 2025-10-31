@@ -32,6 +32,7 @@ export interface Player {
   fuel: number;
   survivedTime: number;
   wasTagged: boolean;
+  tagCount: number; // Number of players this ONI has tagged
   isOnSurface: boolean;
   isDashing: boolean;
   isJetpacking: boolean;

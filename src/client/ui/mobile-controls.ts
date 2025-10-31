@@ -82,20 +82,20 @@ export class MobileControls {
       this.inputState.lookY = y * 5;
     });
 
-    // Create jump button (bottom right)
-    this.jumpButton = this.createButton('JUMP', 'bottom: 80px; right: 20px;', () => {
+    // Create jump button (bottom right, left of dash)
+    this.jumpButton = this.createButton('SPACE', 'bottom: 80px; right: 90px;', () => {
       this.inputState.jump = true;
     }, () => {
       this.inputState.jump = false;
-    });
+    }, 'SPACE');
     container.appendChild(this.jumpButton);
 
-    // Create dash button (bottom right, above jump)
-    this.dashButton = this.createButton('DASH', 'bottom: 160px; right: 20px;', () => {
+    // Create dash button (bottom right)
+    this.dashButton = this.createButton('🏃', 'bottom: 80px; right: 20px;', () => {
       this.inputState.dash = true;
     }, () => {
       this.inputState.dash = false;
-    });
+    }, 'SHIFT');
     container.appendChild(this.dashButton);
   }
 
@@ -106,10 +106,12 @@ export class MobileControls {
     label: string,
     position: string,
     onPress: () => void,
-    onRelease: () => void
+    onRelease: () => void,
+    tooltip?: string
   ): HTMLElement {
     const button = document.createElement('div');
     button.textContent = label;
+    button.title = tooltip || label;
     button.style.cssText = `
       position: absolute;
       ${position}

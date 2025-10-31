@@ -2,6 +2,7 @@ import { GameState } from '../game/game-state';
 import { InputState } from '../../shared/types/game';
 import { MobileControls } from '../ui/mobile-controls';
 import { LadderSystem, LadderClimbState } from '../environment/ladder-system';
+import { PlayerPhysics } from './player-physics';
 import {
   DASH_SPEED,
   CAMERA_PITCH_LIMIT,
@@ -27,6 +28,7 @@ export class PlayerController {
   private wasJumping = false;
   private mobileControls: MobileControls | null = null;
   private ladderSystem: LadderSystem | null = null;
+  private playerPhysics: PlayerPhysics | null = null;
   private ladderClimbState: LadderClimbState = {
     isClimbing: false,
     currentLadder: null,
@@ -341,6 +343,13 @@ export class PlayerController {
   }
 
   /**
+   * Set player physics reference
+   */
+  public setPlayerPhysics(playerPhysics: PlayerPhysics): void {
+    this.playerPhysics = playerPhysics;
+  }
+
+  /**
    * Update player movement based on input
    */
   public update(deltaTime: number): void {
@@ -411,11 +420,17 @@ export class PlayerController {
 
     // Smooth velocity transition (lerp)
     const smoothing = 0.2;
-    const newVelocity = {
+    let newVelocity = {
       x: this.lerp(player.velocity.x, targetVelocity.x, smoothing),
       y: targetVelocity.y,
       z: this.lerp(player.velocity.z, targetVelocity.z, smoothing),
     };
+
+    // Apply water resistance if in water
+    if (this.playerPhysics) {
+      const isInWater = this.playerPhysics.isInWater(player.position);
+      newVelocity = this.playerPhysics.applyWaterResistance(newVelocity, isInWater);
+    }
 
     this.gameState.setLocalPlayerVelocity(newVelocity);
 

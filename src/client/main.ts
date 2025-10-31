@@ -13,10 +13,11 @@ import { LadderSystem } from './environment/ladder-system';
 import { CollisionSystem } from './environment/collision-system';
 import { PlayerController } from './player/player-controller';
 import { PlayerPhysics, BuildingData } from './player/player-physics';
-import { PlayerCamera } from './player/player-camera';
+import { PlayerCamera, CameraMode } from './player/player-camera';
 
 import { BeaconVisual } from './effects/beacon-visual';
 import { BeaconItem } from './items/beacon-item';
+import { CloakItem } from './items/cloak-item';
 import { CarSystem } from './environment/car-system';
 import { AIController } from './ai/ai-controller';
 import { PlayerModel } from './player/player-model';
@@ -128,7 +129,7 @@ async function initGame(): Promise<void> {
       gameEngine.addToScene(city);
       
       // Generate dynamic objects (cars, pedestrians, ladders)
-      const dynamicObjects = new DynamicObjects();
+      let dynamicObjects = new DynamicObjects();
       let dynamicGroup = dynamicObjects.initialize(cityGenerator.getBuildings());
       gameEngine.addToScene(dynamicGroup);
       
@@ -146,12 +147,21 @@ async function initGame(): Promise<void> {
       const playerPhysics = new PlayerPhysics();
       playerPhysics.registerBuildings(buildingData);
       
+      // Register river and bridge data for water physics
+      const riverData = cityGenerator.getRiverData();
+      if (riverData) {
+        playerPhysics.registerWaterAreas([riverData]);
+      }
+      const bridgeData = cityGenerator.getBridgeData();
+      playerPhysics.registerBridges(bridgeData);
+      
       // Initialize player camera
       const playerCamera = new PlayerCamera(gameEngine.getCamera(), gameState);
       
       // Initialize player controller
       const playerController = new PlayerController(gameState);
       playerController.setLadderSystem(ladderSystem);
+      playerController.setPlayerPhysics(playerPhysics);
       playerController.init();
       
       // Initialize tag system
@@ -161,6 +171,9 @@ async function initGame(): Promise<void> {
       
       // Initialize beacon item system
       const beaconItem = new BeaconItem(gameEngine.getScene());
+      
+      // Initialize cloak item system
+      const cloakItem = new CloakItem(gameEngine.getScene());
       
       // Initialize beacon visual (for showing player locations when beacon is active)
       const beaconVisual = new BeaconVisual(gameEngine.getScene());
@@ -176,6 +189,10 @@ async function initGame(): Promise<void> {
       // Track beacon state
       let beaconActiveUntil = 0;
       const BEACON_DURATION = 15; // seconds
+      
+      // Track cloak state
+      let cloakActiveUntil = 0;
+      const CLOAK_DURATION = 60; // seconds
       
       // Initialize car system
       const carSystem = new CarSystem(gameEngine.getScene());
@@ -219,6 +236,7 @@ async function initGame(): Promise<void> {
           
           // Create 3D model for AI player
           const aiModel = new PlayerModel(false);
+          aiModel.setName(`AI-${i + 1}`);
           aiModel.setPosition(startPos.x, startPos.y, startPos.z);
           gameEngine.addToScene(aiModel.getModel());
           aiPlayerModels.set(aiId, aiModel);
@@ -271,6 +289,9 @@ async function initGame(): Promise<void> {
       // Track previous ONI state to detect changes
       let wasOni = gameState.getLocalPlayer().isOni;
       let gameHasStarted = false;
+      let gameStartTime = 0;
+      let finalOniSpawned = false; // Track if final ONI wave has been spawned
+      let lastTimerSync = 0; // Track last timer sync time
       
       // Setup game loop
       gameEngine.onUpdate((deltaTime: number) => {
@@ -334,14 +355,121 @@ async function initGame(): Promise<void> {
           toast.show('Runner positions revealed for 15 seconds!', 'info', 3000);
         }
         
+        // Check cloak item collection (Runner only)
+        const collectedCloak = cloakItem.checkCollection(localPlayer.position, localPlayer.isOni);
+        if (collectedCloak) {
+          cloakItem.collectItem(collectedCloak.id);
+          // Activate cloak for 60 seconds
+          cloakActiveUntil = Date.now() + CLOAK_DURATION * 1000;
+          // Show toast message
+          toast.show(i18n.t('game.cloakActivated'), 'info', 3000);
+          
+          // Switch to third-person view when cloak is activated
+          playerCamera.setAutoSwitch(false); // Disable auto-switch
+          playerCamera.setMode(CameraMode.THIRD_PERSON);
+        }
+        
+        // Check if cloak has expired and switch back to first-person
+        if (cloakActiveUntil > 0 && Date.now() >= cloakActiveUntil) {
+          // Only switch back once when cloak expires
+          if (playerCamera.getMode() === CameraMode.THIRD_PERSON && !localPlayer.isClimbing) {
+            playerCamera.setMode(CameraMode.FIRST_PERSON);
+            playerCamera.setAutoSwitch(true); // Re-enable auto-switch
+          }
+        }
+        
         // Animate beacon items
         beaconItem.animate(deltaTime);
+        
+        // Animate cloak items
+        cloakItem.animate(deltaTime);
         
         // Update UI controls
         uiControls.update(gameState);
         
         // Update AI players (only during gameplay)
         if (gameState.getGamePhase() === 'playing') {
+          // Host sends timer sync every 10 seconds
+          if (isHost && gameStartTime > 0) {
+            const now = Date.now();
+            if (now - lastTimerSync >= 10000) { // 10 seconds
+              lastTimerSync = now;
+              realtimeSyncManager.sendTimerSync(gameStartTime);
+            }
+          }
+          
+          // Check if 1 minute remaining and spawn final ONI wave
+          if (gameStartTime > 0 && !finalOniSpawned) {
+            const config = gameState.getGameConfig();
+            const roundDuration = config?.roundDuration ?? 300;
+            const elapsed = (Date.now() - gameStartTime) / 1000;
+            const timeRemaining = roundDuration - elapsed;
+            
+            // Spawn final ONI wave at 1 minute remaining
+            if (timeRemaining <= 60 && timeRemaining > 59) {
+              finalOniSpawned = true;
+              
+              // Calculate number of ONI to spawn: totalPlayers / 3 (rounded down)
+              const totalPlayers = config?.totalPlayers ?? 6;
+              const finalOniCount = Math.floor(totalPlayers / 3);
+              
+              // Show warning message to all players
+              toast.show(
+                `⚠️ WARNING: ${finalOniCount} AI ONI incoming from the sky!`,
+                'warning',
+                5000
+              );
+              
+              // Only host spawns AI ONI (participants will see them via sync)
+              if (isHost) {
+                // Spawn AI ONI from the sky
+                for (let i = 0; i < finalOniCount; i++) {
+                  // Random position across the map
+                  const spawnX = (Math.random() - 0.5) * 360;
+                  const spawnZ = (Math.random() - 0.5) * 360;
+                  const spawnY = 50; // High in the sky
+                  
+                  // Create AI player
+                  const aiId = `final-oni-${Date.now()}-${i}`;
+                  const aiPlayer = gameState.addPlayer({
+                    id: aiId,
+                    username: `Sky ONI ${i + 1}`,
+                    isOni: true,
+                    isAI: true,
+                    position: { x: spawnX, y: spawnY, z: spawnZ },
+                    velocity: { x: 0, y: 0, z: 0 },
+                    rotation: { yaw: 0, pitch: 0 },
+                    fuel: 100,
+                    survivedTime: 0,
+                    wasTagged: false,
+                    isOnSurface: false,
+                    isDashing: false,
+                    isJetpacking: false,
+                    beaconCooldown: 0,
+                  });
+                  
+                  // Create AI model
+                  const aiModel = new PlayerModel(false);
+                  aiModel.setIsOni(true);
+                  aiModel.setName(`Sky ONI ${i + 1}`);
+                  aiModel.setPosition(spawnX, spawnY, spawnZ);
+                  gameEngine.addToScene(aiModel.getModel());
+                  aiPlayerModels.set(aiPlayer.id, aiModel);
+                  
+                  // Add to AI controller
+                  aiController.addAIPlayer(aiPlayer.id);
+                }
+              }
+            }
+          }
+          
+          // Update survived time for local player
+          gameState.updateLocalPlayerSurvivedTime(deltaTime);
+          
+          // Update cloak state for AI (AI ignores cloaked player)
+          const isCloaked = Date.now() < cloakActiveUntil;
+          aiController.setCloakedPlayer(isCloaked ? localPlayer.id : null);
+          
           aiController.update(deltaTime);
           
           // Update tag system (check for tags between players)
@@ -372,12 +500,20 @@ async function initGame(): Promise<void> {
             gameState.setPlayerVelocity(aiId, physicsResult.velocity);
             gameState.setPlayerOnSurface(aiId, physicsResult.isOnSurface);
             
-            // Update AI player model
-            aiModel.setPosition(collisionResult.position.x, collisionResult.position.y, collisionResult.position.z);
-            if (aiPlayer.rotation) {
-              aiModel.setRotation(aiPlayer.rotation.yaw);
+            // Get updated player state from game state
+            const updatedAiPlayer = gameState.getPlayer(aiId);
+            if (updatedAiPlayer) {
+              // Update AI player model with the latest position from game state
+              aiModel.setPosition(
+                updatedAiPlayer.position.x,
+                updatedAiPlayer.position.y,
+                updatedAiPlayer.position.z
+              );
+              if (updatedAiPlayer.rotation) {
+                aiModel.setRotation(updatedAiPlayer.rotation.yaw);
+              }
+              aiModel.setIsOni(updatedAiPlayer.isOni);
             }
-            aiModel.setIsOni(aiPlayer.isOni);
           }
         }
         
@@ -524,6 +660,7 @@ async function initGame(): Promise<void> {
           if (!model) {
             // Create new model for remote player
             model = new PlayerModel(false);
+            model.setName(remotePlayer.username);
             gameEngine.addToScene(model.getModel());
             remotePlayerModels.set(remotePlayer.id, model);
           }
@@ -554,7 +691,7 @@ async function initGame(): Promise<void> {
             survivedTime: remotePlayer.survivedTime,
             wasTagged: remotePlayer.wasTagged,
             beaconCooldown: remotePlayer.beaconCooldown,
-            isAI: false, // Remote players are not AI
+            isAI: remotePlayer.isAI ?? false, // Preserve AI flag from remote player
           });
         }
         
@@ -579,17 +716,21 @@ async function initGame(): Promise<void> {
       // Set up tag event handler to show toast notifications
       tagSystem.onTag((event) => {
         const localPlayerId = gameState.getLocalPlayer().id;
+        const tagger = gameState.getPlayer(event.taggerId);
+        const tagged = gameState.getPlayer(event.taggedId);
+        const taggerName = tagger?.username || 'Someone';
+        const taggedName = tagged?.username || 'Someone';
         
+        // Show message to all players with player names
         if (event.taggedId === localPlayerId) {
           // Local player got tagged
-          const tagger = gameState.getPlayer(event.taggerId);
-          const taggerName = tagger?.username || 'Someone';
-          toast.showGotTagged(taggerName);
+          toast.showGotTagged(taggerName, 'You');
         } else if (event.taggerId === localPlayerId) {
           // Local player tagged someone
-          const tagged = gameState.getPlayer(event.taggedId);
-          const taggedName = tagged?.username || 'Someone';
-          toast.showTagged(taggedName);
+          toast.showTagged(taggedName, 'You');
+        } else {
+          // Show tag event to all other players
+          toast.show(`${taggedName} tagged by ${taggerName}!`, 'info', 3000);
         }
       });
       
@@ -710,14 +851,22 @@ async function initGame(): Promise<void> {
           collisionSystem.registerBuildings(newBuildingData);
           playerPhysics.registerBuildings(newBuildingData);
           
+          // Register river and bridge data for water physics
+          const newRiverData = newCityGenerator.getRiverData();
+          if (newRiverData) {
+            playerPhysics.registerWaterAreas([newRiverData]);
+          }
+          const newBridgeData = newCityGenerator.getBridgeData();
+          playerPhysics.registerBridges(newBridgeData);
+          
           // Regenerate dynamic objects
           gameEngine.removeFromScene(dynamicGroup);
-          const newDynamicObjects = new DynamicObjects();
-          dynamicGroup = newDynamicObjects.initialize(newCityGenerator.getBuildings());
+          dynamicObjects = new DynamicObjects();
+          dynamicGroup = dynamicObjects.initialize(newCityGenerator.getBuildings());
           gameEngine.addToScene(dynamicGroup);
           
           // Update ladder system
-          ladderSystem.registerLadders(newDynamicObjects.getLadders());
+          ladderSystem.registerLadders(dynamicObjects.getLadders());
           
         }
         
@@ -750,6 +899,8 @@ async function initGame(): Promise<void> {
         
         gameState.setGamePhase('playing');
         gameHasStarted = true; // Mark that game has started
+        gameStartTime = Date.now(); // Record game start time
+        finalOniSpawned = false; // Reset final ONI spawn flag
         
         // Reset tag system grace period
         tagSystem.resetGameStartTime();
@@ -773,6 +924,25 @@ async function initGame(): Promise<void> {
           currentGameId = e.detail.gameId as string;
           const playerId = gameState.getLocalPlayer().id;
           void realtimeSyncManager.connect(currentGameId, playerId);
+          
+          // Start host monitoring if not already started
+          if (!hostMonitor.isMonitoring()) {
+            if (isHost) {
+              hostMonitor.startAsHost(currentGameId);
+            } else {
+              hostMonitor.startAsParticipant(currentGameId);
+              
+              // Set up host disconnect callback
+              hostMonitor.onHostDisconnect(() => {
+                toast.error(i18n.t('lobby.hostDisconnected'), 5000);
+                
+                // Return to title screen after a short delay
+                setTimeout(() => {
+                  window.dispatchEvent(new Event('returnToMenu'));
+                }, 2000);
+              });
+            }
+          }
         } else {
           console.warn('[Realtime] No gameId provided in gameStart event');
         }
@@ -832,6 +1002,9 @@ async function initGame(): Promise<void> {
         // Place beacon items on the map
         const buildings = cityGenerator.getBuildingData();
         beaconItem.placeItems(buildings);
+        
+        // Place cloak items on the map
+        cloakItem.placeItems(buildings);
       }) as EventListener);
       
       // Listen for lobby exit event (when host leaves lobby)
@@ -906,6 +1079,16 @@ async function initGame(): Promise<void> {
             hostMonitor.startAsHost(gameId);
           } else {
             hostMonitor.startAsParticipant(gameId);
+            
+            // Set up host disconnect callback
+            hostMonitor.onHostDisconnect(() => {
+              toast.error(i18n.t('lobby.hostDisconnected'), 5000);
+              
+              // Return to title screen after a short delay
+              setTimeout(() => {
+                window.dispatchEvent(new Event('returnToMenu'));
+              }, 2000);
+            });
           }
         }
         
@@ -917,6 +1100,15 @@ async function initGame(): Promise<void> {
         
         // Show lobby with human player count only (not including AI)
         uiMenu.showLobbyScreen(currentPlayers, maxPlayers, isHostFlag);
+      }) as EventListener);
+      
+      // Listen for timer sync event (participants only)
+      window.addEventListener('timerSync', ((e: CustomEvent) => {
+        if (!isHost && e.detail?.gameStartTime) {
+          // Sync game start time from host
+          gameStartTime = e.detail.gameStartTime;
+          gameState.setGameStartTime(gameStartTime);
+        }
       }) as EventListener);
       
       // Listen for game end event
@@ -937,11 +1129,16 @@ async function initGame(): Promise<void> {
               const gameResults = new GameResults();
               
               // Convert PlayerResult[] to Player[] for GameResults
-              const players = gameState.getAllPlayers().map(player => ({
-                ...player,
-                survivedTime: endGameResponse.results?.players.find(p => p.id === player.id)?.survivedTime || 0,
-                wasTagged: endGameResponse.results?.players.find(p => p.id === player.id)?.wasTagged || false,
-              }));
+              // Use local survivedTime if available, fallback to server data
+              const players = gameState.getAllPlayers().map(player => {
+                const serverPlayer = endGameResponse.results?.players.find(p => p.id === player.id);
+                return {
+                  ...player,
+                  survivedTime: player.survivedTime || serverPlayer?.survivedTime || 0,
+                  wasTagged: serverPlayer?.wasTagged || player.wasTagged || false,
+                  tagCount: serverPlayer?.tagCount || player.tagCount || 0,
+                };
+              });
               
               gameResults.setResults(players, null);
               const uiResults = new UIResults(gameResults, i18n);

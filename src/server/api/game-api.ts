@@ -565,4 +565,95 @@ router.delete(
   }
 );
 
+/**
+ * POST /api/game/:gameId/heartbeat
+ * Send heartbeat to update host/participant activity timestamp
+ */
+router.post(
+  '/api/game/:gameId/heartbeat',
+  async (
+    req: Request<{ gameId: string }>,
+    res: Response<{ success: boolean; error?: string }>
+  ): Promise<void> => {
+    try {
+      const { gameId } = req.params;
+
+      if (!gameId) {
+        res.status(400).json({
+          success: false,
+          error: 'Game ID is required',
+        });
+        return;
+      }
+
+      // Update heartbeat timestamp
+      const result = await gameManager.updateHeartbeat(gameId);
+
+      if (!result.success) {
+        res.status(404).json({
+          success: false,
+          error: result.error || 'Game not found',
+        });
+        return;
+      }
+
+      res.json({
+        success: true,
+      });
+    } catch (error) {
+      console.error('Error updating heartbeat:', error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to update heartbeat',
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/game/:gameId/leave
+ * Leave a game (participant only)
+ */
+router.post(
+  '/api/game/:gameId/leave',
+  async (
+    req: Request<{ gameId: string }, unknown, { playerId: string }>,
+    res: Response<{ success: boolean; error?: string }>
+  ): Promise<void> => {
+    try {
+      const { gameId } = req.params;
+      const { playerId } = req.body;
+
+      if (!gameId || !playerId) {
+        res.status(400).json({
+          success: false,
+          error: 'Game ID and Player ID are required',
+        });
+        return;
+      }
+
+      // Remove player from game
+      const result = await gameManager.removePlayer(gameId, playerId);
+
+      if (!result.success) {
+        res.status(404).json({
+          success: false,
+          error: result.error || 'Failed to leave game',
+        });
+        return;
+      }
+
+      res.json({
+        success: true,
+      });
+    } catch (error) {
+      console.error('Error leaving game:', error);
+      res.status(500).json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to leave game',
+      });
+    }
+  }
+);
+
 export default router;

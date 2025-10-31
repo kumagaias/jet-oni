@@ -60,6 +60,7 @@ export class AIController {
   private behaviorSystem: AIBehaviorSystem;
   private abilityTimers: Map<string, number> = new Map();
   private assignedTargets: Map<string, string> = new Map(); // Map of oniId -> runnerId
+  private cloakedPlayerId: string | null = null; // Player who is currently cloaked
 
   constructor(gameState: GameState, config: Partial<AIConfig> = {}) {
     this.gameState = gameState;
@@ -69,6 +70,13 @@ export class AIController {
       fleeDistance: this.config.fleeDistance,
       wanderChangeInterval: this.config.wanderChangeInterval,
     });
+  }
+
+  /**
+   * Set the cloaked player ID (AI will ignore this player)
+   */
+  public setCloakedPlayer(playerId: string | null): void {
+    this.cloakedPlayerId = playerId;
   }
 
   /**
@@ -118,6 +126,8 @@ export class AIController {
     allPlayers: Player[],
     deltaTime: number
   ): AIDecision {
+    // Filter out cloaked player from consideration
+    const visiblePlayers = allPlayers.filter(p => p.id !== this.cloakedPlayerId);
     // Update ability timer
     const abilityTimer = this.abilityTimers.get(aiPlayer.id) || 0;
     this.abilityTimers.set(aiPlayer.id, abilityTimer + deltaTime);
@@ -137,10 +147,13 @@ export class AIController {
     allPlayers: Player[],
     deltaTime: number
   ): AIDecision {
+    // Filter out cloaked player
+    const visiblePlayers = allPlayers.filter(p => p.id !== this.cloakedPlayerId);
+    
     // Find nearest runner (with target distribution to avoid clustering)
     const nearestRunner = this.behaviorSystem.findNearestRunner(
       aiPlayer, 
-      allPlayers,
+      visiblePlayers,
       this.assignedTargets
     );
     

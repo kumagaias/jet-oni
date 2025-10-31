@@ -3,30 +3,30 @@ import { Vector3 } from '../../shared/types/game';
 import { MAP_SIZE } from '../../shared/constants';
 
 /**
- * Beacon item state
+ * Cloak item state
  */
-export enum BeaconItemState {
+export enum CloakItemState {
   PLACED = 'placed',
   COLLECTED = 'collected',
 }
 
 /**
- * Beacon item data
+ * Cloak item data
  */
-export interface BeaconItemData {
+export interface CloakItemData {
   id: string;
   position: Vector3;
-  state: BeaconItemState;
+  state: CloakItemState;
   mesh: THREE.Group;
 }
 
 /**
- * BeaconItem manages beacon item placement and collection
+ * CloakItem manages invisibility cloak item placement and collection
  */
-export class BeaconItem {
-  private items: BeaconItemData[] = [];
+export class CloakItem {
+  private items: CloakItemData[] = [];
   private scene: THREE.Scene;
-  private itemCount = 2; // 2 beacons per map
+  private itemCount = 2; // 2 cloaks per map
   private collectionRadius = 2; // units
 
   constructor(scene: THREE.Scene) {
@@ -34,7 +34,7 @@ export class BeaconItem {
   }
 
   /**
-   * Place beacon items on the map
+   * Place cloak items on the map
    */
   public placeItems(buildings: { position: Vector3; width: number; depth: number }[]): void {
     this.clearItems();
@@ -59,7 +59,7 @@ export class BeaconItem {
       }
 
       if (position) {
-        const item = this.createBeaconItem(position, i);
+        const item = this.createCloakItem(position, i);
         this.items.push(item);
         placedPositions.push(position);
       }
@@ -115,43 +115,57 @@ export class BeaconItem {
   }
 
   /**
-   * Create a beacon item mesh
+   * Create a cloak item mesh (ghostly appearance)
    */
-  private createBeaconItem(position: Vector3, index: number): BeaconItemData {
+  private createCloakItem(position: Vector3, index: number): CloakItemData {
     const group = new THREE.Group();
 
-    // Create multiple rotating rings
-    const ringCount = 3;
-    const ringRadius = 1.5;
+    // Create floating cloak shape (like a ghost)
+    const cloakGeometry = new THREE.SphereGeometry(1, 16, 16);
+    const cloakMaterial = new THREE.MeshStandardMaterial({
+      color: 0x00ff00, // Green (same as player)
+      emissive: 0x00ff00,
+      emissiveIntensity: 0.3,
+      transparent: true,
+      opacity: 0.4,
+      metalness: 0.1,
+      roughness: 0.8,
+    });
 
-    for (let i = 0; i < ringCount; i++) {
-      const geometry = new THREE.TorusGeometry(
-        ringRadius - i * 0.3,
-        0.1,
-        16,
-        32
-      );
+    const cloak = new THREE.Mesh(cloakGeometry, cloakMaterial);
+    group.add(cloak);
 
-      const material = new THREE.MeshStandardMaterial({
-        color: 0xff0000, // Red color (ONI color)
-        emissive: 0xff0000,
-        emissiveIntensity: 0.5,
-        metalness: 0.8,
-        roughness: 0.2,
-      });
+    // Add sparkle particles around it
+    const particleCount = 20;
+    const particleGeometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(particleCount * 3);
 
-      const ring = new THREE.Mesh(geometry, material);
-      ring.rotation.x = Math.PI / 2; // Lay flat
-      ring.position.y = i * 0.2; // Stack rings
-      group.add(ring);
+    for (let i = 0; i < particleCount; i++) {
+      const angle = (i / particleCount) * Math.PI * 2;
+      const radius = 1.5;
+      positions[i * 3] = Math.cos(angle) * radius;
+      positions[i * 3 + 1] = Math.sin(angle * 2) * 0.5;
+      positions[i * 3 + 2] = Math.sin(angle) * radius;
     }
 
-    // Add glow effect
-    const glowGeometry = new THREE.SphereGeometry(ringRadius * 1.2, 32, 32);
-    const glowMaterial = new THREE.MeshBasicMaterial({
-      color: 0xff0000, // Red glow
+    particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+    const particleMaterial = new THREE.PointsMaterial({
+      color: 0x00ff00, // Green particles
+      size: 0.1,
       transparent: true,
-      opacity: 0.2,
+      opacity: 0.8,
+    });
+
+    const particles = new THREE.Points(particleGeometry, particleMaterial);
+    group.add(particles);
+
+    // Add glow effect
+    const glowGeometry = new THREE.SphereGeometry(1.5, 32, 32);
+    const glowMaterial = new THREE.MeshBasicMaterial({
+      color: 0x00ff00, // Green glow
+      transparent: true,
+      opacity: 0.15,
     });
     const glow = new THREE.Mesh(glowGeometry, glowMaterial);
     group.add(glow);
@@ -160,27 +174,27 @@ export class BeaconItem {
     this.scene.add(group);
 
     return {
-      id: `beacon-${Date.now()}-${index}`,
+      id: `cloak-${Date.now()}-${index}`,
       position: { ...position },
-      state: BeaconItemState.PLACED,
+      state: CloakItemState.PLACED,
       mesh: group,
     };
   }
 
   /**
-   * Check if player can collect beacon (oni only, within radius)
+   * Check if player can collect cloak (runner only, within radius)
    */
   public checkCollection(
     playerPosition: Vector3,
     isOni: boolean
-  ): BeaconItemData | null {
-    // Only oni can collect beacons
-    if (!isOni) {
+  ): CloakItemData | null {
+    // Only runners can collect cloaks
+    if (isOni) {
       return null;
     }
 
     for (const item of this.items) {
-      if (item.state !== BeaconItemState.PLACED) {
+      if (item.state !== CloakItemState.PLACED) {
         continue;
       }
 
@@ -197,20 +211,28 @@ export class BeaconItem {
   }
 
   /**
-   * Collect a beacon item
+   * Collect a cloak item
    */
   public collectItem(itemId: string): boolean {
     const item = this.items.find((i) => i.id === itemId);
-    if (!item || item.state !== BeaconItemState.PLACED) {
+    if (!item || item.state !== CloakItemState.PLACED) {
       return false;
     }
 
-    item.state = BeaconItemState.COLLECTED;
+    item.state = CloakItemState.COLLECTED;
     this.scene.remove(item.mesh);
 
     // Dispose geometry and materials
     item.mesh.traverse((child) => {
       if (child instanceof THREE.Mesh) {
+        child.geometry.dispose();
+        if (Array.isArray(child.material)) {
+          child.material.forEach((mat) => mat.dispose());
+        } else {
+          child.material.dispose();
+        }
+      }
+      if (child instanceof THREE.Points) {
         child.geometry.dispose();
         if (Array.isArray(child.material)) {
           child.material.forEach((mat) => mat.dispose());
@@ -224,57 +246,80 @@ export class BeaconItem {
   }
 
   /**
-   * Animate beacon items
+   * Animate cloak items
    */
   public animate(deltaTime: number): void {
-    const rotationSpeed = 2; // radians per second
+    const rotationSpeed = 1; // radians per second
 
     for (const item of this.items) {
-      if (item.state !== BeaconItemState.PLACED) {
+      if (item.state !== CloakItemState.PLACED) {
         continue;
       }
 
-      // Rotate rings
+      // Rotate cloak
       item.mesh.rotation.y += rotationSpeed * deltaTime;
 
       // Pulse glow
       const time = Date.now() * 0.001;
-      const pulse = Math.sin(time * 2) * 0.1 + 0.2;
-      const glow = item.mesh.children[item.mesh.children.length - 1];
-      if (glow instanceof THREE.Mesh) {
-        const material = glow.material as THREE.MeshBasicMaterial;
+      const pulse = Math.sin(time * 3) * 0.1 + 0.3;
+      
+      // Update cloak opacity
+      const cloak = item.mesh.children[0];
+      if (cloak instanceof THREE.Mesh) {
+        const material = cloak.material as THREE.MeshStandardMaterial;
         material.opacity = pulse;
       }
 
+      // Update glow opacity
+      const glow = item.mesh.children[2];
+      if (glow instanceof THREE.Mesh) {
+        const material = glow.material as THREE.MeshBasicMaterial;
+        material.opacity = pulse * 0.5;
+      }
+
       // Bob up and down
-      const bobAmount = 0.2;
-      const bobSpeed = 2;
+      const bobAmount = 0.3;
+      const bobSpeed = 1.5;
       item.mesh.position.y = item.position.y + Math.sin(time * bobSpeed) * bobAmount;
+
+      // Rotate particles
+      const particles = item.mesh.children[1];
+      if (particles instanceof THREE.Points) {
+        particles.rotation.y += rotationSpeed * 0.5 * deltaTime;
+      }
     }
   }
 
   /**
-   * Get all beacon items
+   * Get all cloak items
    */
-  public getItems(): BeaconItemData[] {
+  public getItems(): CloakItemData[] {
     return this.items;
   }
 
   /**
-   * Get placed beacon items
+   * Get placed cloak items
    */
-  public getPlacedItems(): BeaconItemData[] {
-    return this.items.filter((item) => item.state === BeaconItemState.PLACED);
+  public getPlacedItems(): CloakItemData[] {
+    return this.items.filter((item) => item.state === CloakItemState.PLACED);
   }
 
   /**
-   * Clear all beacon items
+   * Clear all cloak items
    */
   public clearItems(): void {
     for (const item of this.items) {
       this.scene.remove(item.mesh);
       item.mesh.traverse((child) => {
         if (child instanceof THREE.Mesh) {
+          child.geometry.dispose();
+          if (Array.isArray(child.material)) {
+            child.material.forEach((mat) => mat.dispose());
+          } else {
+            child.material.dispose();
+          }
+        }
+        if (child instanceof THREE.Points) {
           child.geometry.dispose();
           if (Array.isArray(child.material)) {
             child.material.forEach((mat) => mat.dispose());

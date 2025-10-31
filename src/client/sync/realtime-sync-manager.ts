@@ -22,7 +22,7 @@ export interface PlayerStateUpdate {
  * Realtime message format
  */
 export interface RealtimeMessage {
-  type: 'player-update' | 'game-start';
+  type: 'player-update' | 'game-start' | 'timer-sync';
   playerId: string;
   position?: Vector3;
   velocity?: Vector3;
@@ -43,6 +43,9 @@ export interface RealtimeMessage {
     roundDuration: number;
     rounds: number;
   };
+  // Timer sync specific fields
+  gameStartTime?: number;
+  serverTime?: number;
 }
 
 /**
@@ -341,6 +344,22 @@ export class RealtimeSyncManager {
       return;
     }
 
+    // Handle timer-sync messages (from host)
+    if (data.type === 'timer-sync') {
+      // Dispatch timerSync event for non-host players
+      if (data.playerId !== this.playerId && data.gameStartTime) {
+        window.dispatchEvent(
+          new CustomEvent('timerSync', {
+            detail: {
+              gameStartTime: data.gameStartTime,
+              serverTime: data.serverTime,
+            },
+          })
+        );
+      }
+      return;
+    }
+
     if (data.type !== 'player-update') {
       return;
     }
@@ -404,6 +423,7 @@ export class RealtimeSyncManager {
           beaconCooldown: data.beaconCooldown ?? 0,
           survivedTime: data.survivedTime ?? 0,
           wasTagged: data.wasTagged ?? false,
+          tagCount: 0,
           targetPosition: { ...data.position },
           targetVelocity: { ...data.velocity },
           targetRotation: { ...data.rotation },
@@ -610,5 +630,35 @@ export class RealtimeSyncManager {
       timeSinceLastReceive: Date.now() - this.lastReceiveTime,
       remotePlayerCount: this.remotePlayers.size,
     };
+  }
+
+  /**
+   * Send timer sync message (host only)
+   */
+  sendTimerSync(gameStartTime: number): void {
+    if (!this.isRunning || this.connectionState !== 'connected') {
+      return;
+    }
+
+    const message: RealtimeMessage = {
+      type: 'timer-sync',
+      playerId: this.playerId!,
+      timestamp: Date.now(),
+      gameStartTime,
+      serverTime: Date.now(),
+    };
+
+    fetch('/api/realtime/broadcast', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        gameId: this.gameId,
+        message,
+      }),
+    }).catch((error) => {
+      console.error('[Realtime] Failed to broadcast timer-sync:', error);
+    });
   }
 }

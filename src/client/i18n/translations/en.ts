@@ -47,6 +47,7 @@ export const en: Translations = {
     pressSpace: 'Press SPACE to start',
     addingAI: 'Adding AI players...',
     ready: 'Ready!',
+    hostDisconnected: 'Host has disconnected. Returning to menu...',
   },
 
   countdown: {
@@ -99,6 +100,7 @@ export const en: Translations = {
     gotTagged: 'You were tagged by {player}!',
     spotted: 'Spotted!',
     beaconActivated: 'Beacon activated!',
+    cloakActivated: 'Invisibility cloak activated for 60 seconds!',
     outOfFuel: 'Out of fuel!',
     gameStarting: 'Game starting...',
     roundStarting: 'Round {round} starting...',

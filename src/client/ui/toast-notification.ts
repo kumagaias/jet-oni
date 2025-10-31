@@ -115,18 +115,18 @@ export class ToastNotification {
   }
 
   /**
-   * Show "tagged player" notification
+   * Show "tagged player" notification (you tagged someone)
    */
-  public showTagged(playerName: string): string {
-    const message = this.i18n.t('game.tagged', { player: playerName });
+  public showTagged(taggedPlayerName: string, taggerName: string = 'You'): string {
+    const message = `${taggedPlayerName} tagged by ${taggerName}!`;
     return this.show(message, 'success', 3000);
   }
 
   /**
-   * Show "got tagged" notification
+   * Show "got tagged" notification (you were tagged)
    */
-  public showGotTagged(playerName: string): string {
-    const message = this.i18n.t('game.gotTagged', { player: playerName });
+  public showGotTagged(taggerName: string, taggedPlayerName: string = 'You'): string {
+    const message = `${taggedPlayerName} tagged by ${taggerName}!`;
     return this.show(message, 'error', 4000);
   }
 

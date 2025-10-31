@@ -213,6 +213,26 @@ export class GameAPIClient {
   }
 
   /**
+   * Leave a game (participant only)
+   */
+  async leaveGame(gameId: string, playerId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const response = await this.post<{ success: boolean; error?: string }>(
+        `/game/${gameId}/leave`,
+        { playerId }
+      );
+
+      return response;
+    } catch (error) {
+      console.error('Failed to leave game:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to leave game',
+      };
+    }
+  }
+
+  /**
    * Generic GET request with retry logic
    */
   private async get<T>(endpoint: string): Promise<T> {

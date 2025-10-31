@@ -2,6 +2,7 @@ import { GameAPIClient } from '../api/game-api-client';
 
 /**
  * HostMonitor monitors host connection and handles disconnection
+ * Also sends participant heartbeats to maintain connection
  */
 export class HostMonitor {
   private gameApiClient: GameAPIClient;
@@ -9,8 +10,11 @@ export class HostMonitor {
   private checkInterval: number | null = null;
   private currentGameId: string | null = null;
   private onHostDisconnectCallback?: () => void;
+  private consecutiveFailures = 0;
+  private readonly MAX_CONSECUTIVE_FAILURES = 3;
+  private isHost = false;
 
-  private readonly HEARTBEAT_INTERVAL = 10 * 1000; // Send heartbeat every 10 seconds
+  private readonly HEARTBEAT_INTERVAL = 5 * 1000; // Send heartbeat every 5 seconds
   private readonly CHECK_INTERVAL = 5 * 1000; // Check host status every 5 seconds
   private readonly HOST_TIMEOUT = 30 * 1000; // 30 seconds timeout
 
@@ -23,8 +27,10 @@ export class HostMonitor {
    */
   public startAsHost(gameId: string): void {
     this.currentGameId = gameId;
+    this.consecutiveFailures = 0;
+    this.isHost = true;
 
-    // Send heartbeat every 10 seconds
+    // Send heartbeat every 5 seconds
     this.heartbeatInterval = window.setInterval(() => {
       if (this.currentGameId) {
         void this.gameApiClient.sendHeartbeat(this.currentGameId);
@@ -38,6 +44,15 @@ export class HostMonitor {
    */
   public startAsParticipant(gameId: string): void {
     this.currentGameId = gameId;
+    this.consecutiveFailures = 0;
+    this.isHost = false;
+
+    // Send participant heartbeat every 5 seconds
+    this.heartbeatInterval = window.setInterval(() => {
+      if (this.currentGameId) {
+        void this.gameApiClient.sendHeartbeat(this.currentGameId);
+      }
+    }, this.HEARTBEAT_INTERVAL);
 
     // Check host status every 5 seconds
     this.checkInterval = window.setInterval(() => {
@@ -57,6 +72,12 @@ export class HostMonitor {
 
       if (!gameState.lastHostHeartbeat) {
         console.warn('[HostMonitor] No heartbeat data available');
+        this.consecutiveFailures++;
+        
+        if (this.consecutiveFailures >= this.MAX_CONSECUTIVE_FAILURES) {
+          console.error('[HostMonitor] Host disconnected! (No heartbeat data after 3 attempts)');
+          this.handleHostDisconnect();
+        }
         return;
       }
 
@@ -64,11 +85,34 @@ export class HostMonitor {
       const timeSinceHeartbeat = now - gameState.lastHostHeartbeat;
 
       if (timeSinceHeartbeat > this.HOST_TIMEOUT) {
-        console.error('[HostMonitor] Host disconnected!');
-        this.handleHostDisconnect();
+        this.consecutiveFailures++;
+        console.warn(`[HostMonitor] Host heartbeat timeout (${this.consecutiveFailures}/${this.MAX_CONSECUTIVE_FAILURES})`);
+        
+        if (this.consecutiveFailures >= this.MAX_CONSECUTIVE_FAILURES) {
+          console.error('[HostMonitor] Host disconnected! (3 consecutive failures)');
+          this.handleHostDisconnect();
+        }
+      } else {
+        // Reset failure count on successful check
+        this.consecutiveFailures = 0;
       }
     } catch (error) {
-      console.error('[HostMonitor] Error checking host status:', error);
+      // Check if it's a 404 error (game deleted)
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes('404')) {
+        console.error('[HostMonitor] Game not found (404) - Host has deleted the game');
+        // Immediately disconnect on 404 (game deleted)
+        this.handleHostDisconnect();
+        return;
+      }
+      
+      this.consecutiveFailures++;
+      console.error(`[HostMonitor] Error checking host status (${this.consecutiveFailures}/${this.MAX_CONSECUTIVE_FAILURES}):`, error);
+      
+      if (this.consecutiveFailures >= this.MAX_CONSECUTIVE_FAILURES) {
+        console.error('[HostMonitor] Host disconnected! (3 consecutive API failures)');
+        this.handleHostDisconnect();
+      }
     }
   }
 
@@ -105,6 +149,8 @@ export class HostMonitor {
     }
 
     this.currentGameId = null;
+    this.consecutiveFailures = 0;
+    this.isHost = false;
   }
 
   /**

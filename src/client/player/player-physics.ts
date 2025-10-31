@@ -194,11 +194,38 @@ export class PlayerPhysics {
   }
 
   /**
-   * Check if player is in water
+   * Check if player is on a bridge
+   */
+  private isOnBridge(position: Vector3): boolean {
+    const tolerance = 0.5;
+    
+    for (const bridge of this.bridges) {
+      // Check if player is within bridge bounds (XZ plane)
+      const withinX = Math.abs(position.x - bridge.position.x) <= bridge.width / 2;
+      const withinZ = Math.abs(position.z - bridge.position.z) <= bridge.depth / 2;
+      
+      // Check if player is at bridge height
+      const atBridgeHeight = Math.abs(position.y - bridge.position.y) <= tolerance;
+      
+      if (withinX && withinZ && atBridgeHeight) {
+        return true;
+      }
+    }
+    
+    return false;
+  }
+
+  /**
+   * Check if player is in water (and not on a bridge)
    */
   public isInWater(position: Vector3): boolean {
     // Only check if player is at or near ground level
     if (position.y > 2) {
+      return false;
+    }
+
+    // If on a bridge, not in water
+    if (this.isOnBridge(position)) {
       return false;
     }
 

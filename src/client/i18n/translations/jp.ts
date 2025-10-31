@@ -47,6 +47,7 @@ export const jp: Translations = {
     pressSpace: 'SPACEキーで開始',
     addingAI: 'AIプレイヤーを追加中...',
     ready: '準備完了！',
+    hostDisconnected: 'ホストが退出しました。メニューに戻ります...',
   },
 
   countdown: {
@@ -99,6 +100,7 @@ export const jp: Translations = {
     gotTagged: '{player}にタグ付けされた！',
     spotted: '見つかった！',
     beaconActivated: 'ビーコン起動！',
+    cloakActivated: '透明クローク発動！60秒間半透明になります',
     outOfFuel: '燃料切れ！',
     gameStarting: 'ゲーム開始...',
     roundStarting: 'ラウンド{round}開始...',

@@ -5,6 +5,7 @@
 
 import type { GameAPIClient } from '../api/game-api-client.js';
 import type { GameState, Player } from '../../shared/types/game.js';
+import { HostMonitor } from '../game/host-monitor.js';
 
 
 export interface LobbyManagerConfig {
@@ -13,7 +14,7 @@ export interface LobbyManagerConfig {
   countdownDuration?: number;
 }
 
-export type LobbyEventType = 'playerJoined' | 'playerLeft' | 'countdownStarted' | 'gameStarting';
+export type LobbyEventType = 'playerJoined' | 'playerLeft' | 'countdownStarted' | 'gameStarting' | 'hostDisconnected';
 
 export interface LobbyEvent {
   type: LobbyEventType;
@@ -38,11 +39,14 @@ export class LobbyManager {
   
   private eventCallbacks: Map<LobbyEventType, Array<(data?: unknown) => void>> = new Map();
   private gameStartCallback: (() => void) | null = null;
+  
+  private hostMonitor: HostMonitor;
 
   constructor(config: LobbyManagerConfig) {
     this.gameApiClient = config.gameApiClient;
     this.pollInterval = config.pollInterval ?? 1000; // 1 second
     this.countdownDuration = config.countdownDuration ?? 10; // 10 seconds
+    this.hostMonitor = new HostMonitor(config.gameApiClient);
   }
 
   /**
@@ -57,6 +61,18 @@ export class LobbyManager {
     
     // Start polling for updates
     this.startPolling();
+    
+    // Start host monitoring
+    if (isHost) {
+      this.hostMonitor.startAsHost(gameId);
+    } else {
+      this.hostMonitor.startAsParticipant(gameId);
+      
+      // Set up host disconnect callback
+      this.hostMonitor.onHostDisconnect(() => {
+        this.handleHostDisconnect();
+      });
+    }
   }
 
   /**
@@ -65,11 +81,26 @@ export class LobbyManager {
   destroy(): void {
     this.stopPolling();
     this.stopCountdown();
+    this.hostMonitor.stop();
     this.gameId = null;
     this.isHost = false;
     this.gameState = null;
     this.eventCallbacks.clear();
     this.gameStartCallback = null;
+  }
+
+  /**
+   * Handle host disconnection
+   */
+  private handleHostDisconnect(): void {
+    console.error('[LobbyManager] Host has disconnected!');
+    
+    // Stop all timers
+    this.stopPolling();
+    this.stopCountdown();
+    
+    // Emit host disconnected event
+    this.emitEvent('hostDisconnected');
   }
 
   /**
@@ -239,6 +270,15 @@ export class LobbyManager {
         this.triggerGameStart();
       }
     } catch (error) {
+      // Check if it's a 404 error (game deleted by host)
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes('404')) {
+        console.error('[LobbyManager] Game not found (404) - Host has deleted the game');
+        // Trigger host disconnect event
+        this.handleHostDisconnect();
+        return;
+      }
+      
       console.error('Failed to update game state:', error);
     }
   }

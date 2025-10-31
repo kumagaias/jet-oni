@@ -34,6 +34,10 @@ export class CityGenerator {
   private rivers: THREE.Group;
   private bridges: THREE.Group;
   private landmark: THREE.Group | null = null;
+  private trafficLights: THREE.Group;
+  private enterableHouses: Array<{ position: { x: number; z: number }; width: number; depth: number }> = [];
+  private riverData: { x: number; z: number; width: number; depth: number } | null = null;
+  private bridgeDataList: Array<{ position: { x: number; y: number; z: number }; width: number; height: number; depth: number }> = [];
   private rng: SeededRandom;
 
   constructor(seed?: string | number) {
@@ -41,6 +45,7 @@ export class CityGenerator {
     this.roads = new THREE.Group();
     this.rivers = new THREE.Group();
     this.bridges = new THREE.Group();
+    this.trafficLights = new THREE.Group();
     
     // Use provided seed or default seed for consistent map generation
     this.rng = new SeededRandom(seed || 'default-city-seed');
@@ -85,6 +90,10 @@ export class CityGenerator {
     // Generate dome landmark
     this.generateDomeLandmark();
     cityGroup.add(this.buildings); // Dome is part of buildings group
+
+    // Generate traffic lights at intersections
+    this.generateTrafficLights();
+    cityGroup.add(this.trafficLights);
 
     return cityGroup;
   }
@@ -179,6 +188,14 @@ export class CityGenerator {
 
     // Mark river area as occupied
     this.markAreaOccupied(riverX, 0, riverWidth, riverDepth, 'river');
+    
+    // Store river data for physics
+    this.riverData = {
+      x: riverX,
+      z: 0,
+      width: riverWidth,
+      depth: riverDepth,
+    };
   }
 
   /**
@@ -235,15 +252,16 @@ export class CityGenerator {
     const riverArea = this.occupiedAreas.find(area => area.type === 'river');
     if (!riverArea) return;
 
-    const bridgeWidth = 10;
-    const bridgeThickness = 0.5;
+    const roadWidth = 8;
     const bridgeColor = 0x8b7355; // Brown wood
+    const bridgeHeight = 0.1; // Thin bridge, same level as roads
 
     // Create bridges at road intersections (every 60 units)
     for (let i = -2; i <= 2; i++) {
       const z = i * 60; // Match road positions
       
-      const geometry = new THREE.BoxGeometry(bridgeWidth, bridgeThickness, riverArea.width + 2);
+      // Make bridge width match river width exactly
+      const geometry = new THREE.BoxGeometry(riverArea.width, bridgeHeight, roadWidth);
       const material = new THREE.MeshStandardMaterial({
         color: bridgeColor,
         roughness: 0.8,
@@ -251,12 +269,21 @@ export class CityGenerator {
       });
 
       const bridge = new THREE.Mesh(geometry, material);
-      bridge.position.set(riverArea.x, 1, z);
+      // Position at same height as roads (0.02) and center on river
+      bridge.position.set(riverArea.x, 0.02, z);
       bridge.castShadow = true;
       bridge.receiveShadow = true;
 
       this.bridges.add(bridge);
-      this.markAreaOccupied(riverArea.x, z, bridgeWidth, riverArea.width + 2, 'bridge');
+      this.markAreaOccupied(riverArea.x, z, riverArea.width, roadWidth, 'bridge');
+      
+      // Store bridge data for physics
+      this.bridgeDataList.push({
+        position: { x: riverArea.x, y: 0.02, z: z },
+        width: riverArea.width,
+        height: bridgeHeight,
+        depth: roadWidth,
+      });
     }
   }
 
@@ -335,18 +362,79 @@ export class CityGenerator {
       const position = this.findUnoccupiedPosition(width, depth);
       if (!position) continue;
 
-      const house = this.createHouse(width, height, depth);
+      // 20% chance to create an enterable house
+      const isEnterable = this.rng.next() < 0.2;
+      const house = this.createHouse(width, height, depth, isEnterable);
       house.position.set(position.x, height / 2, position.z);
       this.buildings.add(house);
 
       // Store house data for collision detection
-      this.buildingData.push({
-        position: { x: position.x, y: height / 2, z: position.z },
-        width: width,
-        height: height,
-        depth: depth,
-        shape: 'box'
-      });
+      if (!isEnterable) {
+        // Regular house - full collision
+        this.buildingData.push({
+          position: { x: position.x, y: height / 2, z: position.z },
+          width: width,
+          height: height,
+          depth: depth,
+          shape: 'box'
+        });
+      } else {
+        // Enterable house - add collision for walls only (not the openings)
+        const wallThickness = 0.3;
+        const doorWidth = width * 0.5;
+        
+        // Front left wall
+        this.buildingData.push({
+          position: { x: position.x - width / 2 + (width - doorWidth) / 4, y: height / 2, z: position.z + depth / 2 },
+          width: (width - doorWidth) / 2,
+          height: height,
+          depth: wallThickness,
+          shape: 'box'
+        });
+        
+        // Front right wall
+        this.buildingData.push({
+          position: { x: position.x + width / 2 - (width - doorWidth) / 4, y: height / 2, z: position.z + depth / 2 },
+          width: (width - doorWidth) / 2,
+          height: height,
+          depth: wallThickness,
+          shape: 'box'
+        });
+        
+        // Back wall
+        this.buildingData.push({
+          position: { x: position.x, y: height / 2, z: position.z - depth / 2 },
+          width: width,
+          height: height,
+          depth: wallThickness,
+          shape: 'box'
+        });
+        
+        // Left wall (with window opening)
+        this.buildingData.push({
+          position: { x: position.x - width / 2, y: height / 2, z: position.z },
+          width: wallThickness,
+          height: height,
+          depth: depth,
+          shape: 'box'
+        });
+        
+        // Right wall (with window opening)
+        this.buildingData.push({
+          position: { x: position.x + width / 2, y: height / 2, z: position.z },
+          width: wallThickness,
+          height: height,
+          depth: depth,
+          shape: 'box'
+        });
+        
+        // Store enterable house data
+        this.enterableHouses.push({
+          position: { x: position.x, z: position.z },
+          width: width,
+          depth: depth,
+        });
+      }
 
       this.markAreaOccupied(position.x, position.z, width, depth, 'house');
       housesCreated++;
@@ -356,23 +444,110 @@ export class CityGenerator {
   /**
    * Create a single house with roof
    */
-  private createHouse(width: number, height: number, depth: number): THREE.Group {
+  private createHouse(width: number, height: number, depth: number, isEnterable = false): THREE.Group {
     const houseGroup = new THREE.Group();
 
-    // House body
-    const bodyGeometry = new THREE.BoxGeometry(width, height, depth);
-    const bodyMaterial = new THREE.MeshStandardMaterial({
-      color: this.getRandomHouseColor(),
-      roughness: 0.8,
-      metalness: 0.2,
-    });
+    if (isEnterable) {
+      // Create hollow house with walls (door and windows are openings, but walls have collision)
+      const wallThickness = 0.3;
+      const wallMaterial = new THREE.MeshStandardMaterial({
+        color: 0xffc0cb, // Pink for enterable houses
+        roughness: 0.8,
+        metalness: 0.2,
+      });
 
-    const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-    body.castShadow = true;
-    body.receiveShadow = true;
-    houseGroup.add(body);
+      // Front wall (with larger door opening)
+      const doorWidth = width * 0.5; // Larger door (50% of width)
+      const doorHeight = height * 0.8; // Taller door (80% of height)
+      const frontWallLeft = new THREE.BoxGeometry((width - doorWidth) / 2, height, wallThickness);
+      const frontWallRight = new THREE.BoxGeometry((width - doorWidth) / 2, height, wallThickness);
+      const frontWallTop = new THREE.BoxGeometry(doorWidth, height - doorHeight, wallThickness);
 
-    // Roof
+      const frontLeft = new THREE.Mesh(frontWallLeft, wallMaterial);
+      frontLeft.position.set(-width / 2 + (width - doorWidth) / 4, 0, depth / 2);
+      frontLeft.castShadow = true;
+      frontLeft.receiveShadow = true;
+      houseGroup.add(frontLeft);
+
+      const frontRight = new THREE.Mesh(frontWallRight, wallMaterial);
+      frontRight.position.set(width / 2 - (width - doorWidth) / 4, 0, depth / 2);
+      frontRight.castShadow = true;
+      frontRight.receiveShadow = true;
+      houseGroup.add(frontRight);
+
+      const frontTop = new THREE.Mesh(frontWallTop, wallMaterial);
+      frontTop.position.set(0, height / 2 - (height - doorHeight) / 2, depth / 2);
+      frontTop.castShadow = true;
+      frontTop.receiveShadow = true;
+      houseGroup.add(frontTop);
+
+      // Back wall (solid)
+      const backWallGeometry = new THREE.BoxGeometry(width, height, wallThickness);
+      const backWall = new THREE.Mesh(backWallGeometry, wallMaterial);
+      backWall.position.set(0, 0, -depth / 2);
+      backWall.castShadow = true;
+      backWall.receiveShadow = true;
+      houseGroup.add(backWall);
+
+      // Left wall (with window opening)
+      const windowSize = width * 0.35;
+      const windowHeight = height * 0.4;
+      
+      // Left wall - bottom part
+      const leftWallBottom = new THREE.BoxGeometry(wallThickness, height - windowHeight, depth);
+      const leftBottom = new THREE.Mesh(leftWallBottom, wallMaterial);
+      leftBottom.position.set(-width / 2, -(windowHeight / 2), 0);
+      leftBottom.castShadow = true;
+      leftBottom.receiveShadow = true;
+      houseGroup.add(leftBottom);
+
+      // Left wall - top part (above window)
+      const leftWallTop = new THREE.BoxGeometry(wallThickness, windowHeight, depth - windowSize);
+      const leftTop = new THREE.Mesh(leftWallTop, wallMaterial);
+      leftTop.position.set(-width / 2, height / 2 - windowHeight / 2, -depth / 2 + (depth - windowSize) / 2);
+      leftTop.castShadow = true;
+      leftTop.receiveShadow = true;
+      houseGroup.add(leftTop);
+
+      // Right wall (with window opening - second window)
+      // Right wall - bottom part
+      const rightWallBottom = new THREE.BoxGeometry(wallThickness, height - windowHeight, depth);
+      const rightBottom = new THREE.Mesh(rightWallBottom, wallMaterial);
+      rightBottom.position.set(width / 2, -(windowHeight / 2), 0);
+      rightBottom.castShadow = true;
+      rightBottom.receiveShadow = true;
+      houseGroup.add(rightBottom);
+
+      // Right wall - top part (above window)
+      const rightWallTop = new THREE.BoxGeometry(wallThickness, windowHeight, depth - windowSize);
+      const rightTop = new THREE.Mesh(rightWallTop, wallMaterial);
+      rightTop.position.set(width / 2, height / 2 - windowHeight / 2, depth / 2 - (depth - windowSize) / 2);
+      rightTop.castShadow = true;
+      rightTop.receiveShadow = true;
+      houseGroup.add(rightTop);
+
+      // Floor
+      const floorGeometry = new THREE.BoxGeometry(width, wallThickness, depth);
+      const floor = new THREE.Mesh(floorGeometry, wallMaterial);
+      floor.position.set(0, -height / 2, 0);
+      floor.receiveShadow = true;
+      houseGroup.add(floor);
+    } else {
+      // Regular solid house
+      const bodyGeometry = new THREE.BoxGeometry(width, height, depth);
+      const bodyMaterial = new THREE.MeshStandardMaterial({
+        color: this.getRandomHouseColor(),
+        roughness: 0.8,
+        metalness: 0.2,
+      });
+
+      const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+      body.castShadow = true;
+      body.receiveShadow = true;
+      houseGroup.add(body);
+    }
+
+    // Roof - triangular (for all houses)
     const roofGeometry = new THREE.ConeGeometry(Math.max(width, depth) * 0.7, height * 0.4, 4);
     const roofMaterial = new THREE.MeshStandardMaterial({
       color: 0x8b4513, // Brown
@@ -540,6 +715,120 @@ export class CityGenerator {
   }
 
   /**
+   * Generate traffic lights at road intersections
+   */
+  private generateTrafficLights(): void {
+    const poleHeight = 5;
+    const lightSize = 0.5;
+    const roadWidth = 8;
+
+    // Generate traffic lights at intersections (50% chance)
+    for (let i = -2; i <= 2; i++) {
+      for (let j = -2; j <= 2; j++) {
+        // 50% chance to place traffic light at this intersection
+        if (this.rng.next() > 0.5) continue;
+
+        const x = i * 60;
+        const z = j * 60;
+
+        // Place at road boundary (edge of road, not center)
+        // 4 traffic lights per intersection, one at each corner
+        const positions = [
+          { x: x + roadWidth / 2, z: z + roadWidth / 2 },   // Top-right
+          { x: x - roadWidth / 2, z: z + roadWidth / 2 },   // Top-left
+          { x: x + roadWidth / 2, z: z - roadWidth / 2 },   // Bottom-right
+          { x: x - roadWidth / 2, z: z - roadWidth / 2 },   // Bottom-left
+        ];
+
+        // Place one traffic light at a random corner
+        const randomCorner = positions[Math.floor(this.rng.next() * positions.length)];
+        if (randomCorner) {
+          const trafficLight = this.createTrafficLight(poleHeight, lightSize);
+          trafficLight.position.set(randomCorner.x, 0, randomCorner.z);
+          this.trafficLights.add(trafficLight);
+        }
+      }
+    }
+  }
+
+  /**
+   * Create a single traffic light
+   */
+  private createTrafficLight(poleHeight: number, lightSize: number): THREE.Group {
+    const trafficLightGroup = new THREE.Group();
+
+    // Pole
+    const poleGeometry = new THREE.CylinderGeometry(0.1, 0.1, poleHeight, 8);
+    const poleMaterial = new THREE.MeshStandardMaterial({
+      color: 0x333333, // Dark gray
+      roughness: 0.8,
+      metalness: 0.5,
+    });
+
+    const pole = new THREE.Mesh(poleGeometry, poleMaterial);
+    pole.position.y = poleHeight / 2;
+    pole.castShadow = true;
+    trafficLightGroup.add(pole);
+
+    // Light box
+    const boxGeometry = new THREE.BoxGeometry(0.4, 1.2, 0.3);
+    const boxMaterial = new THREE.MeshStandardMaterial({
+      color: 0x222222, // Almost black
+      roughness: 0.7,
+      metalness: 0.3,
+    });
+
+    const lightBox = new THREE.Mesh(boxGeometry, boxMaterial);
+    lightBox.position.y = poleHeight + 0.6;
+    lightBox.castShadow = true;
+    trafficLightGroup.add(lightBox);
+
+    // Red light (top)
+    const redLightGeometry = new THREE.SphereGeometry(lightSize * 0.6, 16, 16);
+    const redLightMaterial = new THREE.MeshStandardMaterial({
+      color: 0xff0000, // Red
+      emissive: 0xff0000,
+      emissiveIntensity: 0.5,
+      roughness: 0.3,
+      metalness: 0.1,
+    });
+
+    const redLight = new THREE.Mesh(redLightGeometry, redLightMaterial);
+    redLight.position.set(0, poleHeight + 0.9, 0.2);
+    trafficLightGroup.add(redLight);
+
+    // Yellow light (middle)
+    const yellowLightGeometry = new THREE.SphereGeometry(lightSize * 0.6, 16, 16);
+    const yellowLightMaterial = new THREE.MeshStandardMaterial({
+      color: 0xffff00, // Yellow
+      emissive: 0xffff00,
+      emissiveIntensity: 0.3,
+      roughness: 0.3,
+      metalness: 0.1,
+    });
+
+    const yellowLight = new THREE.Mesh(yellowLightGeometry, yellowLightMaterial);
+    yellowLight.position.set(0, poleHeight + 0.6, 0.2);
+    trafficLightGroup.add(yellowLight);
+
+    // Green light (bottom)
+    const greenLightGeometry = new THREE.SphereGeometry(lightSize * 0.6, 16, 16);
+    const greenLightMaterial = new THREE.MeshStandardMaterial({
+      color: 0x00ff00, // Green
+      emissive: 0x00ff00,
+      emissiveIntensity: 0.3,
+      roughness: 0.3,
+      metalness: 0.1,
+    });
+
+    const greenLight = new THREE.Mesh(greenLightGeometry, greenLightMaterial);
+    greenLight.position.set(0, poleHeight + 0.3, 0.2);
+    trafficLightGroup.add(greenLight);
+
+    return trafficLightGroup;
+  }
+
+  /**
    * Get all occupied areas (for collision detection)
    */
   public getOccupiedAreas(): OccupiedArea[] {
@@ -558,6 +847,27 @@ export class CityGenerator {
    */
   public getBuildingData(): Array<{ position: { x: number; y: number; z: number }; width: number; height: number; depth: number; shape: 'box' | 'cylinder' }> {
     return this.buildingData;
+  }
+
+  /**
+   * Get enterable houses (for hiding mechanic)
+   */
+  public getEnterableHouses(): Array<{ position: { x: number; z: number }; width: number; depth: number }> {
+    return this.enterableHouses;
+  }
+
+  /**
+   * Get river data (for water physics)
+   */
+  public getRiverData(): { x: number; z: number; width: number; depth: number } | null {
+    return this.riverData;
+  }
+
+  /**
+   * Get bridge data (for landing detection)
+   */
+  public getBridgeData(): Array<{ position: { x: number; y: number; z: number }; width: number; height: number; depth: number }> {
+    return this.bridgeDataList;
   }
 
   /**
@@ -586,6 +896,7 @@ export class CityGenerator {
     disposeGroup(this.roads);
     disposeGroup(this.rivers);
     disposeGroup(this.bridges);
+    disposeGroup(this.trafficLights);
 
     if (this.landmark) {
       disposeGroup(this.landmark);
@@ -593,5 +904,8 @@ export class CityGenerator {
     }
 
     this.occupiedAreas = [];
+    this.enterableHouses = [];
+    this.riverData = null;
+    this.bridgeDataList = [];
   }
 }

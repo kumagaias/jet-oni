@@ -660,5 +660,95 @@ export class GameManager {
     return cleanedCount;
   }
 
+  /**
+   * Update heartbeat timestamp for a game
+   */
+  async updateHeartbeat(gameId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const gameState = await RedisStorage.getGameState(gameId);
+
+      if (!gameState) {
+        return {
+          success: false,
+          error: 'Game not found',
+        };
+      }
+
+      // Update last host heartbeat timestamp
+      gameState.lastHostHeartbeat = Date.now();
+
+      // Save updated game state
+      await RedisStorage.saveGameState(gameId, gameState);
+
+      return {
+        success: true,
+      };
+    } catch (error) {
+      console.error('Error updating heartbeat:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to update heartbeat',
+      };
+    }
+  }
+
+  /**
+   * Remove a player from a game (participant leaves lobby)
+   */
+  async removePlayer(gameId: string, playerId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const gameState = await RedisStorage.getGameState(gameId);
+
+      if (!gameState) {
+        return {
+          success: false,
+          error: 'Game not found',
+        };
+      }
+
+      // Check if game is in lobby (can only leave during lobby)
+      if (gameState.status !== 'lobby') {
+        return {
+          success: false,
+          error: 'Can only leave game during lobby phase',
+        };
+      }
+
+      // Check if player is the host
+      if (playerId === gameState.hostId) {
+        return {
+          success: false,
+          error: 'Host cannot leave game, must delete game instead',
+        };
+      }
+
+      // Remove player from players array
+      const playerIndex = gameState.players.findIndex(p => p.id === playerId);
+      if (playerIndex === -1) {
+        return {
+          success: false,
+          error: 'Player not found in game',
+        };
+      }
+
+      gameState.players.splice(playerIndex, 1);
+
+      // Save updated game state
+      await RedisStorage.saveGameState(gameId, gameState);
+
+      console.log(`Player ${playerId} left game ${gameId}`);
+
+      return {
+        success: true,
+      };
+    } catch (error) {
+      console.error('Error removing player:', error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : 'Failed to remove player',
+      };
+    }
+  }
+
 
 }

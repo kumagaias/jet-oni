@@ -52,19 +52,7 @@ export class UIMenu {
     this.toast.error(message, 3000);
   }
 
-  /**
-   * Show success message as toast
-   */
-  private showSuccessMessage(message: string): void {
-    this.toast.success(message, 3000);
-  }
 
-  /**
-   * Show info message as toast
-   */
-  private showInfoMessage(message: string): void {
-    this.toast.info(message, 3000);
-  }
 
   /**
    * Setup lobby event handlers
@@ -73,12 +61,12 @@ export class UIMenu {
     if (!this.lobbyManager) return;
     
     // Handle player joined
-    this.lobbyManager.on('playerJoined', (data) => {
+    this.lobbyManager.on('playerJoined', () => {
       this.updateLobbyDisplay();
     });
     
     // Handle player left
-    this.lobbyManager.on('playerLeft', (data) => {
+    this.lobbyManager.on('playerLeft', () => {
       this.updateLobbyDisplay();
     });
     
@@ -91,6 +79,34 @@ export class UIMenu {
     this.lobbyManager.on('gameStarting', () => {
       this.startGame();
     });
+    
+    // Handle host disconnected
+    this.lobbyManager.on('hostDisconnected', () => {
+      this.handleHostDisconnect();
+    });
+  }
+
+  /**
+   * Handle host disconnection in lobby
+   */
+  private handleHostDisconnect(): void {
+    // Clean up lobby manager
+    if (this.lobbyManager) {
+      this.lobbyManager.destroy();
+      this.lobbyManager = null;
+    }
+    
+    // Reset current game state
+    this.currentGameId = null;
+    this.currentPlayerId = null;
+    
+    // Show error message
+    this.toast.error(this.i18n.t('lobby.hostDisconnected'), 5000);
+    
+    // Return to title screen after a short delay
+    setTimeout(() => {
+      this.showTitleScreen();
+    }, 2000);
   }
 
   /**
@@ -496,6 +512,19 @@ export class UIMenu {
               <span style="color: #666; font-size: 10px;">6</span>
               <span style="color: #666; font-size: 10px;">20</span>
             </div>
+            <!-- ONI count message -->
+            <div id="oni-count-message" style="
+              margin-top: 10px;
+              padding: 8px 12px;
+              background: rgba(255, 0, 0, 0.1);
+              border: 1px solid rgba(255, 0, 0, 0.3);
+              border-radius: 4px;
+              text-align: center;
+            ">
+              <span style="color: #ff6666; font-size: 12px; font-weight: bold;">
+                1 ONI will be created
+              </span>
+            </div>
           </div>
           
           <!-- Duration Slider -->
@@ -593,6 +622,29 @@ export class UIMenu {
   }
 
   /**
+   * Calculate ONI count based on player count (player count / 3, rounded down)
+   */
+  private calculateOniCount(playerCount: number): number {
+    return Math.max(1, Math.floor(playerCount / 3));
+  }
+
+  /**
+   * Update ONI count message
+   */
+  private updateOniCountMessage(playerCount: number): void {
+    const oniCountMessage = document.getElementById('oni-count-message');
+    if (oniCountMessage) {
+      const oniCount = this.calculateOniCount(playerCount);
+      const messageSpan = oniCountMessage.querySelector('span');
+      if (messageSpan) {
+        messageSpan.textContent = oniCount === 1 
+          ? `${oniCount} ONI will be created`
+          : `${oniCount} ONIs will be created`;
+      }
+    }
+  }
+
+  /**
    * Setup create game screen listeners
    */
   private setupCreateGameListeners(): void {
@@ -617,11 +669,15 @@ export class UIMenu {
       
       updatePlayersSliderBackground();
       
+      // Update ONI count message initially
+      this.updateOniCountMessage(6);
+      
       playersSlider.addEventListener('input', () => {
         const value = parseInt(playersSlider.value);
         selectedOptions.players = value;
         playersValue.textContent = value.toString();
         updatePlayersSliderBackground();
+        this.updateOniCountMessage(value);
       });
     }
     
@@ -1219,7 +1275,33 @@ export class UIMenu {
       </style>
     `;
     
-    document.getElementById('btn-back')?.addEventListener('click', () => {
+    document.getElementById('btn-back')?.addEventListener('click', async () => {
+      const backButton = document.getElementById('btn-back') as HTMLButtonElement;
+      if (!backButton) return;
+      
+      // Disable button to prevent multiple clicks
+      backButton.disabled = true;
+      backButton.textContent = 'Loading...';
+      
+      try {
+        // If host, delete the game
+        if (isHost && this.currentGameId) {
+          await this.gameApiClient.deleteGame(this.currentGameId);
+          console.log('[Lobby] Host deleted game');
+        }
+        // If participant, leave the game
+        else if (!isHost && this.currentGameId && this.currentPlayerId) {
+          const result = await this.gameApiClient.leaveGame(this.currentGameId, this.currentPlayerId);
+          if (result.success) {
+            console.log('[Lobby] Participant left game');
+          } else {
+            console.error('[Lobby] Failed to leave game:', result.error);
+          }
+        }
+      } catch (error) {
+        console.error('[Lobby] Error during exit:', error);
+      }
+      
       // Dispatch lobby exit event to trigger cleanup
       window.dispatchEvent(new Event('lobbyExit'));
       

@@ -12,6 +12,11 @@ export class GameManager {
    * Create a new game session
    */
   async createGame(config: GameConfig, hostUsername?: string): Promise<string> {
+    // Delete any existing games by the same host
+    if (hostUsername) {
+      await this.deleteExistingGamesByHost(hostUsername);
+    }
+    
     const gameId = this.generateGameId();
     const hostId = this.generatePlayerId();
 
@@ -560,6 +565,40 @@ export class GameManager {
     await RedisStorage.removeActiveGame(gameId);
 
     return { success: true };
+  }
+
+  /**
+   * Delete existing games by the same host
+   * Called when a host creates a new game to clean up any abandoned games
+   */
+  private async deleteExistingGamesByHost(hostUsername: string): Promise<number> {
+    const gameIds = await RedisStorage.getActiveGames();
+    let deletedCount = 0;
+
+    for (const gameId of gameIds) {
+      const gameState = await this.getGameState(gameId);
+
+      if (!gameState) {
+        continue;
+      }
+
+      // Find the host player
+      const hostPlayer = gameState.players.find((p) => p.id === gameState.hostId);
+      
+      // If this game is hosted by the same user, delete it
+      if (hostPlayer && hostPlayer.username === hostUsername) {
+        console.log(`Deleting existing game ${gameId} by host ${hostUsername}`);
+        await RedisStorage.deleteGameState(gameId);
+        await RedisStorage.removeActiveGame(gameId);
+        deletedCount++;
+      }
+    }
+
+    if (deletedCount > 0) {
+      console.log(`Deleted ${deletedCount} existing game(s) by host ${hostUsername}`);
+    }
+
+    return deletedCount;
   }
 
   /**

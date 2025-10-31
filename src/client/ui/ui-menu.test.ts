@@ -118,7 +118,7 @@ describe('UIMenu', () => {
       const createButton = document.getElementById('btn-create-game') as HTMLButtonElement;
       createButton.click();
 
-      expect(mockOverlay.innerHTML).toContain('player-options');
+      expect(mockOverlay.innerHTML).toContain('players-slider');
     });
 
     it('should navigate to join game screen when button is clicked', async () => {
@@ -148,34 +148,40 @@ describe('UIMenu', () => {
     it('should display game settings options', () => {
       uiMenu.showCreateGameScreen();
 
-      expect(mockOverlay.innerHTML).toContain('player-options');
-      expect(mockOverlay.innerHTML).toContain('duration-options');
+      expect(mockOverlay.innerHTML).toContain('players-slider');
+      expect(mockOverlay.innerHTML).toContain('duration-slider');
     });
 
-    it('should display player count options', () => {
+    it('should display player count slider', () => {
       uiMenu.showCreateGameScreen();
 
-      const playerOptions = [6, 8, 10, 15, 20];
-      playerOptions.forEach(count => {
-        expect(mockOverlay.innerHTML).toContain(`data-value="${count}"`);
-      });
+      const playersSlider = document.getElementById('players-slider') as HTMLInputElement;
+      expect(playersSlider).toBeTruthy();
+      expect(playersSlider.min).toBe('6');
+      expect(playersSlider.max).toBe('20');
+      expect(playersSlider.step).toBe('2');
     });
 
-    it('should display duration options', () => {
+    it('should display duration slider', () => {
       uiMenu.showCreateGameScreen();
 
-      expect(mockOverlay.innerHTML).toContain('data-value="3"');
-      expect(mockOverlay.innerHTML).toContain('data-value="5"');
+      const durationSlider = document.getElementById('duration-slider') as HTMLInputElement;
+      expect(durationSlider).toBeTruthy();
+      expect(durationSlider.min).toBe('3');
+      expect(durationSlider.max).toBe('7');
+      expect(durationSlider.step).toBe('2');
     });
 
-    it('should highlight selected option', () => {
+    it('should update value display when slider changes', () => {
       uiMenu.showCreateGameScreen();
 
-      const playerButton = document.querySelector('[data-option="players"][data-value="6"]') as HTMLButtonElement;
-      playerButton.click();
+      const playersSlider = document.getElementById('players-slider') as HTMLInputElement;
+      const playersValue = document.getElementById('players-value');
+      
+      playersSlider.value = '10';
+      playersSlider.dispatchEvent(new Event('input'));
 
-      // Check that the button style changed (hex or rgb format)
-      expect(playerButton.style.backgroundColor).toMatch(/(#ff8800|rgb\(255, 136, 0\))/);
+      expect(playersValue?.textContent).toBe('10');
     });
 
     it('should navigate back to title screen when back button is clicked', () => {

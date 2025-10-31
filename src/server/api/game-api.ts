@@ -38,18 +38,18 @@ router.post(
       }
 
       // Validate config
-      if (!config.totalPlayers || config.totalPlayers < 4 || config.totalPlayers > 20) {
+      if (!config.totalPlayers || config.totalPlayers < 6 || config.totalPlayers > 20 || config.totalPlayers % 2 !== 0) {
         res.status(400).json({
           success: false,
-          error: 'Total players must be between 4 and 20',
+          error: 'Total players must be between 6 and 20 (even numbers only)',
         });
         return;
       }
 
-      if (!config.roundDuration || (config.roundDuration !== 180 && config.roundDuration !== 300)) {
+      if (!config.roundDuration || config.roundDuration < 180 || config.roundDuration > 420 || (config.roundDuration / 60) % 2 !== 1) {
         res.status(400).json({
           success: false,
-          error: 'Round duration must be 180 or 300 seconds',
+          error: 'Round duration must be 3, 5, or 7 minutes (180, 300, or 420 seconds)',
         });
         return;
       }

@@ -83,7 +83,7 @@ describe('Game API Endpoints', () => {
 
       expect(response.status).toBe(400);
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toContain('Total players must be between 4 and 20');
+      expect(response.body.error).toContain('Total players must be between 6 and 20');
     });
 
     it('should return error if roundDuration is invalid', async () => {
@@ -97,7 +97,7 @@ describe('Game API Endpoints', () => {
 
       expect(response.status).toBe(400);
       expect(response.body.success).toBe(false);
-      expect(response.body.error).toContain('Round duration must be 180 or 300 seconds');
+      expect(response.body.error).toContain('Round duration must be 3, 5, or 7 minutes');
     });
 
     it('should return error if rounds is invalid', async () => {

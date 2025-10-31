@@ -1063,11 +1063,16 @@ function showError(message: string): void {
     <div style="text-align: center; padding: 20px;">
       <h1 style="color: red; font-size: 36px; margin-bottom: 20px;">Error</h1>
       <p style="color: white; font-size: 18px;">${message}</p>
-      <button onclick="location.reload()" style="padding: 10px 20px; margin-top: 20px; font-size: 18px; cursor: pointer;">
+      <button id="error-reload-btn" style="padding: 10px 20px; margin-top: 20px; font-size: 18px; cursor: pointer;">
         Reload
       </button>
     </div>
   `;
+  
+  // Add event listener for reload button
+  document.getElementById('error-reload-btn')?.addEventListener('click', () => {
+    location.reload();
+  });
 }
 
 // Start the game

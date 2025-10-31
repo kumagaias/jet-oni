@@ -363,9 +363,9 @@ export class UIMenu {
           font-size: 18px;
           cursor: pointer;
           font-family: monospace;
-          border: 3px solid #666;
-          background: #222;
-          color: #aaa;
+          border: 3px solid #ff8800;
+          background: #331a00;
+          color: #ff8800;
           border-radius: 8px;
           font-weight: bold;
           transition: transform 0.1s;
@@ -466,46 +466,101 @@ export class UIMenu {
         <div style="
           background: #111;
           border: 1px solid #333;
-          padding: 15px;
+          padding: 20px;
           border-radius: 4px;
           margin-bottom: 15px;
         ">
-          <div style="margin-bottom: 15px;">
-            <p style="color: #aaa; font-size: 11px; margin-bottom: 5px;">${this.i18n.t('settings.players').toUpperCase()}:</p>
-            <div id="player-options">
-              ${[6, 8, 10, 15, 20].map(num => `
-                <button class="option-btn" data-option="players" data-value="${num}" style="
-                  padding: 8px 16px;
-                  margin: 3px;
-                  font-size: 12px;
-                  cursor: pointer;
-                  font-family: monospace;
-                  border: 1px solid #666;
-                  background: #222;
-                  color: #aaa;
-                ">${num}</button>
-              `).join('')}
+          <!-- Players Slider -->
+          <div style="margin-bottom: 25px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+              <p style="color: #aaa; font-size: 11px; margin: 0;">${this.i18n.t('settings.players').toUpperCase()}</p>
+              <p id="players-value" style="color: #ff8800; font-size: 20px; font-weight: bold; margin: 0;">6</p>
+            </div>
+            <input 
+              type="range" 
+              id="players-slider" 
+              min="6" 
+              max="20" 
+              step="2" 
+              value="6"
+              style="
+                width: 100%;
+                height: 6px;
+                background: linear-gradient(to right, #ff8800 0%, #ff8800 0%, #333 0%, #333 100%);
+                border-radius: 3px;
+                outline: none;
+                -webkit-appearance: none;
+              "
+            />
+            <div style="display: flex; justify-content: space-between; margin-top: 5px;">
+              <span style="color: #666; font-size: 10px;">6</span>
+              <span style="color: #666; font-size: 10px;">20</span>
             </div>
           </div>
           
-          <div style="margin-bottom: 15px;">
-            <p style="color: #aaa; font-size: 11px; margin-bottom: 5px;">${this.i18n.t('settings.duration').toUpperCase()}:</p>
-            <div id="duration-options">
-              ${[3, 5].map(min => `
-                <button class="option-btn" data-option="duration" data-value="${min}" style="
-                  padding: 8px 16px;
-                  margin: 3px;
-                  font-size: 12px;
-                  cursor: pointer;
-                  font-family: monospace;
-                  border: 1px solid #666;
-                  background: #222;
-                  color: #aaa;
-                ">${this.i18n.t('settings.minutes', { value: min })}</button>
-              `).join('')}
+          <!-- Duration Slider -->
+          <div style="margin-bottom: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+              <p style="color: #aaa; font-size: 11px; margin: 0;">${this.i18n.t('settings.duration').toUpperCase()}</p>
+              <p id="duration-value" style="color: #ff8800; font-size: 20px; font-weight: bold; margin: 0;">3 min</p>
+            </div>
+            <input 
+              type="range" 
+              id="duration-slider" 
+              min="3" 
+              max="7" 
+              step="2" 
+              value="3"
+              style="
+                width: 100%;
+                height: 6px;
+                background: linear-gradient(to right, #ff8800 0%, #ff8800 0%, #333 0%, #333 100%);
+                border-radius: 3px;
+                outline: none;
+                -webkit-appearance: none;
+              "
+            />
+            <div style="display: flex; justify-content: space-between; margin-top: 5px;">
+              <span style="color: #666; font-size: 10px;">3 min</span>
+              <span style="color: #666; font-size: 10px;">7 min</span>
             </div>
           </div>
         </div>
+        
+        <style>
+          /* Slider thumb styling */
+          input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #ff8800;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+          }
+          
+          input[type="range"]::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: #ff8800;
+            border: 2px solid #fff;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+          }
+          
+          input[type="range"]::-webkit-slider-thumb:hover {
+            background: #ffa500;
+            transform: scale(1.1);
+          }
+          
+          input[type="range"]::-moz-range-thumb:hover {
+            background: #ffa500;
+            transform: scale(1.1);
+          }
+        </style>
         
         <button id="btn-start-game" style="
           width: 100%;
@@ -546,48 +601,53 @@ export class UIMenu {
       duration: 3,
     };
     
-    // Set initial button states
-    const setInitialState = (option: string, value: number) => {
-      document.querySelectorAll(`[data-option="${option}"]`).forEach(b => {
-        const button = b as HTMLButtonElement;
-        if (button.dataset.value === value.toString()) {
-          button.style.backgroundColor = '#ff8800';
-          button.style.color = '#000';
-          button.style.border = '1px solid #ff8800';
-          button.style.fontWeight = 'bold';
-        }
-      });
-    };
+    // Players slider
+    const playersSlider = document.getElementById('players-slider') as HTMLInputElement;
+    const playersValue = document.getElementById('players-value');
     
-    setInitialState('players', 6);
-    setInitialState('duration', 3);
-    
-    // Option buttons
-    document.querySelectorAll('.option-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const target = e.target as HTMLButtonElement;
-        const option = target.dataset.option as keyof typeof selectedOptions;
-        const value = parseInt(target.dataset.value || '0');
-        
-        selectedOptions[option] = value;
-        
-        // Update button styles
-        document.querySelectorAll(`[data-option="${option}"]`).forEach(b => {
-          const button = b as HTMLButtonElement;
-          if (button.dataset.value === value.toString()) {
-            button.style.backgroundColor = '#ff8800';
-            button.style.color = '#000';
-            button.style.border = '1px solid #ff8800';
-            button.style.fontWeight = 'bold';
-          } else {
-            button.style.backgroundColor = '#222';
-            button.style.color = '#aaa';
-            button.style.border = '1px solid #666';
-            button.style.fontWeight = 'normal';
-          }
-        });
+    if (playersSlider && playersValue) {
+      // Update gradient background
+      const updatePlayersSliderBackground = () => {
+        const min = parseInt(playersSlider.min);
+        const max = parseInt(playersSlider.max);
+        const value = parseInt(playersSlider.value);
+        const percentage = ((value - min) / (max - min)) * 100;
+        playersSlider.style.background = `linear-gradient(to right, #ff8800 0%, #ff8800 ${percentage}%, #333 ${percentage}%, #333 100%)`;
+      };
+      
+      updatePlayersSliderBackground();
+      
+      playersSlider.addEventListener('input', () => {
+        const value = parseInt(playersSlider.value);
+        selectedOptions.players = value;
+        playersValue.textContent = value.toString();
+        updatePlayersSliderBackground();
       });
-    });
+    }
+    
+    // Duration slider
+    const durationSlider = document.getElementById('duration-slider') as HTMLInputElement;
+    const durationValue = document.getElementById('duration-value');
+    
+    if (durationSlider && durationValue) {
+      // Update gradient background
+      const updateDurationSliderBackground = () => {
+        const min = parseInt(durationSlider.min);
+        const max = parseInt(durationSlider.max);
+        const value = parseInt(durationSlider.value);
+        const percentage = ((value - min) / (max - min)) * 100;
+        durationSlider.style.background = `linear-gradient(to right, #ff8800 0%, #ff8800 ${percentage}%, #333 ${percentage}%, #333 100%)`;
+      };
+      
+      updateDurationSliderBackground();
+      
+      durationSlider.addEventListener('input', () => {
+        const value = parseInt(durationSlider.value);
+        selectedOptions.duration = value;
+        durationValue.textContent = `${value} min`;
+        updateDurationSliderBackground();
+      });
+    }
     
     // Start game button - create game via API
     document.getElementById('btn-start-game')?.addEventListener('click', async () => {
@@ -644,11 +704,6 @@ export class UIMenu {
     document.getElementById('btn-back')?.addEventListener('click', () => {
       this.showTitleScreen();
     });
-    
-    // Set default selections
-    document.querySelector('[data-option="players"][data-value="4"]')?.dispatchEvent(new Event('click'));
-    document.querySelector('[data-option="duration"][data-value="3"]')?.dispatchEvent(new Event('click'));
-    document.querySelector('[data-option="rounds"][data-value="1"]')?.dispatchEvent(new Event('click'));
   }
 
   /**
@@ -758,14 +813,6 @@ export class UIMenu {
         <!-- Host info -->
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
           <div style="display: flex; align-items: center; gap: 8px;">
-            <span style="
-              background: #ff8800;
-              color: #000;
-              padding: 4px 8px;
-              border-radius: 4px;
-              font-size: 10px;
-              font-weight: bold;
-            ">👑 HOST</span>
             <span style="color: #ff8800; font-size: 16px; font-weight: bold;">
               ${game.hostName}
             </span>
@@ -785,7 +832,7 @@ export class UIMenu {
         <!-- Game info grid -->
         <div style="
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
+          grid-template-columns: repeat(2, 1fr);
           gap: 12px;
           margin-bottom: 12px;
           padding: 12px;
@@ -793,20 +840,15 @@ export class UIMenu {
           border-radius: 4px;
         ">
           <div style="text-align: center;">
+            <p style="color: #666; font-size: 10px; margin-bottom: 4px;">PLAYERS</p>
             <p style="color: ${statusColor}; font-size: 24px; font-weight: bold; margin: 0;">
               ${game.currentPlayers}/${game.maxPlayers}
             </p>
           </div>
           <div style="text-align: center;">
             <p style="color: #666; font-size: 10px; margin-bottom: 4px;">TIME</p>
-            <p style="color: #aaa; font-size: 18px; font-weight: bold;">
+            <p style="color: #aaa; font-size: 24px; font-weight: bold; margin: 0;">
               ${game.duration}m
-            </p>
-          </div>
-          <div style="text-align: center;">
-            <p style="color: #666; font-size: 10px; margin-bottom: 4px;">ROUNDS</p>
-            <p style="color: #aaa; font-size: 18px; font-weight: bold;">
-              ${game.rounds}
             </p>
           </div>
         </div>
@@ -920,7 +962,7 @@ export class UIMenu {
             align-items: center;
             justify-content: center;
             transition: transform 0.3s ease;
-          " onmouseover="this.style.transform='rotate(180deg)'" onmouseout="this.style.transform='rotate(0deg)'">
+          ">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M21 10C21 10 18.995 7.26822 17.3662 5.63824C15.7373 4.00827 13.4864 3 11 3C6.02944 3 2 7.02944 2 12C2 16.9706 6.02944 21 11 21C15.1031 21 18.5649 18.2543 19.6482 14.5M21 10V4M21 10H15" stroke="#ff8800" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
@@ -964,10 +1006,22 @@ export class UIMenu {
       });
     });
     
-    // Refresh button
-    document.getElementById('btn-refresh')?.addEventListener('click', () => {
-      void this.showJoinGameScreen();
-    });
+    // Refresh button with hover effect
+    const refreshButton = document.getElementById('btn-refresh');
+    if (refreshButton) {
+      refreshButton.addEventListener('click', () => {
+        void this.showJoinGameScreen();
+      });
+      
+      // Add hover effect
+      refreshButton.addEventListener('mouseenter', () => {
+        (refreshButton as HTMLElement).style.transform = 'rotate(180deg)';
+      });
+      
+      refreshButton.addEventListener('mouseleave', () => {
+        (refreshButton as HTMLElement).style.transform = 'rotate(0deg)';
+      });
+    }
     
     // Back button
     document.getElementById('btn-back')?.addEventListener('click', () => {
@@ -1170,11 +1224,19 @@ export class UIMenu {
     `;
     
     document.getElementById('btn-back')?.addEventListener('click', () => {
+      // Dispatch lobby exit event to trigger cleanup
+      window.dispatchEvent(new Event('lobbyExit'));
+      
       // Clean up lobby manager
       if (this.lobbyManager) {
         this.lobbyManager.destroy();
         this.lobbyManager = null;
       }
+      
+      // Reset current game state
+      this.currentGameId = null;
+      this.currentPlayerId = null;
+      
       this.showTitleScreen();
     });
     

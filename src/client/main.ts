@@ -306,7 +306,7 @@ async function initGame(): Promise<void> {
           right: buttonState.moveRight,
           dash: buttonState.dash || buttonState.jetpack,
           jetpack: buttonState.dash || buttonState.jetpack,
-          jump: false,
+          jump: buttonState.jump,
           beacon: buttonState.beacon,
         });
         

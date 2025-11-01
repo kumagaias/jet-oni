@@ -48,12 +48,12 @@ export class UIResults {
 
     const sortedPlayers = this.gameResults.getSortedPlayers();
     
-    // Get players who were never tagged (true runners)
-    const neverTaggedPlayers = sortedPlayers.filter(p => !p.wasTagged);
+    // Get players who survived as runners (never tagged AND not ONI at end)
+    const survivedRunners = sortedPlayers.filter(p => !p.wasTagged && !p.isOni);
     
-    // Get ONI players (never tagged, started as ONI or tagged many)
+    // Get ONI players (players who are ONI at end, sorted by tag count)
     const oniPlayers = sortedPlayers
-      .filter(p => !p.wasTagged) // Only players who were never tagged
+      .filter(p => p.isOni) // Players who are ONI at game end
       .sort((a, b) => b.tagCount - a.tagCount); // Sort by tag count
 
     // Clear previous content
@@ -87,8 +87,8 @@ export class UIResults {
     `;
     panel.appendChild(title);
 
-    // Determine winner: Runners win if anyone escaped (never tagged), otherwise ONI wins
-    const runnersWin = neverTaggedPlayers.length > 0;
+    // Determine winner: Runners win if anyone survived as runner, otherwise ONI wins
+    const runnersWin = survivedRunners.length > 0;
     
     // Victory image
     const victoryImage = document.createElement('img');
@@ -131,10 +131,10 @@ export class UIResults {
     panel.appendChild(winnerBox);
 
     // Show player list based on who won
-    // Runners win: Show all players who were never tagged (sorted by survive time)
-    // ONI win: Show only ONI players who were never tagged (sorted by tag count)
+    // Runners win: Show all runners who survived (sorted by survive time)
+    // ONI win: Show only ONI players (sorted by tag count)
     const playersToShow = runnersWin 
-      ? neverTaggedPlayers.sort((a, b) => b.survivedTime - a.survivedTime)
+      ? survivedRunners.sort((a, b) => b.survivedTime - a.survivedTime)
       : oniPlayers;
     
     // Create container for player list (no fixed height, will scroll with panel)

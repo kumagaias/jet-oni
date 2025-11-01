@@ -10,6 +10,7 @@ export interface ControlButtonState {
   dash: boolean;
   jetpack: boolean;
   beacon: boolean;
+  jump: boolean;
   // Movement controls
   moveForward: boolean;
   moveBackward: boolean;
@@ -20,6 +21,7 @@ export interface ControlButtonState {
 export class UIControls {
   private container: HTMLElement | null = null;
   private dashButton: HTMLElement | null = null;
+  private jumpButton: HTMLElement | null = null;
   private buttonState: ControlButtonState;
   private isMobile: boolean;
 
@@ -28,6 +30,7 @@ export class UIControls {
       dash: false,
       jetpack: false,
       beacon: false,
+      jump: false,
       moveForward: false,
       moveBackward: false,
       moveLeft: false,
@@ -73,14 +76,29 @@ export class UIControls {
       bottom: 20px;
       right: 20px;
       display: none;
-      flex-direction: column;
+      flex-direction: row;
       gap: 15px;
       pointer-events: none;
       z-index: 600;
     `;
     document.body.appendChild(this.container);
 
-    // Create dash/jetpack button (bottom)
+    // Create jump button (left of dash)
+    this.jumpButton = this.createAbilityButton(
+      '⬆️',
+      'SPACE',
+      'rgba(100, 200, 100, 0.5)',
+      '#64c864',
+      () => {
+        this.buttonState.jump = true;
+      },
+      () => {
+        this.buttonState.jump = false;
+      }
+    );
+    this.container.appendChild(this.jumpButton);
+
+    // Create dash/jetpack button (right)
     this.dashButton = this.createAbilityButton(
       '🚀',
       'SHIFT',
@@ -366,6 +384,17 @@ export class UIControls {
     const localPlayer = gameState.getLocalPlayer();
     if (!localPlayer) return;
 
+    // Show/hide jump button based on role
+    if (this.jumpButton) {
+      if (localPlayer.isOni) {
+        // ONI doesn't need jump button (only jetpack)
+        this.jumpButton.style.display = 'none';
+      } else {
+        // Runner needs jump button
+        this.jumpButton.style.display = 'flex';
+      }
+    }
+
     // Update dash/jetpack button
     if (this.dashButton) {
       // Update icon (first child)
@@ -477,5 +506,6 @@ export class UIControls {
       this.container = null;
     }
     this.dashButton = null;
+    this.jumpButton = null;
   }
 }

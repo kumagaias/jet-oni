@@ -219,20 +219,14 @@ async function initGame(): Promise<void> {
       
       // Add AI players when in lobby (will be added when game is created)
       const addAIPlayers = (count: number) => {
-        console.log(`[DEBUG] addAIPlayers called with count: ${count}`);
-        console.log(`[DEBUG] Current player count before adding AI: ${gameState.getAllPlayers().length}`);
-        
         for (let i = 0; i < count; i++) {
           const aiId = `ai-${i}`;
           
           // Check if this AI already exists
           const existingPlayer = gameState.getPlayer(aiId);
           if (existingPlayer) {
-            console.log(`[DEBUG] AI player ${aiId} already exists, skipping`);
             continue; // Skip if already exists
           }
-          
-          console.log(`[DEBUG] Adding AI player: ${aiId}`);
           
           // Spread AI players across the map (200x200 area)
           const startPos = {
@@ -266,9 +260,6 @@ async function initGame(): Promise<void> {
           gameEngine.addToScene(aiModel.getModel());
           aiPlayerModels.set(aiId, aiModel);
         }
-        
-        console.log(`[DEBUG] After adding AI, total player count: ${gameState.getAllPlayers().length}`);
-        console.log(`[DEBUG] Player IDs: ${gameState.getAllPlayers().map(p => p.id).join(', ')}`);
       };
       
       // Create debug info element (initially hidden)
@@ -382,7 +373,6 @@ async function initGame(): Promise<void> {
           
           // Spawn 2 AI ONI from the sky
           const oniCount = 2;
-          console.log(`[DEBUG] Spawning ${oniCount} AI ONI from beacon item. Current player count: ${gameState.getAllPlayers().length}`);
           
           for (let i = 0; i < oniCount; i++) {
             const spawnX = (Math.random() - 0.5) * 360;
@@ -390,7 +380,6 @@ async function initGame(): Promise<void> {
             const spawnY = 50;
             
             const aiId = `spawn-oni-${Date.now()}-${i}`;
-            console.log(`[DEBUG] Creating spawn ONI: ${aiId}`);
             
             const aiPlayer = {
               id: aiId,
@@ -419,8 +408,6 @@ async function initGame(): Promise<void> {
             gameEngine.addToScene(aiModel.getModel());
             aiPlayerModels.set(aiPlayer.id, aiModel);
           }
-          
-          console.log(`[DEBUG] After spawning ONI from item, total player count: ${gameState.getAllPlayers().length}`);
         }
         
         // Check cloak item collection (Runner only)
@@ -924,9 +911,6 @@ async function initGame(): Promise<void> {
           try {
             const serverGameState = await gameApiClient.getGameState(currentGameId);
             const localPlayer = gameState.getLocalPlayer();
-            console.log(`[DEBUG] Fetched game state from server - Total players: ${serverGameState.players.length}`);
-            console.log(`[DEBUG] Local player ID (before): ${localPlayer.id}`);
-            console.log(`[DEBUG] Server player IDs:`, serverGameState.players.map(p => `${p.id} (${p.username}, AI: ${p.isAI})`));
             
             // Find the server player that matches the local player's username
             const matchingServerPlayer = serverGameState.players.find(p => 
@@ -937,24 +921,14 @@ async function initGame(): Promise<void> {
             if (matchingServerPlayer) {
               // Update local player ID to match server
               gameState.setLocalPlayerId(matchingServerPlayer.id);
-              console.log(`[DEBUG] Updated local player ID from ${localPlayer.id} to: ${matchingServerPlayer.id}`);
               
               // Update local player ONI status from server
               gameState.setLocalPlayerIsOni(matchingServerPlayer.isOni);
-              console.log(`[DEBUG] Local player isOni: ${matchingServerPlayer.isOni}`);
-              
-              // Update localPlayer reference after ID change
-              const updatedLocalPlayer = gameState.getLocalPlayer();
-              console.log(`[DEBUG] Confirmed local player ID is now: ${updatedLocalPlayer.id}`);
-            } else {
-              console.warn(`[DEBUG] Could not find matching server player for local player: ${localPlayer.id}`);
             }
             
             // Update local game state with server players
             for (const player of serverGameState.players) {
               if (player.id !== localPlayer.id) {
-                console.log(`[DEBUG] Adding remote player: ${player.id} (${player.username}, AI: ${player.isAI}, isOni: ${player.isOni})`);
-                
                 // Set random spawn position for each player (spread across entire map)
                 const spawnX = (Math.random() - 0.5) * 360; // Random X between -180 and 180
                 const spawnZ = (Math.random() - 0.5) * 360; // Random Z between -180 and 180
@@ -985,16 +959,10 @@ async function initGame(): Promise<void> {
                     aiPlayerModels.set(player.id, aiModel);
                   }
                 }
-              } else {
-                console.log(`[DEBUG] Skipping local player: ${player.id}`);
               }
             }
-            
-            console.log(`[DEBUG] After syncing with server - Total players: ${gameState.getAllPlayers().length}`);
-            console.log(`[DEBUG] All player IDs:`, gameState.getAllPlayers().map(p => `${p.id} (${p.username}, AI: ${p.isAI}, isOni: ${p.isOni})`));
-            console.log(`[DEBUG] ONI count: ${gameState.countOniPlayers()}, Runner count: ${gameState.countRunnerPlayers()}`);
           } catch (error) {
-            console.error('[DEBUG] Failed to fetch game state from server:', error);
+            console.error('Failed to fetch game state from server:', error);
           }
         }
         

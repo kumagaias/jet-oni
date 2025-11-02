@@ -423,7 +423,7 @@ describe('GameManager', () => {
       expect(oniCount).toBe(1);
     });
 
-    it('should preserve human player roles when adding AI (2 humans, 4 AI for 6 total)', async () => {
+    it('should ensure at least 1 human is ONI when 2+ humans (2 humans, 4 AI for 6 total)', async () => {
       const mockGameState = {
         gameId: 'test_game',
         hostId: 'host_123',
@@ -433,7 +433,7 @@ describe('GameManager', () => {
           {
             id: 'p1',
             username: 'Player1',
-            isOni: true, // Human ONI
+            isOni: false, // Human Runner (will be reassigned)
             isAI: false,
             position: { x: 0, y: 0, z: 0 },
             velocity: { x: 0, y: 0, z: 0 },
@@ -450,7 +450,7 @@ describe('GameManager', () => {
           {
             id: 'p2',
             username: 'Player2',
-            isOni: false, // Human Runner
+            isOni: false, // Human Runner (will be reassigned)
             isAI: false,
             position: { x: 0, y: 0, z: 0 },
             velocity: { x: 0, y: 0, z: 0 },
@@ -491,25 +491,19 @@ describe('GameManager', () => {
       const humanPlayers = savedGameState?.players.filter((p) => !p.isAI);
       expect(humanPlayers).toHaveLength(2);
 
-      // Human player roles should be preserved
-      const player1 = savedGameState?.players.find((p) => p.id === 'p1');
-      const player2 = savedGameState?.players.find((p) => p.id === 'p2');
-      expect(player1?.isOni).toBe(true); // Still ONI
-      expect(player2?.isOni).toBe(false); // Still Runner
-
       // Total ONI count should be 2 (6 players / 3 = 2)
       const oniCount = savedGameState?.players.filter((p) => p.isOni).length;
       expect(oniCount).toBe(2);
 
-      // Should have 1 human ONI and 1 AI ONI
+      // At least 1 human should be ONI
       const humanOniCount = savedGameState?.players.filter((p) => !p.isAI && p.isOni).length;
-      const aiOniCount = savedGameState?.players.filter((p) => p.isAI && p.isOni).length;
-      expect(humanOniCount).toBe(1);
-      expect(aiOniCount).toBe(1);
+      expect(humanOniCount).toBeGreaterThanOrEqual(1);
 
-      // Should have 4 runners total (1 human + 3 AI)
+      // Should have 4 runners total
       const runnerCount = savedGameState?.players.filter((p) => !p.isOni).length;
       expect(runnerCount).toBe(4);
     });
+
+
   });
 });

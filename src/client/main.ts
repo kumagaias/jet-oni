@@ -188,10 +188,11 @@ async function initGame(): Promise<void> {
       
       // Set up callback for when targets are locked
       targetLockVisual.onTargetLocked((targetIds: string[]) => {
-        const localPlayerId = gameState.getLocalPlayer().id;
-        // If local player is one of the locked targets, show warning
-        if (targetIds.includes(localPlayerId)) {
-          toast.show('⚠️ YOU ARE SPOTTED!', 'warning', 2000);
+        const localPlayer = gameState.getLocalPlayer();
+        
+        // If local player (runner) is one of the locked targets, show warning
+        if (targetIds.includes(localPlayer.id)) {
+          toast.show('⚠️ 見つかった！', 'warning', 2000);
         }
       });
       

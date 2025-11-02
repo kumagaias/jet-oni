@@ -288,13 +288,24 @@ describe('UIMenu', () => {
       expect(mockOverlay.innerHTML).toBeTruthy();
     });
 
-    it('should navigate back to title screen when back button is clicked', () => {
+    it('should navigate back to title screen when back button is clicked', async () => {
       uiMenu.showLobbyScreen(2, 4, false);
 
       const backButton = document.getElementById('btn-back') as HTMLButtonElement;
       backButton.click();
 
-      // Username is not displayed in current implementation
+      // Wait for confirmation dialog to appear
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      // Click the confirm button in the dialog
+      const confirmButton = document.getElementById('confirm-ok') as HTMLButtonElement;
+      expect(confirmButton).toBeTruthy();
+      confirmButton?.click();
+
+      // Wait for async operations to complete
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Should now be on title screen
       expect(mockOverlay.innerHTML).toContain('btn-create-game');
     });
   });

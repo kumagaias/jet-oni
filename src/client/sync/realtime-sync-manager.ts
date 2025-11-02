@@ -127,7 +127,8 @@ export class RealtimeSyncManager {
     this.gameId = gameId;
     this.playerId = playerId;
     this.connectionState = 'connecting';
-    this.remotePlayers.clear();
+    // Don't clear remotePlayers here - they will be updated when messages arrive
+    // this.remotePlayers.clear();
 
     try {
       // Connect to game-specific channel
@@ -300,6 +301,12 @@ export class RealtimeSyncManager {
       message.wasTagged = state.wasTagged;
     }
 
+    // Validate gameId before sending
+    if (!this.gameId) {
+      console.warn('[Realtime] Cannot send player state: gameId is not set');
+      return;
+    }
+
     // Send via server API (Devvit Web requires server-side realtime.send)
     fetch('/api/realtime/broadcast', {
       method: 'POST',
@@ -314,6 +321,9 @@ export class RealtimeSyncManager {
       .then((response) => {
         if (!response.ok) {
           console.error(`[Realtime] Broadcast failed with status ${response.status}`);
+          return response.text().then(text => {
+            console.error('[Realtime] Error response:', text);
+          });
         }
         // Success - no action needed
       })

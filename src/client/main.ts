@@ -16,7 +16,7 @@ import { PlayerPhysics, BuildingData } from './player/player-physics';
 import { PlayerCamera, CameraMode } from './player/player-camera';
 
 import { BeaconVisual } from './effects/beacon-visual';
-import { BeaconItem } from './items/beacon-item';
+import { OniSpawnItem } from './items/oni-spawn-item';
 import { CloakItem } from './items/cloak-item';
 import { CarSystem } from './environment/car-system';
 import { AIController } from './ai/ai-controller';
@@ -169,8 +169,8 @@ async function initGame(): Promise<void> {
       tagSystem.onTag((event) => {
       });
       
-      // Initialize beacon item system
-      const beaconItem = new BeaconItem(gameEngine.getScene());
+      // Initialize ONI spawn item system
+      const oniSpawnItem = new OniSpawnItem(gameEngine.getScene());
       
       // Initialize cloak item system
       const cloakItem = new CloakItem(gameEngine.getScene());
@@ -182,13 +182,24 @@ async function initGame(): Promise<void> {
       const { TagRangeVisual } = await import('./effects/tag-range-visual');
       const tagRangeVisual = new TagRangeVisual(gameEngine.getScene());
       
+      // Initialize target lock visual (shows lock-on for nearby runners)
+      const { TargetLockVisual } = await import('./effects/target-lock-visual');
+      const targetLockVisual = new TargetLockVisual(gameEngine.getScene());
+      
+      // Set up callback for when targets are locked
+      targetLockVisual.onTargetLocked((targetIds: string[]) => {
+        const localPlayerId = gameState.getLocalPlayer().id;
+        // If local player is one of the locked targets, show warning
+        if (targetIds.includes(localPlayerId)) {
+          toast.show('⚠️ YOU ARE SPOTTED!', 'warning', 2000);
+        }
+      });
+      
       // Initialize jetpack effect (shows jetpack particles)
       const { JetpackEffect } = await import('./effects/jetpack-effect');
       const jetpackEffect = new JetpackEffect(gameEngine.getScene());
       
-      // Track beacon state
-      let beaconActiveUntil = 0;
-      const BEACON_DURATION = 15; // seconds
+      // Beacon visual is now only used for Super ONI ability (implemented later)
       
       // Track cloak state
       let cloakActiveUntil = 0;
@@ -208,8 +219,21 @@ async function initGame(): Promise<void> {
       
       // Add AI players when in lobby (will be added when game is created)
       const addAIPlayers = (count: number) => {
+        console.log(`[DEBUG] addAIPlayers called with count: ${count}`);
+        console.log(`[DEBUG] Current player count before adding AI: ${gameState.getAllPlayers().length}`);
+        
         for (let i = 0; i < count; i++) {
           const aiId = `ai-${i}`;
+          
+          // Check if this AI already exists
+          const existingPlayer = gameState.getPlayer(aiId);
+          if (existingPlayer) {
+            console.log(`[DEBUG] AI player ${aiId} already exists, skipping`);
+            continue; // Skip if already exists
+          }
+          
+          console.log(`[DEBUG] Adding AI player: ${aiId}`);
+          
           // Spread AI players across the map (200x200 area)
           const startPos = {
             x: (Math.random() - 0.5) * 200,
@@ -231,6 +255,7 @@ async function initGame(): Promise<void> {
             survivedTime: 0,
             wasTagged: false,
             beaconCooldown: 0,
+            tagCount: 0,
             isAI: true, // Mark as AI player
           });
           
@@ -241,6 +266,9 @@ async function initGame(): Promise<void> {
           gameEngine.addToScene(aiModel.getModel());
           aiPlayerModels.set(aiId, aiModel);
         }
+        
+        console.log(`[DEBUG] After adding AI, total player count: ${gameState.getAllPlayers().length}`);
+        console.log(`[DEBUG] Player IDs: ${gameState.getAllPlayers().map(p => p.id).join(', ')}`);
       };
       
       // Create debug info element (initially hidden)
@@ -290,7 +318,6 @@ async function initGame(): Promise<void> {
       let wasOni = gameState.getLocalPlayer().isOni;
       let gameHasStarted = false;
       let gameStartTime = 0;
-      let finalOniSpawned = false; // Track if final ONI wave has been spawned
       let lastTimerSync = 0; // Track last timer sync time
       
       // Setup game loop
@@ -345,14 +372,55 @@ async function initGame(): Promise<void> {
           oniOverlay.style.backgroundColor = 'transparent';
         }
         
-        // Check beacon item collection (ONI only)
-        const collectedBeacon = beaconItem.checkCollection(localPlayer.position, localPlayer.isOni);
-        if (collectedBeacon) {
-          beaconItem.collectItem(collectedBeacon.id);
-          // Activate beacon for 15 seconds
-          beaconActiveUntil = Date.now() + BEACON_DURATION * 1000;
-          // Show toast message
-          toast.show('Runner positions revealed for 15 seconds!', 'info', 3000);
+        // Check ONI spawn item collection (ONI only) - spawns 2 AI ONI
+        const collectedOniSpawn = oniSpawnItem.checkCollection(localPlayer.position, localPlayer.isOni);
+        if (collectedOniSpawn) {
+          oniSpawnItem.collectItem(collectedOniSpawn.id);
+          
+          // Show collection message
+          toast.show('ONI Spawn Item collected! 2 AI ONI incoming!', 'warning', 3000);
+          
+          // Spawn 2 AI ONI from the sky
+          const oniCount = 2;
+          console.log(`[DEBUG] Spawning ${oniCount} AI ONI from beacon item. Current player count: ${gameState.getAllPlayers().length}`);
+          
+          for (let i = 0; i < oniCount; i++) {
+            const spawnX = (Math.random() - 0.5) * 360;
+            const spawnZ = (Math.random() - 0.5) * 360;
+            const spawnY = 50;
+            
+            const aiId = `spawn-oni-${Date.now()}-${i}`;
+            console.log(`[DEBUG] Creating spawn ONI: ${aiId}`);
+            
+            const aiPlayer = {
+              id: aiId,
+              username: `Sky ONI ${i + 1}`,
+              isOni: true,
+              isAI: true,
+              position: { x: spawnX, y: spawnY, z: spawnZ },
+              velocity: { x: 0, y: 0, z: 0 },
+              rotation: { yaw: 0, pitch: 0 },
+              fuel: 100,
+              survivedTime: 0,
+              wasTagged: false,
+              isOnSurface: false,
+              isDashing: false,
+              isJetpacking: false,
+              beaconCooldown: 0,
+              tagCount: 0,
+            };
+            
+            gameState.updateRemotePlayer(aiPlayer);
+            
+            const aiModel = new PlayerModel(false);
+            aiModel.setIsOni(true);
+            aiModel.setName(`Sky ONI ${i + 1}`);
+            aiModel.setPosition(spawnX, spawnY, spawnZ);
+            gameEngine.addToScene(aiModel.getModel());
+            aiPlayerModels.set(aiPlayer.id, aiModel);
+          }
+          
+          console.log(`[DEBUG] After spawning ONI from item, total player count: ${gameState.getAllPlayers().length}`);
         }
         
         // Check cloak item collection (Runner only)
@@ -378,8 +446,8 @@ async function initGame(): Promise<void> {
           }
         }
         
-        // Animate beacon items
-        beaconItem.animate(deltaTime);
+        // Animate ONI spawn items
+        oniSpawnItem.animate(deltaTime);
         
         // Animate cloak items
         cloakItem.animate(deltaTime);
@@ -395,71 +463,6 @@ async function initGame(): Promise<void> {
             if (now - lastTimerSync >= 10000) { // 10 seconds
               lastTimerSync = now;
               realtimeSyncManager.sendTimerSync(gameStartTime);
-            }
-          }
-          
-          // Check if 1 minute remaining and spawn final ONI wave
-          if (gameStartTime > 0 && !finalOniSpawned) {
-            const config = gameState.getGameConfig();
-            const roundDuration = config?.roundDuration ?? 300;
-            const elapsed = (Date.now() - gameStartTime) / 1000;
-            const timeRemaining = roundDuration - elapsed;
-            
-            // Spawn final ONI wave at 1 minute remaining
-            if (timeRemaining <= 60 && timeRemaining > 59) {
-              finalOniSpawned = true;
-              
-              // Calculate number of ONI to spawn: totalPlayers / 3 (rounded down)
-              const totalPlayers = config?.totalPlayers ?? 6;
-              const finalOniCount = Math.floor(totalPlayers / 3);
-              
-              // Show warning message to all players
-              toast.show(
-                `⚠️ WARNING: ${finalOniCount} AI ONI incoming from the sky!`,
-                'warning',
-                5000
-              );
-              
-              // Only host spawns AI ONI (participants will see them via sync)
-              if (isHost) {
-                // Spawn AI ONI from the sky
-                for (let i = 0; i < finalOniCount; i++) {
-                  // Random position across the map
-                  const spawnX = (Math.random() - 0.5) * 360;
-                  const spawnZ = (Math.random() - 0.5) * 360;
-                  const spawnY = 50; // High in the sky
-                  
-                  // Create AI player
-                  const aiId = `final-oni-${Date.now()}-${i}`;
-                  const aiPlayer = gameState.addPlayer({
-                    id: aiId,
-                    username: `Sky ONI ${i + 1}`,
-                    isOni: true,
-                    isAI: true,
-                    position: { x: spawnX, y: spawnY, z: spawnZ },
-                    velocity: { x: 0, y: 0, z: 0 },
-                    rotation: { yaw: 0, pitch: 0 },
-                    fuel: 100,
-                    survivedTime: 0,
-                    wasTagged: false,
-                    isOnSurface: false,
-                    isDashing: false,
-                    isJetpacking: false,
-                    beaconCooldown: 0,
-                  });
-                  
-                  // Create AI model
-                  const aiModel = new PlayerModel(false);
-                  aiModel.setIsOni(true);
-                  aiModel.setName(`Sky ONI ${i + 1}`);
-                  aiModel.setPosition(spawnX, spawnY, spawnZ);
-                  gameEngine.addToScene(aiModel.getModel());
-                  aiPlayerModels.set(aiPlayer.id, aiModel);
-                  
-                  // Add to AI controller
-                  aiController.addAIPlayer(aiPlayer.id);
-                }
-              }
             }
           }
           
@@ -495,9 +498,20 @@ async function initGame(): Promise<void> {
               0.5 // AI player radius
             );
             
+            // If collision occurred, reduce velocity to prevent sticking
+            let finalVelocity = physicsResult.velocity;
+            if (collisionResult.collided) {
+              // Reduce velocity significantly when colliding to help AI unstuck
+              finalVelocity = {
+                x: physicsResult.velocity.x * 0.1,
+                y: physicsResult.velocity.y,
+                z: physicsResult.velocity.z * 0.1,
+              };
+            }
+            
             // Update AI player position and state
             gameState.setPlayerPosition(aiId, collisionResult.position);
-            gameState.setPlayerVelocity(aiId, physicsResult.velocity);
+            gameState.setPlayerVelocity(aiId, finalVelocity);
             gameState.setPlayerOnSurface(aiId, physicsResult.isOnSurface);
             
             // Get updated player state from game state
@@ -517,19 +531,9 @@ async function initGame(): Promise<void> {
           }
         }
         
-        // Update beacon visuals (show player locations when beacon is active)
-        const now = Date.now();
-        const isBeaconActive = now < beaconActiveUntil;
-        beaconVisual.update(gameState.getAllPlayers(), isBeaconActive, localPlayer.id);
+        // Update beacon visuals (will be used for Super ONI ability later)
+        beaconVisual.update(gameState.getAllPlayers(), false, localPlayer.id);
         beaconVisual.animate(deltaTime);
-        
-        // Update tag range visual (show ONI tagging range) - only during gameplay
-        if (gameState.getGamePhase() === 'playing' || gameState.getGamePhase() === 'countdown') {
-          tagRangeVisual.update(gameState.getAllPlayers());
-        }
-        
-        // Update jetpack effect (show jetpack particles for all players)
-        jetpackEffect.update(gameState.getAllPlayers(), deltaTime);
         
         // Update dynamic objects (cars, pedestrians)
         dynamicObjects.update(deltaTime);
@@ -580,13 +584,30 @@ async function initGame(): Promise<void> {
           gameState.setLocalPlayerOnSurface(physicsResult.isOnSurface);
         }
         
+        // Update visual effects AFTER physics (so they use updated positions)
+        // Update tag range visual (show ONI tagging range) - only during gameplay
+        if (gameState.getGamePhase() === 'playing' || gameState.getGamePhase() === 'countdown') {
+          tagRangeVisual.update(gameState.getAllPlayers());
+          
+          // Update target lock visual (show lock-on for nearby runners when ONI)
+          const localPlayerData = gameState.getLocalPlayer();
+          const localPlayerFull = gameState.getAllPlayers().find(p => p.id === localPlayerData.id);
+          if (localPlayerFull) {
+            const camera = gameEngine.getCamera();
+            targetLockVisual.update(localPlayerFull, gameState.getAllPlayers(), camera);
+          }
+        }
+        
+        // Update jetpack effect (show jetpack particles for all players)
+        jetpackEffect.update(gameState.getAllPlayers(), deltaTime);
+        
         // Update camera
         playerCamera.update(deltaTime);
         
         // Send player state to sync manager (only during gameplay, not in lobby)
         const phase = gameState.getGamePhase();
         
-        if (phase === 'playing' && currentGameId !== null) {
+        if (phase === 'playing' && currentGameId !== null && realtimeSyncManager.isConnected()) {
           const localPlayer = gameState.getLocalPlayer();
           realtimeSyncManager.sendPlayerState({
             position: localPlayer.position,
@@ -604,9 +625,7 @@ async function initGame(): Promise<void> {
         realtimeSyncManager.updateInterpolation(deltaTime);
         
         // Update debug info
-        const beaconActive = Date.now() < beaconActiveUntil;
-        const beaconTimeRemaining = beaconActive ? Math.ceil((beaconActiveUntil - Date.now()) / 1000) : 0;
-        const beaconItemsCount = beaconItem.getPlacedItems().length;
+        const oniSpawnItemsCount = oniSpawnItem.getPlacedItems().length;
         
         debugInfo.innerHTML = `
           <strong>[DEBUG MODE]</strong><br>
@@ -618,11 +637,9 @@ async function initGame(): Promise<void> {
           Jetpacking: ${localPlayer.isJetpacking ? 'Yes' : 'No'}<br>
           Dashing: ${localPlayer.isDashing ? 'Yes' : 'No'}<br>
           Climbing: ${localPlayer.isClimbing ? 'Yes' : 'No'}<br>
+          ${localPlayer.isOni ? `ONI Spawn Items: ${oniSpawnItemsCount}<br>` : ''}
           <br>
-          Beacon: ${beaconActive ? `ACTIVE (${beaconTimeRemaining}s)` : 'Inactive'}<br>
-          ${localPlayer.isOni ? `Beacon Items: ${beaconItemsCount}<br>` : ''}
-          <br>
-          <strong>F3:</strong> Toggle ONI/Runner${localPlayer.isOni ? '<br><strong>Collect beacon items to activate</strong>' : ''}
+          <strong>F3:</strong> Toggle ONI/Runner${localPlayer.isOni ? '<br><strong>Collect ONI spawn items to summon AI ONI</strong>' : ''}
         `;
       });
       
@@ -653,6 +670,11 @@ async function initGame(): Promise<void> {
       
       // Register callback for remote player updates
       realtimeSyncManager.onRemotePlayerUpdate((remotePlayers) => {
+        // Skip if no remote players (avoid clearing game state during connection)
+        if (remotePlayers.length === 0) {
+          return;
+        }
+        
         // Update or create models for remote players
         for (const remotePlayer of remotePlayers) {
           let model = remotePlayerModels.get(remotePlayer.id);
@@ -691,6 +713,7 @@ async function initGame(): Promise<void> {
             survivedTime: remotePlayer.survivedTime,
             wasTagged: remotePlayer.wasTagged,
             beaconCooldown: remotePlayer.beaconCooldown,
+            tagCount: remotePlayer.tagCount ?? 0,
             isAI: remotePlayer.isAI ?? false, // Preserve AI flag from remote player
           });
         }
@@ -810,6 +833,9 @@ async function initGame(): Promise<void> {
         // Change phase to countdown
         gameState.setGamePhase('countdown');
         
+        // Show controls during countdown so mobile players can move
+        uiControls.show();
+        
         // Start countdown (10 seconds) with timestamp synchronization
         const startTimestamp = e.detail?.startTimestamp || Date.now();
         uiCountdown.start(10, () => {
@@ -827,7 +853,7 @@ async function initGame(): Promise<void> {
       let gameStarted = false;
       
       // Listen for game start event (after countdown)
-      window.addEventListener('gameStart', ((e: CustomEvent) => {
+      window.addEventListener('gameStart', (async (e: CustomEvent) => {
         if (gameStarted) {
           return;
         }
@@ -889,24 +915,95 @@ async function initGame(): Promise<void> {
           });
         }
         
-        // Ensure AI players are added before game starts
-        const config = gameState.getGameConfig();
-        const currentPlayerCount = gameState.getAllPlayers().length;
-        const aiNeeded = (config?.totalPlayers ?? 6) - currentPlayerCount;
-        if (aiNeeded > 0) {
-          addAIPlayers(aiNeeded);
+        // Fetch latest game state from server to get AI players
+        if (currentGameId) {
+          try {
+            const serverGameState = await gameApiClient.getGameState(currentGameId);
+            const localPlayer = gameState.getLocalPlayer();
+            console.log(`[DEBUG] Fetched game state from server - Total players: ${serverGameState.players.length}`);
+            console.log(`[DEBUG] Local player ID (before): ${localPlayer.id}`);
+            console.log(`[DEBUG] Server player IDs:`, serverGameState.players.map(p => `${p.id} (${p.username}, AI: ${p.isAI})`));
+            
+            // Find the server player that matches the local player's username
+            const matchingServerPlayer = serverGameState.players.find(p => 
+              p.username === localPlayer.id || // If local ID is username
+              p.id === localPlayer.id // If local ID already matches
+            );
+            
+            if (matchingServerPlayer) {
+              // Update local player ID to match server
+              gameState.setLocalPlayerId(matchingServerPlayer.id);
+              console.log(`[DEBUG] Updated local player ID from ${localPlayer.id} to: ${matchingServerPlayer.id}`);
+              
+              // Update local player ONI status from server
+              gameState.setLocalPlayerIsOni(matchingServerPlayer.isOni);
+              console.log(`[DEBUG] Local player isOni: ${matchingServerPlayer.isOni}`);
+              
+              // Update localPlayer reference after ID change
+              const updatedLocalPlayer = gameState.getLocalPlayer();
+              console.log(`[DEBUG] Confirmed local player ID is now: ${updatedLocalPlayer.id}`);
+            } else {
+              console.warn(`[DEBUG] Could not find matching server player for local player: ${localPlayer.id}`);
+            }
+            
+            // Update local game state with server players
+            for (const player of serverGameState.players) {
+              if (player.id !== localPlayer.id) {
+                console.log(`[DEBUG] Adding remote player: ${player.id} (${player.username}, AI: ${player.isAI}, isOni: ${player.isOni})`);
+                
+                // Set random spawn position for each player (spread across entire map)
+                const spawnX = (Math.random() - 0.5) * 360; // Random X between -180 and 180
+                const spawnZ = (Math.random() - 0.5) * 360; // Random Z between -180 and 180
+                const spawnPosition = { x: spawnX, y: 2, z: spawnZ };
+                
+                // Update player with spawn position
+                const playerWithSpawn = {
+                  ...player,
+                  position: spawnPosition,
+                };
+                
+                gameState.updateRemotePlayer(playerWithSpawn);
+                
+                // Create 3D model for remote player if not exists
+                if (!remotePlayerModels.has(player.id)) {
+                  const remoteModel = new PlayerModel(player.isOni);
+                  remoteModel.setName(player.username);
+                  remoteModel.setPosition(spawnPosition.x, spawnPosition.y, spawnPosition.z);
+                  remoteModel.setIsOni(player.isOni); // Ensure ONI status is set
+                  gameEngine.addToScene(remoteModel.getModel());
+                  remotePlayerModels.set(player.id, remoteModel);
+                }
+                
+                // If AI player, also add to AI models map
+                if (player.isAI && !aiPlayerModels.has(player.id)) {
+                  const aiModel = remotePlayerModels.get(player.id);
+                  if (aiModel) {
+                    aiPlayerModels.set(player.id, aiModel);
+                  }
+                }
+              } else {
+                console.log(`[DEBUG] Skipping local player: ${player.id}`);
+              }
+            }
+            
+            console.log(`[DEBUG] After syncing with server - Total players: ${gameState.getAllPlayers().length}`);
+            console.log(`[DEBUG] All player IDs:`, gameState.getAllPlayers().map(p => `${p.id} (${p.username}, AI: ${p.isAI}, isOni: ${p.isOni})`));
+            console.log(`[DEBUG] ONI count: ${gameState.countOniPlayers()}, Runner count: ${gameState.countRunnerPlayers()}`);
+          } catch (error) {
+            console.error('[DEBUG] Failed to fetch game state from server:', error);
+          }
         }
         
         gameState.setGamePhase('playing');
         gameHasStarted = true; // Mark that game has started
         gameStartTime = Date.now(); // Record game start time
-        finalOniSpawned = false; // Reset final ONI spawn flag
         
         // Reset tag system grace period
         tagSystem.resetGameStartTime();
         
         uiHud.show();
         uiHud.startTimer(gameState.getGameConfig()?.roundDuration ?? 300);
+        uiHud.update(0); // Force initial update to show correct player counts
         uiControls.show();
         
         // Debug: Log initial player state (once at game start)
@@ -947,65 +1044,38 @@ async function initGame(): Promise<void> {
           console.warn('[Realtime] No gameId provided in gameStart event');
         }
         
-        // Assign random ONI after a short delay to ensure all players are loaded
-        // Note: In multiplayer, ONI assignment should be done by the server
-        // For now, each client assigns ONI independently (will be synced via Realtime)
+        // Use ONI assignment from server (already set when syncing with server)
+        // Check if local player is ONI and show appropriate message
         setTimeout(() => {
-          const allPlayers = gameState.getAllPlayers();
+          const localPlayer = gameState.getLocalPlayer();
           
-          if (allPlayers.length > 0) {
-            // Calculate number of ONI: 1 oni for every 3 players (rounded down)
-            const oniCount = Math.max(1, Math.floor(allPlayers.length / 3));
+          if (localPlayer.isOni) {
+            // Update wasOni to prevent "Became ONI" message
+            wasOni = true;
             
-            // Shuffle players and select first N as ONI
-            const shuffled = [...allPlayers].sort(() => Math.random() - 0.5);
-            const oniPlayers = shuffled.slice(0, oniCount);
-            
-            // Assign ONI status
-            oniPlayers.forEach(oniPlayer => {
-              if (oniPlayer.id === gameState.getLocalPlayer().id) {
-                // Local player is ONI
-                gameState.setLocalPlayerIsOni(true);
-                // Update wasOni to prevent "Became ONI" message
-                wasOni = true;
-                
-                // Show ONI role message
-                setTimeout(() => {
-                  toast.show('You are ONI! Tag all runners with jetpack!', 'warning', 5000);
-                }, 1500);
-              } else {
-                // Remote/AI player is ONI
-                const remotePlayer = gameState.getPlayer(oniPlayer.id);
-                if (remotePlayer) {
-                  remotePlayer.isOni = true;
-                  // Update AI model color
-                  const aiModel = aiPlayerModels.get(oniPlayer.id);
-                  if (aiModel) {
-                    aiModel.setIsOni(true);
-                  }
-                }
-              }
-            });
-            
-            // Ensure local player is set as runner if not selected as ONI
-            if (!oniPlayers.some(p => p.id === gameState.getLocalPlayer().id)) {
-              gameState.setLocalPlayerIsOni(false);
-              
-              // Show Runner role message
-              setTimeout(() => {
-                toast.show('You are RUNNER! Survive and avoid ONI with dash!', 'info', 5000);
-              }, 1500);
+            // Show ONI role message
+            toast.show('You are ONI! Tag all runners with jetpack!', 'warning', 5000);
+          } else {
+            // Show Runner role message
+            toast.show('You are RUNNER! Survive and avoid ONI with dash!', 'info', 5000);
+          }
+          
+          // Update AI model colors based on server ONI assignment
+          for (const [playerId, aiModel] of aiPlayerModels) {
+            const player = gameState.getPlayer(playerId);
+            if (player && player.isOni) {
+              aiModel.setIsOni(true);
             }
           }
-        }, 100); // 100ms delay to ensure AI players are added
+        }, 1500); // 1.5s delay for better UX
         
-        // Place beacon items on the map
+        // Place ONI spawn items on the map
         const buildings = cityGenerator.getBuildingData();
-        beaconItem.placeItems(buildings);
+        oniSpawnItem.placeItems(buildings);
         
         // Place cloak items on the map
         cloakItem.placeItems(buildings);
-      }) as EventListener);
+      }) as unknown as EventListener);
       
       // Listen for lobby exit event (when host leaves lobby)
       window.addEventListener('lobbyExit', (async () => {
@@ -1114,6 +1184,9 @@ async function initGame(): Promise<void> {
       // Listen for game end event
       window.addEventListener('gameEnd', async () => {
         
+        // Set game phase to ended immediately to stop game loop updates
+        gameState.setGamePhase('ended');
+        
         // Disconnect from Realtime
         await realtimeSyncManager.disconnect();
         
@@ -1144,8 +1217,16 @@ async function initGame(): Promise<void> {
               const uiResults = new UIResults(gameResults, i18n);
               uiResults.create();
               
+              // Track if already returning to menu to prevent duplicate calls
+              let returningToMenu = false;
+              
               // Set callback to return to menu
               uiResults.setOnBackToMenu(() => {
+                // Prevent duplicate calls
+                if (returningToMenu) {
+                  return;
+                }
+                returningToMenu = true;
                 
                 // Hide and destroy results screen
                 uiResults.hide();
@@ -1158,6 +1239,7 @@ async function initGame(): Promise<void> {
                 
                 // Clean up visual effects
                 tagRangeVisual.dispose();
+                targetLockVisual.dispose();
                 
                 // Remove ONI overlay
                 const oniOverlay = document.getElementById('oni-overlay');
@@ -1169,11 +1251,11 @@ async function initGame(): Promise<void> {
                 uiHud.hide();
                 uiControls.hide();
                 
-                // Disconnect from Realtime
-                if (currentGameId) {
+                // Disconnect from Realtime (if not already disconnected)
+                if (currentGameId && realtimeSyncManager.isConnected()) {
                   void realtimeSyncManager.disconnect();
-                  currentGameId = null;
                 }
+                currentGameId = null;
                 
                 // Clear remote player models
                 remotePlayerModels.forEach((model) => {
@@ -1220,16 +1302,17 @@ async function initGame(): Promise<void> {
           }
         }
         
-        // Reset game state
-        gameState.setGamePhase('ended');
-        currentGameId = null;
+        // currentGameId will be cleared in the back to menu callback
         
-        // Clean up visual effects
-        tagRangeVisual.dispose();
-        
-        // Hide HUD and controls
-        uiHud.hide();
-        uiControls.hide();
+        // Clean up visual effects (if not already done)
+        if (gameState.getGamePhase() === 'ended') {
+          tagRangeVisual.dispose();
+          targetLockVisual.dispose();
+          
+          // Hide HUD and controls
+          uiHud.hide();
+          uiControls.hide();
+        }
         
       });
       

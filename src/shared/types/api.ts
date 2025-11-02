@@ -63,6 +63,7 @@ export interface GetStatsRequest {
 export interface CreateGameResponse {
   success: boolean;
   gameId?: string;
+  playerId?: string;
   error?: string;
 }
 

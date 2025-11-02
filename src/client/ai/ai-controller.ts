@@ -47,8 +47,8 @@ const DEFAULT_AI_CONFIG: AIConfig = {
   chaseDistance: 100,
   fleeDistance: 50,
   wanderChangeInterval: 3,
-  abilityUseChance: 0.3,
-  abilityUseCooldown: 2,
+  abilityUseChance: 0.6, // Increased from 0.3 to 0.6 for more aggressive AI
+  abilityUseCooldown: 1.5, // Reduced from 2 to 1.5 for faster ability usage
 };
 
 /**
@@ -140,7 +140,7 @@ export class AIController {
   }
 
   /**
-   * Make decision for ONI AI
+   * Make decision for ONI AI (improved for smarter behavior)
    */
   private makeOniDecision(
     aiPlayer: Player,
@@ -163,15 +163,34 @@ export class AIController {
       return this.addAbilityDecision(aiPlayer, decision, 'jetpack');
     }
     
-    if (this.behaviorSystem.isWithinChaseDistance(aiPlayer, nearestRunner)) {
-      // Chase nearest runner
-      const decision = this.behaviorSystem.chase(aiPlayer, nearestRunner);
-      return this.addAbilityDecision(aiPlayer, decision, 'jetpack');
-    } else {
-      // Too far, wander
-      const decision = this.behaviorSystem.wander(aiPlayer, deltaTime);
-      return this.addAbilityDecision(aiPlayer, decision, 'jetpack');
-    }
+    // Calculate distance to target
+    const distance = this.calculateDistance(aiPlayer.position, nearestRunner.position);
+    
+    // Always chase if runner is visible (increased from 100 to always chase)
+    const decision = this.behaviorSystem.chase(aiPlayer, nearestRunner);
+    
+    // Use jetpack more aggressively when:
+    // 1. Target is far (> 30 units)
+    // 2. Target is above us (y difference > 5)
+    // 3. Random chance for unpredictability
+    const yDiff = nearestRunner.position.y - aiPlayer.position.y;
+    const shouldUseJetpack = distance > 30 || yDiff > 5 || Math.random() < 0.4;
+    
+    return {
+      ...decision,
+      useAbility: shouldUseJetpack && this.shouldUseAbility(aiPlayer, 'jetpack'),
+      abilityType: shouldUseJetpack && this.shouldUseAbility(aiPlayer, 'jetpack') ? 'jetpack' : null,
+    };
+  }
+
+  /**
+   * Calculate distance between two positions
+   */
+  private calculateDistance(pos1: { x: number; y: number; z: number }, pos2: { x: number; y: number; z: number }): number {
+    const dx = pos2.x - pos1.x;
+    const dy = pos2.y - pos1.y;
+    const dz = pos2.z - pos1.z;
+    return Math.sqrt(dx * dx + dy * dy + dz * dz);
   }
 
   /**

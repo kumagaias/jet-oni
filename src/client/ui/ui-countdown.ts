@@ -29,21 +29,21 @@ export class UICountdown {
       const endTime = startTimestamp + seconds * 1000;
       
       // Update display immediately
-      const remaining = Math.ceil((endTime - Date.now()) / 1000);
-      this.countdownValue = Math.max(0, remaining);
+      const remainingMs = endTime - Date.now();
+      this.countdownValue = Math.max(0, Math.floor(remainingMs / 1000));
       this.updateDisplay();
       
       // Use requestAnimationFrame for smoother updates
       const updateCountdown = () => {
-        const remaining = Math.ceil((endTime - Date.now()) / 1000);
-        const newValue = Math.max(0, remaining);
+        const remainingMs = endTime - Date.now();
+        const newValue = Math.max(0, Math.floor(remainingMs / 1000));
         
         if (newValue !== this.countdownValue) {
           this.countdownValue = newValue;
           this.updateDisplay();
         }
         
-        if (this.countdownValue <= 0) {
+        if (remainingMs <= 0) {
           this.complete();
         } else {
           requestAnimationFrame(updateCountdown);

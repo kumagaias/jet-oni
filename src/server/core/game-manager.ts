@@ -10,8 +10,9 @@ export class GameManager {
 
   /**
    * Create a new game session
+   * Returns object with gameId and hostPlayerId
    */
-  async createGame(config: GameConfig, hostUsername?: string): Promise<string> {
+  async createGame(config: GameConfig, hostUsername?: string): Promise<{ gameId: string; hostPlayerId: string }> {
     // Delete any existing games by the same host
     if (hostUsername) {
       await this.deleteExistingGamesByHost(hostUsername);
@@ -32,6 +33,7 @@ export class GameManager {
       fuel: 100,
       survivedTime: 0,
       wasTagged: false,
+      tagCount: 0,
       isOnSurface: true,
       isDashing: false,
       isJetpacking: false,
@@ -57,7 +59,7 @@ export class GameManager {
     // Add to active games list
     await RedisStorage.addActiveGame(gameId);
 
-    return gameId;
+    return { gameId, hostPlayerId: hostId };
   }
 
   /**
@@ -115,6 +117,7 @@ export class GameManager {
       fuel: 100,
       survivedTime: 0,
       wasTagged: false,
+      tagCount: 0,
       isOnSurface: true,
       isDashing: false,
       isJetpacking: false,
@@ -361,10 +364,12 @@ export class GameManager {
     const gameState = await this.getGameState(gameId);
 
     if (!gameState) {
+      console.error('[GameManager] addAIPlayers: Game not found:', gameId);
       return;
     }
 
     const slotsToFill = gameState.config.totalPlayers - gameState.players.length;
+    console.log(`[GameManager] addAIPlayers: Total players: ${gameState.config.totalPlayers}, Current: ${gameState.players.length}, Slots to fill: ${slotsToFill}`);
 
     for (let i = 0; i < slotsToFill; i++) {
       const aiPlayer: Player = {
@@ -378,6 +383,7 @@ export class GameManager {
         fuel: 100,
         survivedTime: 0,
         wasTagged: false,
+        tagCount: 0,
         isOnSurface: true,
         isDashing: false,
         isJetpacking: false,
@@ -387,12 +393,25 @@ export class GameManager {
       gameState.players.push(aiPlayer);
     }
 
-    // Assign random oni if not already assigned
-    if (!gameState.players.some((p) => p.isOni)) {
+    console.log(`[GameManager] addAIPlayers: After adding AI, total players: ${gameState.players.length}`);
+
+    // Always reassign ONI after adding AI to ensure correct number
+    // (e.g., 1 player = 1 ONI, but 6 players = 2 ONI)
+    try {
       this.assignRandomOni(gameState);
+      console.log(`[GameManager] addAIPlayers: ONI assignment completed`);
+    } catch (error) {
+      console.error('[GameManager] addAIPlayers: Error assigning ONI:', error);
+      throw error;
     }
 
-    await this.saveGameState(gameState);
+    try {
+      await this.saveGameState(gameState);
+      console.log(`[GameManager] addAIPlayers: Game state saved successfully`);
+    } catch (error) {
+      console.error('[GameManager] addAIPlayers: Error saving game state:', error);
+      throw error;
+    }
   }
 
   /**
@@ -471,25 +490,48 @@ export class GameManager {
   }
 
   /**
-   * Randomly assign one player as oni
+   * Randomly assign oni players based on total player count
+   * Formula: 1 oni for every 3 players (rounded down), minimum 1 oni
    */
   private assignRandomOni(gameState: GameState): void {
-    if (gameState.players.length === 0) {
-      return;
-    }
-
-    // Reset all players to runner
-    gameState.players.forEach((player) => {
-      if (player) {
-        player.isOni = false;
+    try {
+      if (!gameState || !gameState.players) {
+        console.error('[GameManager] assignRandomOni: Invalid game state');
+        return;
       }
-    });
 
-    // Randomly select one player as oni
-    const randomIndex = Math.floor(Math.random() * gameState.players.length);
-    const selectedPlayer = gameState.players[randomIndex];
-    if (selectedPlayer) {
-      selectedPlayer.isOni = true;
+      if (gameState.players.length === 0) {
+        console.warn('[GameManager] assignRandomOni: No players to assign ONI');
+        return;
+      }
+
+      // Calculate number of oni: 1 oni for every 3 players (rounded down)
+      const oniCount = Math.max(1, Math.floor(gameState.players.length / 3));
+      console.log(`[GameManager] assignRandomOni: Total players: ${gameState.players.length}, ONI count: ${oniCount}`);
+
+      // Reset all players to runner
+      gameState.players.forEach((player) => {
+        if (player) {
+          player.isOni = false;
+        }
+      });
+
+      // Shuffle players array
+      const shuffled = [...gameState.players].sort(() => Math.random() - 0.5);
+
+      // Select first N players as oni
+      for (let i = 0; i < oniCount && i < shuffled.length; i++) {
+        const selectedPlayer = shuffled[i];
+        if (selectedPlayer) {
+          selectedPlayer.isOni = true;
+          console.log(`[GameManager] assignRandomOni: Assigned ${selectedPlayer.username} (${selectedPlayer.id}) as ONI`);
+        }
+      }
+
+      console.log(`[GameManager] assignRandomOni: Completed. ONI players: ${gameState.players.filter(p => p.isOni).length}`);
+    } catch (error) {
+      console.error('[GameManager] assignRandomOni: Unexpected error:', error);
+      throw error;
     }
   }
 

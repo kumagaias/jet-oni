@@ -3,38 +3,39 @@ import { Vector3 } from '../../shared/types/game';
 import { MAP_SIZE } from '../../shared/constants';
 
 /**
- * Beacon item state
+ * ONI spawn item state
  */
-export enum BeaconItemState {
+export enum OniSpawnItemState {
   PLACED = 'placed',
   COLLECTED = 'collected',
 }
 
 /**
- * Beacon item data
+ * ONI spawn item data
  */
-export interface BeaconItemData {
+export interface OniSpawnItemData {
   id: string;
   position: Vector3;
-  state: BeaconItemState;
+  state: OniSpawnItemState;
   mesh: THREE.Group;
 }
 
 /**
- * BeaconItem manages beacon item placement and collection
+ * OniSpawnItem manages ONI spawn item placement and collection
+ * When collected by ONI, spawns 2 AI ONI from the sky
  */
-export class BeaconItem {
-  private items: BeaconItemData[] = [];
+export class OniSpawnItem {
+  private items: OniSpawnItemData[] = [];
   private scene: THREE.Scene;
-  private itemCount = 2; // 2 beacons per map
-  private collectionRadius = 2; // units
+  private itemCount = 2; // 2 ONI spawn items per map
+  private collectionRadius = 3; // units (increased for easier collection)
 
   constructor(scene: THREE.Scene) {
     this.scene = scene;
   }
 
   /**
-   * Place beacon items on the map
+   * Place ONI spawn items on the map
    */
   public placeItems(buildings: { position: Vector3; width: number; depth: number }[]): void {
     this.clearItems();
@@ -59,7 +60,7 @@ export class BeaconItem {
       }
 
       if (position) {
-        const item = this.createBeaconItem(position, i);
+        const item = this.createOniSpawnItem(position, i);
         this.items.push(item);
         placedPositions.push(position);
       }
@@ -72,7 +73,7 @@ export class BeaconItem {
   private generateRandomPosition(): Vector3 {
     const x = (Math.random() - 0.5) * MAP_SIZE * 2;
     const z = (Math.random() - 0.5) * MAP_SIZE * 2;
-    return { x, y: 1, z }; // 1 unit above ground
+    return { x, y: 2, z }; // 2 units above ground (more visible)
   }
 
   /**
@@ -115,9 +116,9 @@ export class BeaconItem {
   }
 
   /**
-   * Create a beacon item mesh
+   * Create an ONI spawn item mesh
    */
-  private createBeaconItem(position: Vector3, index: number): BeaconItemData {
+  private createOniSpawnItem(position: Vector3, index: number): OniSpawnItemData {
     const group = new THREE.Group();
 
     // Create multiple rotating rings
@@ -160,27 +161,27 @@ export class BeaconItem {
     this.scene.add(group);
 
     return {
-      id: `beacon-${Date.now()}-${index}`,
+      id: `oni-spawn-${Date.now()}-${index}`,
       position: { ...position },
-      state: BeaconItemState.PLACED,
+      state: OniSpawnItemState.PLACED,
       mesh: group,
     };
   }
 
   /**
-   * Check if player can collect beacon (oni only, within radius)
+   * Check if player can collect ONI spawn item (oni only, within radius)
    */
   public checkCollection(
     playerPosition: Vector3,
     isOni: boolean
-  ): BeaconItemData | null {
-    // Only oni can collect beacons
+  ): OniSpawnItemData | null {
+    // Only oni can collect ONI spawn items
     if (!isOni) {
       return null;
     }
 
     for (const item of this.items) {
-      if (item.state !== BeaconItemState.PLACED) {
+      if (item.state !== OniSpawnItemState.PLACED) {
         continue;
       }
 
@@ -197,15 +198,15 @@ export class BeaconItem {
   }
 
   /**
-   * Collect a beacon item
+   * Collect an ONI spawn item
    */
   public collectItem(itemId: string): boolean {
     const item = this.items.find((i) => i.id === itemId);
-    if (!item || item.state !== BeaconItemState.PLACED) {
+    if (!item || item.state !== OniSpawnItemState.PLACED) {
       return false;
     }
 
-    item.state = BeaconItemState.COLLECTED;
+    item.state = OniSpawnItemState.COLLECTED;
     this.scene.remove(item.mesh);
 
     // Dispose geometry and materials
@@ -224,13 +225,13 @@ export class BeaconItem {
   }
 
   /**
-   * Animate beacon items
+   * Animate ONI spawn items
    */
   public animate(deltaTime: number): void {
     const rotationSpeed = 2; // radians per second
 
     for (const item of this.items) {
-      if (item.state !== BeaconItemState.PLACED) {
+      if (item.state !== OniSpawnItemState.PLACED) {
         continue;
       }
 
@@ -254,21 +255,21 @@ export class BeaconItem {
   }
 
   /**
-   * Get all beacon items
+   * Get all ONI spawn items
    */
-  public getItems(): BeaconItemData[] {
+  public getItems(): OniSpawnItemData[] {
     return this.items;
   }
 
   /**
-   * Get placed beacon items
+   * Get placed ONI spawn items
    */
-  public getPlacedItems(): BeaconItemData[] {
-    return this.items.filter((item) => item.state === BeaconItemState.PLACED);
+  public getPlacedItems(): OniSpawnItemData[] {
+    return this.items.filter((item) => item.state === OniSpawnItemState.PLACED);
   }
 
   /**
-   * Clear all beacon items
+   * Clear all ONI spawn items
    */
   public clearItems(): void {
     for (const item of this.items) {

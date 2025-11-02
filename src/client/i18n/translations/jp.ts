@@ -48,6 +48,8 @@ export const jp: Translations = {
     addingAI: 'AIプレイヤーを追加中...',
     ready: '準備完了！',
     hostDisconnected: 'ホストが退出しました。メニューに戻ります...',
+    leaveConfirmHost: '本当に退出しますか？全てのプレイヤーのゲームが終了します。',
+    leaveConfirmParticipant: '本当にゲームから退出しますか？',
   },
 
   countdown: {

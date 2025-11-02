@@ -268,6 +268,18 @@ export class UIHud {
 
     const oniCount = this.gameState.countOniPlayers();
     const runnerCount = this.gameState.countRunnerPlayers();
+    const totalCount = this.gameState.getAllPlayers().length;
+
+    // Debug log when count seems wrong
+    if (oniCount + runnerCount !== totalCount) {
+      console.warn(`[DEBUG] Player count mismatch! ONI: ${oniCount}, Runners: ${runnerCount}, Total: ${totalCount}`);
+      console.warn(`[DEBUG] All players:`, this.gameState.getAllPlayers().map(p => ({
+        id: p.id,
+        username: p.username,
+        isOni: p.isOni,
+        isAI: p.isAI
+      })));
+    }
 
     this.playerCountElement.textContent = this.i18n.t('hud.playerCount', {
       oni: oniCount.toString(),

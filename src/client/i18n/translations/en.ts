@@ -48,6 +48,8 @@ export const en: Translations = {
     addingAI: 'Adding AI players...',
     ready: 'Ready!',
     hostDisconnected: 'Host has disconnected. Returning to menu...',
+    leaveConfirmHost: 'Are you sure you want to leave? This will end the game for all players.',
+    leaveConfirmParticipant: 'Are you sure you want to leave the game?',
   },
 
   countdown: {

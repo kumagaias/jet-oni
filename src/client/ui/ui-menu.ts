@@ -110,6 +110,97 @@ export class UIMenu {
   }
 
   /**
+   * Show custom confirmation dialog
+   */
+  private showConfirmDialog(message: string, onConfirm: () => void): void {
+    const overlay = this.uiManager.getOverlay();
+    
+    // Create confirmation dialog
+    const confirmDialog = document.createElement('div');
+    confirmDialog.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+    `;
+    
+    confirmDialog.innerHTML = `
+      <div style="
+        background: rgba(0, 0, 0, 0.95);
+        border: 2px solid #ff0000;
+        border-radius: 8px;
+        padding: 30px;
+        max-width: 400px;
+        font-family: monospace;
+        text-align: center;
+      ">
+        <p style="
+          color: #ff0000;
+          font-size: 16px;
+          margin-bottom: 25px;
+          line-height: 1.5;
+        ">${message}</p>
+        
+        <div style="display: flex; gap: 10px;">
+          <button id="confirm-cancel" style="
+            flex: 1;
+            padding: 12px;
+            font-size: 14px;
+            cursor: pointer;
+            font-family: monospace;
+            border: 2px solid #666;
+            background: #222;
+            color: #aaa;
+            border-radius: 4px;
+          ">CANCEL</button>
+          
+          <button id="confirm-ok" style="
+            flex: 1;
+            padding: 12px;
+            font-size: 14px;
+            cursor: pointer;
+            font-family: monospace;
+            border: 2px solid #ff0000;
+            background: #330000;
+            color: #ff0000;
+            border-radius: 4px;
+            font-weight: bold;
+          ">LEAVE</button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(confirmDialog);
+    
+    // Cancel button - use once option to prevent multiple registrations
+    const cancelButton = document.getElementById('confirm-cancel');
+    if (cancelButton) {
+      cancelButton.addEventListener('click', () => {
+        if (document.body.contains(confirmDialog)) {
+          document.body.removeChild(confirmDialog);
+        }
+      }, { once: true });
+    }
+    
+    // OK button - use once option to prevent multiple registrations
+    const okButton = document.getElementById('confirm-ok');
+    if (okButton) {
+      okButton.addEventListener('click', () => {
+        if (document.body.contains(confirmDialog)) {
+          document.body.removeChild(confirmDialog);
+        }
+        onConfirm();
+      }, { once: true });
+    }
+  }
+
+  /**
    * Update lobby display with current state
    */
   private updateLobbyDisplay(): void {
@@ -725,10 +816,10 @@ export class UIMenu {
         // Call API to create game
         const response = await this.gameApiClient.createGame(config);
         
-        if (response.success && response.gameId) {
-          // Store game ID and player ID (host is first player)
+        if (response.success && response.gameId && response.playerId) {
+          // Store game ID and player ID from server
           this.currentGameId = response.gameId;
-          this.currentPlayerId = this.username; // Use username as player ID for now
+          this.currentPlayerId = response.playerId;
           
           // Initialize lobby manager
           this.lobbyManager = new LobbyManager({
@@ -1244,11 +1335,12 @@ export class UIMenu {
             font-size: 14px;
             cursor: pointer;
             font-family: monospace;
-            border: 2px solid #666;
-            background: #222;
-            color: #aaa;
+            border: 2px solid #ff0000;
+            background: #330000;
+            color: #ff0000;
             border-radius: 4px;
-          ">← BACK</button>
+            font-weight: bold;
+          ">LEAVE</button>
           
           ${isHost ? `
             <button id="btn-start" style="
@@ -1275,47 +1367,64 @@ export class UIMenu {
       </style>
     `;
     
-    document.getElementById('btn-back')?.addEventListener('click', async () => {
-      const backButton = document.getElementById('btn-back') as HTMLButtonElement;
+    const backButton = document.getElementById('btn-back');
+    backButton?.addEventListener('click', () => {
       if (!backButton) return;
       
-      // Disable button to prevent multiple clicks
-      backButton.disabled = true;
-      backButton.textContent = 'Loading...';
+      // Show custom confirmation dialog
+      const confirmMessage = isHost
+        ? (this.i18n.t('lobby.leaveConfirmHost') || 
+           'Are you sure you want to leave? This will end the game for all players.')
+        : (this.i18n.t('lobby.leaveConfirmParticipant') || 
+           'Are you sure you want to leave the game?');
       
-      try {
-        // If host, delete the game
-        if (isHost && this.currentGameId) {
-          await this.gameApiClient.deleteGame(this.currentGameId);
-          console.log('[Lobby] Host deleted game');
-        }
-        // If participant, leave the game
-        else if (!isHost && this.currentGameId && this.currentPlayerId) {
-          const result = await this.gameApiClient.leaveGame(this.currentGameId, this.currentPlayerId);
-          if (result.success) {
-            console.log('[Lobby] Participant left game');
-          } else {
-            console.error('[Lobby] Failed to leave game:', result.error);
+      this.showConfirmDialog(confirmMessage, async () => {
+        console.log('[UIMenu] User confirmed leaving lobby');
+        
+        // User confirmed - proceed with leaving
+        backButton.disabled = true;
+        backButton.textContent = 'Loading...';
+        
+        try {
+          // If host, delete the game
+          if (isHost && this.currentGameId) {
+            console.log('[UIMenu] Deleting game as host:', this.currentGameId);
+            await this.gameApiClient.deleteGame(this.currentGameId);
+            console.log('[UIMenu] Host deleted game successfully');
           }
+          // If participant, leave the game
+          else if (!isHost && this.currentGameId && this.currentPlayerId) {
+            console.log('[UIMenu] Leaving game as participant:', this.currentGameId);
+            const result = await this.gameApiClient.leaveGame(this.currentGameId, this.currentPlayerId);
+            if (result.success) {
+              console.log('[UIMenu] Participant left game successfully');
+            } else {
+              console.error('[UIMenu] Failed to leave game:', result.error);
+            }
+          }
+        } catch (error) {
+          console.error('[UIMenu] Error during exit:', error);
         }
-      } catch (error) {
-        console.error('[Lobby] Error during exit:', error);
-      }
-      
-      // Dispatch lobby exit event to trigger cleanup
-      window.dispatchEvent(new Event('lobbyExit'));
-      
-      // Clean up lobby manager
-      if (this.lobbyManager) {
-        this.lobbyManager.destroy();
-        this.lobbyManager = null;
-      }
-      
-      // Reset current game state
-      this.currentGameId = null;
-      this.currentPlayerId = null;
-      
-      this.showTitleScreen();
+        
+        console.log('[UIMenu] Dispatching lobbyExit event');
+        // Dispatch lobby exit event to trigger cleanup
+        window.dispatchEvent(new Event('lobbyExit'));
+        
+        console.log('[UIMenu] Cleaning up lobby manager');
+        // Clean up lobby manager
+        if (this.lobbyManager) {
+          this.lobbyManager.destroy();
+          this.lobbyManager = null;
+        }
+        
+        // Reset current game state
+        this.currentGameId = null;
+        this.currentPlayerId = null;
+        
+        console.log('[UIMenu] Showing title screen');
+        this.showTitleScreen();
+        console.log('[UIMenu] Title screen shown');
+      });
     });
     
     // Start button (host only)

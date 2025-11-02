@@ -99,6 +99,13 @@ export class GameState {
   }
 
   /**
+   * Update local player ID (used when syncing with server)
+   */
+  public setLocalPlayerId(newId: string): void {
+    this.localPlayer.id = newId;
+  }
+
+  /**
    * Update local player position
    */
   public setLocalPlayerPosition(position: Vector3): void {
@@ -411,6 +418,13 @@ export class GameState {
    */
   public setCurrentRound(round: number): void {
     this.currentRound = round;
+  }
+
+  /**
+   * Set game start time (for timer synchronization)
+   */
+  public setGameStartTime(timestamp: number): void {
+    this.gameStartTime = timestamp;
   }
 
   /**

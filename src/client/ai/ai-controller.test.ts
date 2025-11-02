@@ -18,8 +18,8 @@ describe('AIController', () => {
       expect(config.chaseDistance).toBe(100);
       expect(config.fleeDistance).toBe(50);
       expect(config.wanderChangeInterval).toBe(3);
-      expect(config.abilityUseChance).toBe(0.3);
-      expect(config.abilityUseCooldown).toBe(2);
+      expect(config.abilityUseChance).toBe(0.6);
+      expect(config.abilityUseCooldown).toBe(1.5);
     });
 
     it('should accept custom config', () => {
@@ -85,7 +85,7 @@ describe('AIController', () => {
       expect(decision.moveDirection.x).toBeGreaterThan(0); // Moving towards runner
     });
 
-    it('should wander when no runners nearby', () => {
+    it('should chase runners even when far away', () => {
       // Add runner far away
       gameState.updateRemotePlayer({
         id: 'runner-1',
@@ -107,8 +107,9 @@ describe('AIController', () => {
       const allPlayers = gameState.getAllPlayers();
       const decision = aiController.makeDecision(aiPlayer, allPlayers, 0.016);
 
-      expect(decision.behavior).toBe(AIBehavior.WANDER);
-      expect(decision.targetPlayerId).toBeNull();
+      // AI ONI now always chases nearest runner
+      expect(decision.behavior).toBe(AIBehavior.CHASE);
+      expect(decision.targetPlayerId).toBe('runner-1');
     });
 
     it('should wander when no runners exist', () => {

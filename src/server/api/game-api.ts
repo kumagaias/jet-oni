@@ -96,11 +96,12 @@ router.post(
         console.log('[Create Game] Creating game for user:', username);
       }
       
-      const gameId = await gameManager.createGame(config, username);
+      const result = await gameManager.createGame(config, username);
 
       res.json({
         success: true,
-        gameId,
+        gameId: result.gameId,
+        playerId: result.hostPlayerId,
       });
     } catch (error) {
       console.error('Error creating game:', error);

@@ -40,10 +40,13 @@ describe('GameManager', () => {
       mockRedis.set.mockResolvedValue(undefined);
       mockRedis.zAdd.mockResolvedValue(1);
 
-      const gameId = await gameManager.createGame(config);
+      const result = await gameManager.createGame(config);
 
-      expect(gameId).toBeDefined();
-      expect(gameId).toMatch(/^game_/);
+      expect(result).toBeDefined();
+      expect(result.gameId).toBeDefined();
+      expect(result.gameId).toMatch(/^game_/);
+      expect(result.hostPlayerId).toBeDefined();
+      expect(result.hostPlayerId).toMatch(/^player_/);
       expect(mockRedis.set).toHaveBeenCalled();
       expect(mockRedis.zAdd).toHaveBeenCalled();
     });

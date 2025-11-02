@@ -92,8 +92,11 @@ describe('UIControls', () => {
 
   describe('Touch Events', () => {
     it('should handle touch start on dash button', () => {
+      // Show controls first
+      controls.show();
+      
       const container = document.getElementById('ability-controls');
-      const dashButton = container?.querySelector('div') as HTMLElement;
+      const dashButton = container?.children[1] as HTMLElement; // Second button is dash/jetpack
       
       // Simulate touch start
       const touchEvent = new TouchEvent('touchstart', {
@@ -110,8 +113,11 @@ describe('UIControls', () => {
     });
 
     it('should handle touch end on dash button', () => {
+      // Show controls first
+      controls.show();
+      
       const container = document.getElementById('ability-controls');
-      const dashButton = container?.querySelector('div') as HTMLElement;
+      const dashButton = container?.children[1] as HTMLElement; // Second button is dash/jetpack
       
       // Simulate touch start then end
       const touchStart = new TouchEvent('touchstart', {
@@ -144,7 +150,7 @@ describe('UIControls', () => {
       controls.update(gameState);
       
       const container = document.getElementById('ability-controls');
-      const dashButton = container?.querySelector('div') as HTMLElement;
+      const dashButton = container?.children[1] as HTMLElement; // Second button is dash/jetpack
       const icon = dashButton?.children[0] as HTMLElement;
       
       expect(icon?.textContent).toBe('🏃‍➡️');
@@ -161,7 +167,7 @@ describe('UIControls', () => {
       controls.update(gameState);
       
       const container = document.getElementById('ability-controls');
-      const dashButton = container?.querySelector('div') as HTMLElement;
+      const dashButton = container?.children[1] as HTMLElement; // Second button is dash/jetpack
       const icon = dashButton?.children[0] as HTMLElement;
       
       expect(icon?.textContent).toBe('🚀');
@@ -170,6 +176,9 @@ describe('UIControls', () => {
 
 
     it('should disable button when fuel is zero', () => {
+      // Show controls first so update() can modify them
+      controls.show();
+      
       // Set game state to playing so update works
       gameState.setGamePhase('playing');
       
@@ -180,7 +189,7 @@ describe('UIControls', () => {
       controls.update(gameState);
       
       const container = document.getElementById('ability-controls');
-      const dashButton = container?.querySelector('div') as HTMLElement;
+      const dashButton = container?.children[1] as HTMLElement; // Second button is dash/jetpack
       
       expect(dashButton?.classList.contains('disabled')).toBe(true);
       expect(dashButton?.style.opacity).toBe('0.5');

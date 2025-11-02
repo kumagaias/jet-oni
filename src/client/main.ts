@@ -718,10 +718,14 @@ async function initGame(): Promise<void> {
           });
         }
         
-        // Remove models for players that left
+        // Remove models for players that left (but keep AI players)
         const remotePlayerIds = new Set(remotePlayers.map(p => p.id));
         for (const [playerId, model] of remotePlayerModels) {
-          if (!remotePlayerIds.has(playerId)) {
+          // Don't remove AI players (they don't send Realtime updates)
+          const player = gameState.getPlayer(playerId);
+          const isAIPlayer = player?.isAI ?? false;
+          
+          if (!remotePlayerIds.has(playerId) && !isAIPlayer) {
             gameEngine.removeFromScene(model.getModel());
             remotePlayerModels.delete(playerId);
             gameState.removePlayer(playerId);

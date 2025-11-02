@@ -371,6 +371,13 @@ export class GameManager {
     const slotsToFill = gameState.config.totalPlayers - gameState.players.length;
     console.log(`[GameManager] addAIPlayers: Total players: ${gameState.config.totalPlayers}, Current: ${gameState.players.length}, Slots to fill: ${slotsToFill}`);
 
+    // Count existing human players and their roles
+    const humanPlayers = gameState.players.filter(p => !p.isAI);
+    const humanOniCount = humanPlayers.filter(p => p.isOni).length;
+    const humanRunnerCount = humanPlayers.filter(p => !p.isOni).length;
+    console.log(`[GameManager] addAIPlayers: Human players - ONI: ${humanOniCount}, Runner: ${humanRunnerCount}`);
+
+    // Add AI players
     for (let i = 0; i < slotsToFill; i++) {
       const aiPlayer: Player = {
         id: this.generatePlayerId(),
@@ -395,15 +402,38 @@ export class GameManager {
 
     console.log(`[GameManager] addAIPlayers: After adding AI, total players: ${gameState.players.length}`);
 
-    // Always reassign ONI after adding AI to ensure correct number
-    // (e.g., 1 player = 1 ONI, but 6 players = 2 ONI)
-    try {
-      this.assignRandomOni(gameState);
-      console.log(`[GameManager] addAIPlayers: ONI assignment completed`);
-    } catch (error) {
-      console.error('[GameManager] addAIPlayers: Error assigning ONI:', error);
-      throw error;
+    // Calculate required ONI count based on total players
+    const requiredOniCount = Math.max(1, Math.floor(gameState.players.length / 3));
+    console.log(`[GameManager] addAIPlayers: Required ONI count: ${requiredOniCount}, Current human ONI: ${humanOniCount}`);
+
+    // Assign ONI roles to AI players to reach the required count
+    if (humanOniCount < requiredOniCount) {
+      const oniNeeded = requiredOniCount - humanOniCount;
+      console.log(`[GameManager] addAIPlayers: Need to assign ${oniNeeded} more ONI from AI players`);
+
+      // Get all AI players
+      const aiPlayers = gameState.players.filter(p => p.isAI);
+      
+      // Shuffle AI players
+      const shuffledAI = [...aiPlayers].sort(() => Math.random() - 0.5);
+
+      // Assign ONI to first N AI players
+      for (let i = 0; i < oniNeeded && i < shuffledAI.length; i++) {
+        const aiPlayer = shuffledAI[i];
+        if (aiPlayer) {
+          aiPlayer.isOni = true;
+          console.log(`[GameManager] addAIPlayers: Assigned ${aiPlayer.username} (${aiPlayer.id}) as ONI`);
+        }
+      }
+    } else if (humanOniCount > requiredOniCount) {
+      // Too many human ONI - this shouldn't happen, but log it
+      console.warn(`[GameManager] addAIPlayers: Warning - More human ONI (${humanOniCount}) than required (${requiredOniCount})`);
     }
+
+    // Log final counts
+    const finalOniCount = gameState.players.filter(p => p.isOni).length;
+    const finalRunnerCount = gameState.players.filter(p => !p.isOni).length;
+    console.log(`[GameManager] addAIPlayers: Final counts - ONI: ${finalOniCount}, Runner: ${finalRunnerCount}`);
 
     try {
       await this.saveGameState(gameState);

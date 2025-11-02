@@ -422,5 +422,94 @@ describe('GameManager', () => {
       const oniCount = savedGameState?.players.filter((p) => p.isOni).length;
       expect(oniCount).toBe(1);
     });
+
+    it('should preserve human player roles when adding AI (2 humans, 4 AI for 6 total)', async () => {
+      const mockGameState = {
+        gameId: 'test_game',
+        hostId: 'host_123',
+        status: 'lobby' as const,
+        config: { totalPlayers: 6, roundDuration: 180, rounds: 1 },
+        players: [
+          {
+            id: 'p1',
+            username: 'Player1',
+            isOni: true, // Human ONI
+            isAI: false,
+            position: { x: 0, y: 0, z: 0 },
+            velocity: { x: 0, y: 0, z: 0 },
+            rotation: { yaw: 0, pitch: 0 },
+            fuel: 100,
+            survivedTime: 0,
+            wasTagged: false,
+            tagCount: 0,
+            isOnSurface: true,
+            isDashing: false,
+            isJetpacking: false,
+            beaconCooldown: 0,
+          },
+          {
+            id: 'p2',
+            username: 'Player2',
+            isOni: false, // Human Runner
+            isAI: false,
+            position: { x: 0, y: 0, z: 0 },
+            velocity: { x: 0, y: 0, z: 0 },
+            rotation: { yaw: 0, pitch: 0 },
+            fuel: 100,
+            survivedTime: 0,
+            wasTagged: false,
+            tagCount: 0,
+            isOnSurface: true,
+            isDashing: false,
+            isJetpacking: false,
+            beaconCooldown: 0,
+          },
+        ],
+        startTime: 0,
+        endTime: 0,
+        currentRound: 0,
+        timeRemaining: 180,
+      };
+
+      let savedGameState: GameState | null = null;
+      mockRedis.get.mockResolvedValue(JSON.stringify(mockGameState));
+      mockRedis.set.mockImplementation((key: string, data: string) => {
+        savedGameState = JSON.parse(data) as GameState;
+        return Promise.resolve(undefined);
+      });
+
+      await gameManager.addAIPlayers('test_game');
+
+      // Should have 6 total players (2 human + 4 AI)
+      expect(savedGameState?.players).toHaveLength(6);
+      
+      // Should have 4 AI players
+      const aiPlayers = savedGameState?.players.filter((p) => p.isAI);
+      expect(aiPlayers).toHaveLength(4);
+
+      // Should have 2 human players
+      const humanPlayers = savedGameState?.players.filter((p) => !p.isAI);
+      expect(humanPlayers).toHaveLength(2);
+
+      // Human player roles should be preserved
+      const player1 = savedGameState?.players.find((p) => p.id === 'p1');
+      const player2 = savedGameState?.players.find((p) => p.id === 'p2');
+      expect(player1?.isOni).toBe(true); // Still ONI
+      expect(player2?.isOni).toBe(false); // Still Runner
+
+      // Total ONI count should be 2 (6 players / 3 = 2)
+      const oniCount = savedGameState?.players.filter((p) => p.isOni).length;
+      expect(oniCount).toBe(2);
+
+      // Should have 1 human ONI and 1 AI ONI
+      const humanOniCount = savedGameState?.players.filter((p) => !p.isAI && p.isOni).length;
+      const aiOniCount = savedGameState?.players.filter((p) => p.isAI && p.isOni).length;
+      expect(humanOniCount).toBe(1);
+      expect(aiOniCount).toBe(1);
+
+      // Should have 4 runners total (1 human + 3 AI)
+      const runnerCount = savedGameState?.players.filter((p) => !p.isOni).length;
+      expect(runnerCount).toBe(4);
+    });
   });
 });

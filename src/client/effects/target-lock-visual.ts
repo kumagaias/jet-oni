@@ -105,11 +105,23 @@ export class TargetLockVisual {
    * Update existing lock-on indicators
    */
   private updateExistingLockOns(allPlayers: Player[], camera: THREE.Camera): void {
+    // Get local player (ONI) position for line of sight check
+    const localPlayer = allPlayers.find(p => p.isOni);
+    
     for (const [id, indicator] of this.lockIndicators.entries()) {
       // Find the player
       const player = allPlayers.find(p => p.id === id);
       
-      if (player) {
+      if (player && localPlayer) {
+        // Check if line of sight is still clear
+        if (!this.hasLineOfSight(localPlayer.position, player.position)) {
+          // Line of sight blocked, remove lock-on
+          this.scene.remove(indicator);
+          this.lockIndicators.delete(id);
+          this.lockedTargetIds.delete(id);
+          continue;
+        }
+
         // Update indicator position (follow the player)
         indicator.position.set(
           player.position.x,
@@ -153,7 +165,7 @@ export class TargetLockVisual {
   }
 
   /**
-   * Find all runners within detection range
+   * Find all runners within detection range and line of sight
    */
   private findNearbyRunners(localPlayer: Player, allPlayers: Player[]): Player[] {
     const nearby: Player[] = [];
@@ -166,11 +178,62 @@ export class TargetLockVisual {
 
       const distance = this.calculateDistance(localPlayer.position, player.position);
       if (distance <= DETECTION_RANGE) {
-        nearby.push(player);
+        // Check line of sight - if blocked by building/wall, don't lock on
+        if (this.hasLineOfSight(localPlayer.position, player.position)) {
+          nearby.push(player);
+        }
       }
     }
 
     return nearby;
+  }
+
+  /**
+   * Check if there's a clear line of sight between two positions
+   * Returns false if blocked by buildings or walls
+   */
+  private hasLineOfSight(from: { x: number; y: number; z: number }, to: { x: number; y: number; z: number }): boolean {
+    // Create a raycaster from ONI to runner
+    const origin = new THREE.Vector3(from.x, from.y + 1.5, from.z); // Eye level
+    const target = new THREE.Vector3(to.x, to.y + 1.5, to.z); // Target eye level
+    const direction = new THREE.Vector3().subVectors(target, origin).normalize();
+    const distance = origin.distanceTo(target);
+
+    const raycaster = new THREE.Raycaster(origin, direction, 0, distance);
+
+    // Check for intersections with scene objects
+    // We need to check against buildings and walls
+    const intersects = raycaster.intersectObjects(this.scene.children, true);
+
+    // Filter out non-blocking objects (like indicators, effects, players)
+    for (const intersect of intersects) {
+      const obj = intersect.object;
+      
+      // Skip if it's a lock indicator or other UI element
+      if (obj.renderOrder === 999) continue;
+      
+      // Skip if it's a player model (check parent names)
+      let parent = obj.parent;
+      let isPlayer = false;
+      while (parent) {
+        if (parent.name && (parent.name.includes('player') || parent.name.includes('Player'))) {
+          isPlayer = true;
+          break;
+        }
+        parent = parent.parent;
+      }
+      if (isPlayer) continue;
+
+      // If we hit something solid (building, wall, ground), line of sight is blocked
+      // Buildings and walls should have material and be opaque
+      if (obj instanceof THREE.Mesh && obj.material) {
+        // This is a solid object blocking the view
+        return false;
+      }
+    }
+
+    // No blocking objects found, line of sight is clear
+    return true;
   }
 
   /**

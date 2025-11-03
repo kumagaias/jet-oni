@@ -608,7 +608,15 @@ async function initGame(): Promise<void> {
         // Update visual indicators (player markers) - only during gameplay
         if (gameState.getGamePhase() === 'playing' || gameState.getGamePhase() === 'countdown') {
           const allPlayers = gameState.getAllPlayers();
+          const localPlayerId = gameState.getLocalPlayer().id;
+          
           for (const player of allPlayers) {
+            // Skip local player's marker (don't show own marker in first-person view)
+            if (player.id === localPlayerId) {
+              visualIndicators.removeMarker(player.id);
+              continue;
+            }
+            
             // Check if player is moving (velocity magnitude > threshold)
             const velocityMagnitude = Math.sqrt(
               player.velocity.x * player.velocity.x +

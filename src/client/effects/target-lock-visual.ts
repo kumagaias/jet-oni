@@ -201,35 +201,36 @@ export class TargetLockVisual {
 
     const raycaster = new THREE.Raycaster(origin, direction, 0, distance);
 
-    // Check for intersections with scene objects
-    // We need to check against buildings and walls
-    const intersects = raycaster.intersectObjects(this.scene.children, true);
-
-    // Filter out non-blocking objects (like indicators, effects, players)
-    for (const intersect of intersects) {
-      const obj = intersect.object;
-      
-      // Skip if it's a lock indicator or other UI element
-      if (obj.renderOrder === 999) continue;
-      
-      // Skip if it's a player model (check parent names)
-      let parent = obj.parent;
-      let isPlayer = false;
-      while (parent) {
-        if (parent.name && (parent.name.includes('player') || parent.name.includes('Player'))) {
-          isPlayer = true;
-          break;
+    // Only check against Mesh objects (buildings, walls, ground)
+    // Skip Sprites, Lines, Points, and other non-solid objects
+    const meshObjects: THREE.Mesh[] = [];
+    this.scene.traverse((obj) => {
+      if (obj instanceof THREE.Mesh) {
+        // Skip UI elements and player models
+        if (obj.renderOrder === 999) return;
+        
+        // Skip if it's a player model (check parent names)
+        let parent = obj.parent;
+        let isPlayer = false;
+        while (parent) {
+          if (parent.name && (parent.name.includes('player') || parent.name.includes('Player'))) {
+            isPlayer = true;
+            break;
+          }
+          parent = parent.parent;
         }
-        parent = parent.parent;
+        if (!isPlayer) {
+          meshObjects.push(obj);
+        }
       }
-      if (isPlayer) continue;
+    });
 
-      // If we hit something solid (building, wall, ground), line of sight is blocked
-      // Buildings and walls should have material and be opaque
-      if (obj instanceof THREE.Mesh && obj.material) {
-        // This is a solid object blocking the view
-        return false;
-      }
+    // Check for intersections with mesh objects only
+    const intersects = raycaster.intersectObjects(meshObjects, false);
+
+    // If we hit any solid object, line of sight is blocked
+    if (intersects.length > 0) {
+      return false;
     }
 
     // No blocking objects found, line of sight is clear

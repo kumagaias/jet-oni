@@ -499,6 +499,10 @@ describe('GameManager', () => {
       const humanOniCount = savedGameState?.players.filter((p) => !p.isAI && p.isOni).length;
       expect(humanOniCount).toBeGreaterThanOrEqual(1);
 
+      // At least 1 human should be Runner
+      const humanRunnerCount = savedGameState?.players.filter((p) => !p.isAI && !p.isOni).length;
+      expect(humanRunnerCount).toBeGreaterThanOrEqual(1);
+
       // Should have 4 runners total
       const runnerCount = savedGameState?.players.filter((p) => !p.isOni).length;
       expect(runnerCount).toBe(4);

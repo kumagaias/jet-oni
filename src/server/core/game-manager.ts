@@ -544,17 +544,22 @@ export class GameManager {
           }
         }
       } 
-      // 2+ human players: Ensure at least 1 human is oni
+      // 2+ human players: Ensure at least 1 human is oni AND at least 1 human is runner
       else if (humanCount >= 2) {
-        console.log(`[GameManager] assignRandomOni: Multiple human players - ensuring at least 1 human ONI`);
+        console.log(`[GameManager] assignRandomOni: Multiple human players - ensuring at least 1 human ONI and 1 human Runner`);
         
         // Shuffle human players
         const shuffledHumans = [...humanPlayers].sort(() => Math.random() - 0.5);
         
-        // Assign at least 1 human as oni
-        let assignedOniCount = 0;
-        const humanOniCount = Math.min(oniCount, humanCount);
+        // Calculate how many humans should be oni
+        // Must be: at least 1, at most (humanCount - 1) to ensure at least 1 runner
+        const maxHumanOni = Math.min(oniCount, humanCount - 1);
+        const humanOniCount = Math.max(1, maxHumanOni);
         
+        console.log(`[GameManager] assignRandomOni: Assigning ${humanOniCount} human ONI (max: ${maxHumanOni})`);
+        
+        // Assign humans as oni
+        let assignedOniCount = 0;
         for (let i = 0; i < humanOniCount && i < shuffledHumans.length; i++) {
           const selectedPlayer = shuffledHumans[i];
           if (selectedPlayer) {
@@ -564,20 +569,25 @@ export class GameManager {
           }
         }
         
-        // If we need more oni, assign from remaining players (AI or human)
+        // If we need more oni, assign from AI players only (to preserve human runners)
         if (assignedOniCount < oniCount) {
-          const remainingPlayers = gameState.players.filter(p => !p.isOni);
-          const shuffledRemaining = [...remainingPlayers].sort(() => Math.random() - 0.5);
+          const aiPlayers = gameState.players.filter(p => p.isAI && !p.isOni);
+          const shuffledAI = [...aiPlayers].sort(() => Math.random() - 0.5);
           
-          for (let i = 0; i < shuffledRemaining.length && assignedOniCount < oniCount; i++) {
-            const selectedPlayer = shuffledRemaining[i];
+          for (let i = 0; i < shuffledAI.length && assignedOniCount < oniCount; i++) {
+            const selectedPlayer = shuffledAI[i];
             if (selectedPlayer) {
               selectedPlayer.isOni = true;
               assignedOniCount++;
-              console.log(`[GameManager] assignRandomOni: Assigned ${selectedPlayer.username} (${selectedPlayer.id}) as ONI`);
+              console.log(`[GameManager] assignRandomOni: Assigned AI ${selectedPlayer.username} (${selectedPlayer.id}) as ONI`);
             }
           }
         }
+        
+        // Log human distribution
+        const humanOni = gameState.players.filter(p => !p.isAI && p.isOni).length;
+        const humanRunner = gameState.players.filter(p => !p.isAI && !p.isOni).length;
+        console.log(`[GameManager] assignRandomOni: Human distribution - ONI: ${humanOni}, Runner: ${humanRunner}`);
       }
       // No human players (all AI) - random assignment
       else {

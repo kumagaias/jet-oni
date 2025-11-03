@@ -51,9 +51,9 @@ export class UIResults {
     // Get players who survived as runners (never tagged AND not ONI at end)
     const survivedRunners = sortedPlayers.filter(p => !p.wasTagged && !p.isOni);
     
-    // Get ONI players (players who are ONI at end, sorted by tag count)
+    // Get ONI players (only original ONI - not tagged, sorted by tag count)
     const oniPlayers = sortedPlayers
-      .filter(p => p.isOni) // Players who are ONI at game end
+      .filter(p => p.isOni && !p.wasTagged) // Only original ONI (not tagged)
       .sort((a, b) => b.tagCount - a.tagCount); // Sort by tag count
 
     // Clear previous content

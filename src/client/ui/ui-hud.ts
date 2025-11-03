@@ -31,6 +31,22 @@ export class UIHud {
    * Create all HUD elements
    */
   private createHudElements(): void {
+    // Check if HUD already exists
+    const existingHud = document.getElementById('hud-container');
+    if (existingHud) {
+      this.hudContainer = existingHud;
+      // Re-query all child elements
+      this.timerElement = document.getElementById('hud-timer');
+      this.statusElement = document.getElementById('hud-status');
+      this.playerCountElement = document.getElementById('hud-player-count');
+      this.fuelContainer = document.getElementById('hud-fuel-container');
+      this.fuelBar = document.getElementById('hud-fuel-bar');
+      this.beaconElement = document.getElementById('hud-beacon');
+      this.fuelLabel = this.fuelContainer?.querySelector('div') as HTMLElement;
+      this.fuelText = document.getElementById('hud-fuel-text');
+      return;
+    }
+    
     // Main HUD container
     this.hudContainer = document.createElement('div');
     this.hudContainer.id = 'hud-container';
@@ -198,7 +214,11 @@ export class UIHud {
    * @param beaconCooldown - Remaining beacon cooldown in seconds (0 if ready)
    */
   public update(beaconCooldown: number = 0): void {
-    if (!this.hudContainer) return;
+    if (!this.hudContainer || !this.hudContainer.parentNode) {
+      // HUD was removed from DOM, recreate and show it
+      this.createHudElements();
+      this.hudContainer!.style.display = 'block';
+    }
 
     const localPlayer = this.gameState.getLocalPlayer();
 
@@ -340,6 +360,15 @@ export class UIHud {
   public show(): void {
     if (this.hudContainer) {
       this.hudContainer.style.display = 'block';
+      
+      // Ensure HUD is in DOM
+      if (!this.hudContainer.parentNode) {
+        document.body.appendChild(this.hudContainer);
+      }
+    } else {
+      // HUD container was removed, recreate it
+      this.createHudElements();
+      this.hudContainer!.style.display = 'block';
     }
   }
 

@@ -16,6 +16,8 @@ import { PlayerPhysics, BuildingData } from './player/player-physics';
 import { PlayerCamera, CameraMode } from './player/player-camera';
 
 import { BeaconVisual } from './effects/beacon-visual';
+import { VisualIndicators } from './effects/visual-indicators';
+import { ParticleSystem } from './effects/particle-system';
 import { OniSpawnItem } from './items/oni-spawn-item';
 import { CloakItem } from './items/cloak-item';
 import { CarSystem } from './environment/car-system';
@@ -178,6 +180,12 @@ async function initGame(): Promise<void> {
       // Initialize beacon visual (for showing player locations when beacon is active)
       const beaconVisual = new BeaconVisual(gameEngine.getScene());
       
+      // Initialize visual indicators (player markers)
+      const visualIndicators = new VisualIndicators(gameEngine.getScene());
+      
+      // Initialize particle system (jetpack and dash effects)
+      const particleSystem = new ParticleSystem(gameEngine.getScene());
+      
       // Initialize tag range visual (shows ONI tagging range)
       const { TagRangeVisual } = await import('./effects/tag-range-visual');
       const tagRangeVisual = new TagRangeVisual(gameEngine.getScene());
@@ -193,6 +201,14 @@ async function initGame(): Promise<void> {
         // If local player (runner) is one of the locked targets, show warning
         if (targetIds.includes(localPlayer.id)) {
           toast.show('⚠️ 見つかった！', 'warning', 2000);
+          
+          // Show spotted indicator above player
+          const playerPos = new THREE.Vector3(
+            localPlayer.position.x,
+            localPlayer.position.y,
+            localPlayer.position.z
+          );
+          visualIndicators.showSpottedIndicator(localPlayer.id, playerPos, 2);
         }
       });
       
@@ -588,6 +604,33 @@ async function initGame(): Promise<void> {
         
         // Update jetpack effect (show jetpack particles for all players)
         jetpackEffect.update(gameState.getAllPlayers(), deltaTime);
+        
+        // Update visual indicators (player markers) - only during gameplay
+        if (gameState.getGamePhase() === 'playing' || gameState.getGamePhase() === 'countdown') {
+          const allPlayers = gameState.getAllPlayers();
+          for (const player of allPlayers) {
+            // Check if player is moving (velocity magnitude > threshold)
+            const velocityMagnitude = Math.sqrt(
+              player.velocity.x * player.velocity.x +
+              player.velocity.z * player.velocity.z
+            );
+            const isMoving = velocityMagnitude > 0.5;
+            
+            // Update marker for this player
+            visualIndicators.updateMarker(
+              player.id,
+              new THREE.Vector3(player.position.x, player.position.y, player.position.z),
+              player.isOni,
+              isMoving
+            );
+          }
+        } else {
+          // Clear markers when not in gameplay
+          visualIndicators.clear();
+        }
+        
+        // Update particle system (jetpack and dash effects)
+        particleSystem.update(deltaTime, gameState.getAllPlayers());
         
         // Update camera
         playerCamera.update(deltaTime);
@@ -1213,6 +1256,8 @@ async function initGame(): Promise<void> {
                 // Clean up visual effects
                 tagRangeVisual.dispose();
                 targetLockVisual.dispose();
+                visualIndicators.clear();
+                particleSystem.dispose();
                 
                 // Remove ONI overlay
                 const oniOverlay = document.getElementById('oni-overlay');
@@ -1281,6 +1326,8 @@ async function initGame(): Promise<void> {
         if (gameState.getGamePhase() === 'ended') {
           tagRangeVisual.dispose();
           targetLockVisual.dispose();
+          visualIndicators.clear();
+          particleSystem.dispose();
           
           // Hide HUD and controls
           uiHud.hide();

@@ -1080,10 +1080,10 @@ async function initGame(): Promise<void> {
             wasOni = true;
             
             // Show ONI role message
-            toast.show('You are ONI! Tag all runners with jetpack!', 'warning', 5000);
+            toast.show(i18n.t('game.assignedOni'), 'warning', 5000);
           } else {
             // Show Runner role message
-            toast.show('You are RUNNER! Survive and avoid ONI with dash!', 'info', 5000);
+            toast.show(i18n.t('game.assignedRunner'), 'info', 5000);
           }
           
           // Update AI model colors based on server ONI assignment

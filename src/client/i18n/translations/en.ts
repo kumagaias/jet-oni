@@ -98,6 +98,8 @@ export const en: Translations = {
   // Game messages
   game: {
     becameOni: 'You became ONI!',
+    assignedOni: 'You are ONI! Tag all runners with jetpack!',
+    assignedRunner: 'You are RUNNER! Survive and avoid ONI with dash!',
     tagged: 'You tagged {player}!',
     gotTagged: 'You were tagged by {player}!',
     spotted: 'Spotted!',

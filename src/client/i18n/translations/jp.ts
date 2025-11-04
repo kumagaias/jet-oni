@@ -98,6 +98,8 @@ export const jp: Translations = {
   // ゲームメッセージ
   game: {
     becameOni: '鬼になった！',
+    assignedOni: 'あなたは鬼です！ジェットパックで全員をタグ付けしよう！',
+    assignedRunner: 'あなたは逃げる側です！ダッシュで鬼から逃げよう！',
     tagged: '{player}をタグ付けした！',
     gotTagged: '{player}にタグ付けされた！',
     spotted: '見つかった！',

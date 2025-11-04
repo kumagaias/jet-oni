@@ -5,7 +5,7 @@ import { TAG_DISTANCE } from '../../shared/constants';
 const DETECTION_RANGE = TAG_DISTANCE * 10; // 10x tag range
 const LOCK_ON_COLOR = 0xff0000; // Red
 const LOCK_ON_OPACITY = 0.8;
-const LOCK_ON_COOLDOWN = 5000; // 5 seconds in milliseconds (reduced from 10)
+const LOCK_ON_COOLDOWN = 3000; // 3 seconds in milliseconds (reduced for better gameplay)
 const LOCK_ON_DURATION = 3000; // Show lock-on for 3 seconds
 
 /**
@@ -179,7 +179,8 @@ export class TargetLockVisual {
       const distance = this.calculateDistance(localPlayer.position, player.position);
       if (distance <= DETECTION_RANGE) {
         // Check line of sight - if blocked by building/wall, don't lock on
-        if (this.hasLineOfSight(localPlayer.position, player.position)) {
+        // Temporarily relaxed: only check if very close (within 20 units)
+        if (distance <= 20 || this.hasLineOfSight(localPlayer.position, player.position)) {
           nearby.push(player);
         }
       }
@@ -201,8 +202,8 @@ export class TargetLockVisual {
 
     const raycaster = new THREE.Raycaster(origin, direction, 0, distance);
 
-    // Only check against Mesh objects (buildings, walls, ground)
-    // Skip Sprites, Lines, Points, and other non-solid objects
+    // Only check against Mesh objects (buildings, walls)
+    // Skip ground, sprites, lines, points, and other non-solid objects
     const meshObjects: THREE.Mesh[] = [];
     this.scene.traverse((obj) => {
       if (obj instanceof THREE.Mesh) {
@@ -211,6 +212,18 @@ export class TargetLockVisual {
         
         // Skip player markers (visual indicators)
         if (obj.name === 'player-marker') return;
+        
+        // Skip ground plane (usually large and flat)
+        if (obj.name === 'ground' || obj.name === 'Ground') return;
+        
+        // Skip if geometry is too large (likely ground or sky)
+        const geometry = obj.geometry;
+        if (geometry instanceof THREE.PlaneGeometry || geometry instanceof THREE.CircleGeometry) {
+          const params = geometry.parameters;
+          if (params.width > 1000 || params.height > 1000 || params.radius > 500) {
+            return; // Skip very large planes (ground)
+          }
+        }
         
         // Skip if it's a player model (check parent names)
         let parent = obj.parent;

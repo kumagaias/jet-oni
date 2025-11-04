@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { Player } from '../../shared/types/game';
 import { TAG_DISTANCE } from '../../shared/constants';
 
-const DETECTION_RANGE = TAG_DISTANCE * 10; // 10x tag range
+const DETECTION_RANGE = 100; // 100 units detection range
 const LOCK_ON_COLOR = 0xff0000; // Red
 const LOCK_ON_OPACITY = 0.8;
 const LOCK_ON_COOLDOWN = 3000; // 3 seconds in milliseconds (reduced for better gameplay)
@@ -60,8 +60,8 @@ export class TargetLockVisual {
       return; // Still in cooldown
     }
 
-    // Find nearby runners
-    const nearbyRunners = this.findNearbyRunners(localPlayer, allPlayers);
+    // Find nearby runners that are visible on screen
+    const nearbyRunners = this.findNearbyRunners(localPlayer, allPlayers, camera);
     
     // If we found runners, trigger lock-on
     if (nearbyRunners.length > 0) {
@@ -182,22 +182,26 @@ export class TargetLockVisual {
       }
       
       if (distance <= DETECTION_RANGE) {
-        // Check line of sight - if blocked by building/wall, don't lock on
-        // Relaxed: only check LOS if far away (beyond 40 units)
-        const hasLOS = distance > 40 ? this.hasLineOfSight(localPlayer.position, player.position) : true;
+        // Check if player is visible on screen (frustum check)
+        const playerPosition = new THREE.Vector3(player.position.x, player.position.y + 1.5, player.position.z);
+        const frustum = new THREE.Frustum();
+        const projScreenMatrix = new THREE.Matrix4();
+        projScreenMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
+        frustum.setFromProjectionMatrix(projScreenMatrix);
+        const isVisible = frustum.containsPoint(playerPosition);
         
         if (shouldLog) {
-          console.log('[TargetLock] Runner', player.id, 'in range. Distance:', distance.toFixed(1), 'LOS:', hasLOS, 'Close enough to skip LOS:', distance <= 40);
+          console.log('[TargetLock] Runner', player.id, 'in range. Distance:', distance.toFixed(1), 'Visible on screen:', isVisible);
         }
         
-        if (hasLOS) {
+        if (isVisible) {
           nearby.push(player);
           if (shouldLog) {
             console.log('[TargetLock] ✓ Found nearby runner', player.id, 'at distance', distance.toFixed(1));
           }
         } else {
           if (shouldLog) {
-            console.log('[TargetLock] ✗ Runner', player.id, 'blocked by LOS');
+            console.log('[TargetLock] ✗ Runner', player.id, 'not visible on screen');
           }
         }
       }

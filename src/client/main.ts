@@ -504,19 +504,58 @@ async function initGame(): Promise<void> {
               0.5 // AI player radius
             );
             
-            // If collision occurred, reduce velocity to prevent sticking
+            // If collision occurred, try to move AI around obstacle
             let finalVelocity = physicsResult.velocity;
+            let finalPosition = collisionResult.position;
+            
             if (collisionResult.collided) {
-              // Reduce velocity significantly when colliding to help AI unstuck
-              finalVelocity = {
-                x: physicsResult.velocity.x * 0.1,
-                y: physicsResult.velocity.y,
-                z: physicsResult.velocity.z * 0.1,
+              // Instead of reducing velocity, try to move AI around obstacle
+              // Calculate perpendicular direction to try
+              const perpendicular1 = {
+                x: -aiPlayer.velocity.z,
+                y: aiPlayer.velocity.y,
+                z: aiPlayer.velocity.x,
               };
+              const perpendicular2 = {
+                x: aiPlayer.velocity.z,
+                y: aiPlayer.velocity.y,
+                z: -aiPlayer.velocity.x,
+              };
+              
+              // Try moving in perpendicular directions
+              const altPosition1 = {
+                x: aiPlayer.position.x + perpendicular1.x * deltaTime,
+                y: aiPlayer.position.y + perpendicular1.y * deltaTime,
+                z: aiPlayer.position.z + perpendicular1.z * deltaTime,
+              };
+              const altPosition2 = {
+                x: aiPlayer.position.x + perpendicular2.x * deltaTime,
+                y: aiPlayer.position.y + perpendicular2.y * deltaTime,
+                z: aiPlayer.position.z + perpendicular2.z * deltaTime,
+              };
+              
+              const altCollision1 = collisionSystem.checkCollision(aiPlayer.position, altPosition1, 0.5);
+              const altCollision2 = collisionSystem.checkCollision(aiPlayer.position, altPosition2, 0.5);
+              
+              // Use the first non-colliding alternative, or reduce velocity if both collide
+              if (!altCollision1.collided) {
+                finalPosition = altCollision1.position;
+                finalVelocity = perpendicular1;
+              } else if (!altCollision2.collided) {
+                finalPosition = altCollision2.position;
+                finalVelocity = perpendicular2;
+              } else {
+                // Both alternatives collide, reduce velocity
+                finalVelocity = {
+                  x: physicsResult.velocity.x * 0.3,
+                  y: physicsResult.velocity.y,
+                  z: physicsResult.velocity.z * 0.3,
+                };
+              }
             }
             
             // Update AI player position and state
-            gameState.setPlayerPosition(aiId, collisionResult.position);
+            gameState.setPlayerPosition(aiId, finalPosition);
             gameState.setPlayerVelocity(aiId, finalVelocity);
             gameState.setPlayerOnSurface(aiId, physicsResult.isOnSurface);
             

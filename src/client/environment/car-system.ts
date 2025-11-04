@@ -118,6 +118,13 @@ export class CarSystem {
     const window = new THREE.Mesh(windowGeometry, windowMaterial);
     window.position.y = 1.4;
     carGroup.add(window);
+    
+    // Add front indicator (small box at front of car to show direction)
+    const frontIndicatorGeometry = new THREE.BoxGeometry(0.5, 0.3, 0.2);
+    const frontIndicatorMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 }); // Yellow
+    const frontIndicator = new THREE.Mesh(frontIndicatorGeometry, frontIndicatorMaterial);
+    frontIndicator.position.set(0, 0.5, 2.1); // At front of car (positive Z)
+    carGroup.add(frontIndicator);
 
     // Set initial rotation based on path and direction
     // Car model is long in Z-axis (front-back)

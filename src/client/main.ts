@@ -356,7 +356,7 @@ async function initGame(): Promise<void> {
         }
         wasOni = localPlayer.isOni;
         
-        // Update ONI screen overlay
+        // Update ONI screen overlay (always visible when ONI, fixed to screen)
         let oniOverlay = document.getElementById('oni-overlay');
         if (!oniOverlay) {
           oniOverlay = document.createElement('div');
@@ -369,11 +369,13 @@ async function initGame(): Promise<void> {
             height: 100%;
             pointer-events: none;
             z-index: 1;
-            transition: background-color 0.5s ease;
+            background-color: transparent;
+            transition: background-color 0.3s ease;
           `;
           document.body.appendChild(oniOverlay);
         }
         
+        // Always show red overlay when ONI (fixed to screen, not affected by player movement)
         if (localPlayer.isOni) {
           oniOverlay.style.backgroundColor = 'rgba(255, 0, 0, 0.15)';
         } else {
@@ -1211,13 +1213,51 @@ async function initGame(): Promise<void> {
         // Set game phase to ended immediately to stop game loop updates
         gameState.setGamePhase('ended');
         
-        // Disconnect from Realtime
-        await realtimeSyncManager.disconnect();
+        // Calculate final survived time for local player (if runner)
+        const localPlayer = gameState.getLocalPlayer();
+        if (!localPlayer.isOni && gameStartTime > 0) {
+          const totalGameTime = (Date.now() - gameStartTime) / 1000; // Convert to seconds
+          localPlayer.survivedTime = totalGameTime;
+        }
+        
+        // Show "Game Over" message immediately
+        const gameOverMessage = document.createElement('div');
+        gameOverMessage.style.cssText = `
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          font-size: 64px;
+          font-weight: bold;
+          color: #ffffff;
+          text-shadow: 4px 4px 8px rgba(0, 0, 0, 0.8);
+          z-index: 9999;
+          animation: pulse 1s ease-in-out infinite;
+        `;
+        gameOverMessage.textContent = i18n.t('game.gameOver');
+        document.body.appendChild(gameOverMessage);
+        
+        // Add pulse animation
+        const style = document.createElement('style');
+        style.textContent = `
+          @keyframes pulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.1); }
+          }
+        `;
+        document.head.appendChild(style);
+        
+        // Disconnect from Realtime (don't wait)
+        void realtimeSyncManager.disconnect();
         
         // Call endGame API if we have a game ID
         if (currentGameId) {
           try {
             const endGameResponse = await gameApiClient.endGame(currentGameId);
+            
+            // Remove game over message
+            gameOverMessage.remove();
+            style.remove();
             
             // Show results screen with game results
             if (endGameResponse.success && endGameResponse.results) {

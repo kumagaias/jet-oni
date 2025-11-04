@@ -340,19 +340,19 @@ export class DynamicObjects {
       
       switch (side) {
         case 0: // Front (facing +Z)
-          offsetZ = params.depth / 2 - 0.15; // Closer to wall
+          offsetZ = params.depth / 2 + 0.3; // Outside the wall
           rotation = 0;
           break;
         case 1: // Back (facing -Z)
-          offsetZ = -params.depth / 2 + 0.15; // Closer to wall
+          offsetZ = -params.depth / 2 - 0.3; // Outside the wall
           rotation = Math.PI;
           break;
         case 2: // Left (facing -X)
-          offsetX = -params.width / 2 + 0.15; // Closer to wall
+          offsetX = -params.width / 2 - 0.3; // Outside the wall
           rotation = Math.PI / 2;
           break;
         case 3: // Right (facing +X)
-          offsetX = params.width / 2 - 0.15; // Closer to wall
+          offsetX = params.width / 2 + 0.3; // Outside the wall
           rotation = -Math.PI / 2;
           break;
       }

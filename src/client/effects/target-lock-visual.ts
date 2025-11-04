@@ -5,7 +5,7 @@ import { TAG_DISTANCE } from '../../shared/constants';
 const DETECTION_RANGE = TAG_DISTANCE * 10; // 10x tag range
 const LOCK_ON_COLOR = 0xff0000; // Red
 const LOCK_ON_OPACITY = 0.8;
-const LOCK_ON_COOLDOWN = 10000; // 10 seconds in milliseconds
+const LOCK_ON_COOLDOWN = 5000; // 5 seconds in milliseconds (reduced from 10)
 const LOCK_ON_DURATION = 3000; // Show lock-on for 3 seconds
 
 /**

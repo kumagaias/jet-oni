@@ -242,7 +242,7 @@ export class CarSystem {
       const dz = playerPosition.z - car.position.z;
       const distance = Math.sqrt(dx * dx + dz * dz);
 
-      const carRadius = 2.5;
+      const carRadius = 2.0; // Reduced from 2.5 for better accuracy
       const totalRadius = playerRadius + carRadius;
 
       // Check if collision occurred

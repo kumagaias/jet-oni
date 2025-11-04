@@ -195,14 +195,14 @@ export class TargetLockVisual {
       
       if (distance <= DETECTION_RANGE) {
         // Check line of sight - if blocked by building/wall, don't lock on
-        // Temporarily relaxed: only check if very close (within 20 units)
-        const hasLOS = this.hasLineOfSight(localPlayer.position, player.position);
+        // Relaxed: only check LOS if far away (beyond 40 units)
+        const hasLOS = distance > 40 ? this.hasLineOfSight(localPlayer.position, player.position) : true;
         
         if (shouldLog) {
-          console.log('[TargetLock] Runner', player.id, 'in range. Distance:', distance.toFixed(1), 'LOS:', hasLOS, 'Close enough to skip LOS:', distance <= 20);
+          console.log('[TargetLock] Runner', player.id, 'in range. Distance:', distance.toFixed(1), 'LOS:', hasLOS, 'Close enough to skip LOS:', distance <= 40);
         }
         
-        if (distance <= 20 || hasLOS) {
+        if (hasLOS) {
           nearby.push(player);
           if (shouldLog) {
             console.log('[TargetLock] ✓ Found nearby runner', player.id, 'at distance', distance.toFixed(1));
@@ -233,7 +233,8 @@ export class TargetLockVisual {
     const direction = new THREE.Vector3().subVectors(target, origin).normalize();
     const distance = origin.distanceTo(target);
 
-    const raycaster = new THREE.Raycaster(origin, direction, 0, distance);
+    // Add small offset to avoid self-intersection
+    const raycaster = new THREE.Raycaster(origin, direction, 0.1, distance - 0.1);
 
     // Only check against Mesh objects (buildings, walls)
     // Skip ground, sprites, lines, points, and other non-solid objects
@@ -249,6 +250,9 @@ export class TargetLockVisual {
         // Skip ground plane (usually large and flat)
         if (obj.name === 'ground' || obj.name === 'Ground') return;
         
+        // Skip cars (they shouldn't block line of sight for lock-on)
+        if (obj.parent?.name?.includes('car') || obj.name?.includes('car')) return;
+        
         // Skip if geometry is too large (likely ground or sky)
         const geometry = obj.geometry;
         if (geometry instanceof THREE.PlaneGeometry || geometry instanceof THREE.CircleGeometry) {
@@ -256,6 +260,15 @@ export class TargetLockVisual {
           if (params.width > 1000 || params.height > 1000 || params.radius > 500) {
             return; // Skip very large planes (ground)
           }
+        }
+        
+        // Skip small objects (cars, props, etc.) - only check buildings
+        // Buildings are typically larger than 5x5x5 units
+        const bbox = new THREE.Box3().setFromObject(obj);
+        const size = new THREE.Vector3();
+        bbox.getSize(size);
+        if (size.x < 5 || size.y < 5 || size.z < 5) {
+          return; // Skip small objects
         }
         
         // Skip if it's a player model (check parent names)
@@ -279,6 +292,14 @@ export class TargetLockVisual {
 
     // If we hit any solid object, line of sight is blocked
     if (intersects.length > 0) {
+      // Debug: log what's blocking the line of sight (throttled)
+      const now = Date.now();
+      if (now - this.lastDebugLogTime > 2000) {
+        const blocker = intersects[0].object;
+        console.log('[TargetLock] LOS blocked by:', blocker.name || blocker.type, 'at distance', intersects[0].distance.toFixed(1));
+        console.log('[TargetLock] Blocker geometry:', blocker.geometry?.type);
+        console.log('[TargetLock] Total mesh objects checked:', meshObjects.length);
+      }
       return false;
     }
 

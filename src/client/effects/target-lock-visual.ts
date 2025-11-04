@@ -18,6 +18,7 @@ export class TargetLockVisual {
   private currentLockEndTime = 0; // When current lock-on should end
   private lockedTargetIds = new Set<string>(); // Currently locked targets
   private onTargetLockedCallback?: (targetIds: string[]) => void;
+  private lastDebugLogTime = 0; // For throttling debug logs
 
   constructor(scene: THREE.Scene) {
     this.scene = scene;
@@ -170,6 +171,14 @@ export class TargetLockVisual {
   private findNearbyRunners(localPlayer: Player, allPlayers: Player[]): Player[] {
     const nearby: Player[] = [];
     let checkedCount = 0;
+    const now = Date.now();
+    
+    // Throttle debug logs to once per 2 seconds
+    const shouldLog = now - this.lastDebugLogTime > 2000;
+    if (shouldLog) {
+      this.lastDebugLogTime = now;
+      console.log('[TargetLock] Starting search. Local player:', localPlayer.id, 'at', localPlayer.position);
+    }
 
     for (const player of allPlayers) {
       // Skip self and other ONI players
@@ -179,17 +188,34 @@ export class TargetLockVisual {
 
       checkedCount++;
       const distance = this.calculateDistance(localPlayer.position, player.position);
+      
+      if (shouldLog) {
+        console.log('[TargetLock] Checking runner', player.id, 'at distance', distance.toFixed(1), '(range:', DETECTION_RANGE, ')');
+      }
+      
       if (distance <= DETECTION_RANGE) {
         // Check line of sight - if blocked by building/wall, don't lock on
         // Temporarily relaxed: only check if very close (within 20 units)
-        if (distance <= 20 || this.hasLineOfSight(localPlayer.position, player.position)) {
+        const hasLOS = this.hasLineOfSight(localPlayer.position, player.position);
+        
+        if (shouldLog) {
+          console.log('[TargetLock] Runner', player.id, 'in range. Distance:', distance.toFixed(1), 'LOS:', hasLOS, 'Close enough to skip LOS:', distance <= 20);
+        }
+        
+        if (distance <= 20 || hasLOS) {
           nearby.push(player);
-          console.log('[TargetLock] Found nearby runner', player.id, 'at distance', distance.toFixed(1));
+          if (shouldLog) {
+            console.log('[TargetLock] ✓ Found nearby runner', player.id, 'at distance', distance.toFixed(1));
+          }
+        } else {
+          if (shouldLog) {
+            console.log('[TargetLock] ✗ Runner', player.id, 'blocked by LOS');
+          }
         }
       }
     }
     
-    if (checkedCount > 0 && nearby.length === 0) {
+    if (shouldLog && checkedCount > 0 && nearby.length === 0) {
       console.log('[TargetLock] Checked', checkedCount, 'runners, none in range or LOS blocked');
     }
 

@@ -127,20 +127,27 @@ export class CarSystem {
     carGroup.add(frontIndicator);
 
     // Set initial rotation based on path and direction
+    // Set initial rotation based on path and direction
     // Car model is long in Z-axis (front-back)
-    // For horizontal roads (moving in X direction), rotate 90 degrees
-    // For vertical roads (moving in Z direction), no rotation needed
-    // If moving in negative direction, add 180 degrees
     let rotation = 0;
+    
     if (path === 'horizontal') {
-      rotation = Math.PI / 2; // 90 degrees for horizontal movement
-      if (direction < 0) {
-        rotation += Math.PI; // Add 180 degrees for negative direction
+      // Horizontal roads: cars move in X direction
+      if (direction > 0) {
+        // Moving in +X direction: rotate -90 degrees (car faces +X)
+        rotation = -Math.PI / 2;
+      } else {
+        // Moving in -X direction: rotate +90 degrees (car faces -X)
+        rotation = Math.PI / 2;
       }
     } else {
-      // Vertical path
-      if (direction < 0) {
-        rotation = Math.PI; // 180 degrees for negative direction
+      // Vertical roads: cars move in Z direction
+      if (direction > 0) {
+        // Moving in +Z direction: no rotation (car already faces +Z)
+        rotation = 0;
+      } else {
+        // Moving in -Z direction: rotate 180 degrees (car faces -Z)
+        rotation = Math.PI;
       }
     }
     

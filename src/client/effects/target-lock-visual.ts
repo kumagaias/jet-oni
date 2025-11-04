@@ -169,6 +169,7 @@ export class TargetLockVisual {
    */
   private findNearbyRunners(localPlayer: Player, allPlayers: Player[]): Player[] {
     const nearby: Player[] = [];
+    let checkedCount = 0;
 
     for (const player of allPlayers) {
       // Skip self and other ONI players
@@ -176,14 +177,20 @@ export class TargetLockVisual {
         continue;
       }
 
+      checkedCount++;
       const distance = this.calculateDistance(localPlayer.position, player.position);
       if (distance <= DETECTION_RANGE) {
         // Check line of sight - if blocked by building/wall, don't lock on
         // Temporarily relaxed: only check if very close (within 20 units)
         if (distance <= 20 || this.hasLineOfSight(localPlayer.position, player.position)) {
           nearby.push(player);
+          console.log('[TargetLock] Found nearby runner', player.id, 'at distance', distance.toFixed(1));
         }
       }
+    }
+    
+    if (checkedCount > 0 && nearby.length === 0) {
+      console.log('[TargetLock] Checked', checkedCount, 'runners, none in range or LOS blocked');
     }
 
     return nearby;

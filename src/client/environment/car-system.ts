@@ -119,14 +119,25 @@ export class CarSystem {
     window.position.y = 1.4;
     carGroup.add(window);
 
-    // Set initial rotation based on path
+    // Set initial rotation based on path and direction
     // Car model is long in Z-axis (front-back)
     // For horizontal roads (moving in X direction), rotate 90 degrees
     // For vertical roads (moving in Z direction), no rotation needed
+    // If moving in negative direction, add 180 degrees
+    let rotation = 0;
     if (path === 'horizontal') {
-      carGroup.rotation.y = Math.PI / 2;
+      rotation = Math.PI / 2; // 90 degrees for horizontal movement
+      if (direction < 0) {
+        rotation += Math.PI; // Add 180 degrees for negative direction
+      }
+    } else {
+      // Vertical path
+      if (direction < 0) {
+        rotation = Math.PI; // 180 degrees for negative direction
+      }
     }
-
+    
+    carGroup.rotation.y = rotation;
     carGroup.position.set(position.x, position.y, position.z);
     this.scene.add(carGroup);
 
@@ -136,7 +147,7 @@ export class CarSystem {
       id: `car-${Date.now()}-${Math.random()}`,
       position: { ...position },
       velocity: { x: 0, y: 0, z: 0 },
-      rotation: path === 'horizontal' ? Math.PI / 2 : 0,
+      rotation,
       mesh: carGroup,
       path,
       pathPosition: path === 'horizontal' ? position.x : position.z,

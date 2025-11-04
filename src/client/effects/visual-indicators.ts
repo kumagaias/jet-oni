@@ -61,6 +61,7 @@ export class VisualIndicators {
 
     const marker = new THREE.Mesh(geometry, material);
     marker.rotation.x = Math.PI; // Point cone downward
+    marker.name = 'player-marker'; // Add name for identification
     return marker;
   }
 

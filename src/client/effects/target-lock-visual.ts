@@ -209,6 +209,9 @@ export class TargetLockVisual {
         // Skip UI elements and player models
         if (obj.renderOrder === 999) return;
         
+        // Skip player markers (visual indicators)
+        if (obj.name === 'player-marker') return;
+        
         // Skip if it's a player model (check parent names)
         let parent = obj.parent;
         let isPlayer = false;

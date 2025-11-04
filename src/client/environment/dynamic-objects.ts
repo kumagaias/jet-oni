@@ -306,7 +306,6 @@ export class DynamicObjects {
       return;
     }
 
-    const ladderCount = 15;
     const buildingMeshes: THREE.Mesh[] = [];
 
     // Collect all building meshes
@@ -325,9 +324,12 @@ export class DynamicObjects {
       return;
     }
 
-    // Attach ladders to random buildings
-    for (let i = 0; i < ladderCount && i < buildingMeshes.length; i++) {
-      const building = buildingMeshes[Math.floor(Math.random() * buildingMeshes.length)];
+    // Attach ladders to 20% of buildings
+    for (const building of buildingMeshes) {
+      // 20% chance to add a ladder to this building
+      if (Math.random() > 0.2) {
+        continue;
+      }
       const params = building.geometry.parameters as { width: number; height: number; depth: number };
       
       // Choose a random side (0=front, 1=back, 2=left, 3=right)

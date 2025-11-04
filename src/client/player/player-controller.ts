@@ -669,6 +669,8 @@ export class PlayerController {
     this.gameState.setLocalPlayerPosition(position);
 
     // Check for exit conditions
+    // Auto-exit when reaching top (progress >= 1.0) or bottom (progress <= 0)
+    // Also allow manual exit with jump or side movement
     if (shouldExit || this.inputState.jump || this.inputState.left || this.inputState.right) {
       // Exit climbing
       const exitPosition = this.ladderSystem.exitClimbing(
@@ -678,12 +680,21 @@ export class PlayerController {
       );
 
       this.gameState.setLocalPlayerPosition(exitPosition);
-      this.gameState.setLocalPlayerVelocity({ x: 0, y: -0.1, z: 0 }); // Small downward velocity to land
-      this.gameState.setLocalPlayerClimbing(false);
       
       // Set on surface based on exit position
       const isAtTop = this.ladderClimbState.climbProgress >= 0.95;
-      this.gameState.setLocalPlayerOnSurface(isAtTop || this.ladderClimbState.climbProgress < 0.1);
+      
+      // If at top, place on rooftop surface with no downward velocity
+      if (isAtTop) {
+        this.gameState.setLocalPlayerVelocity({ x: 0, y: 0, z: 0 });
+        this.gameState.setLocalPlayerOnSurface(true);
+      } else {
+        // Otherwise, small downward velocity to land
+        this.gameState.setLocalPlayerVelocity({ x: 0, y: -0.1, z: 0 });
+        this.gameState.setLocalPlayerOnSurface(this.ladderClimbState.climbProgress < 0.1);
+      }
+      
+      this.gameState.setLocalPlayerClimbing(false);
 
       this.ladderClimbState.isClimbing = false;
       this.ladderClimbState.currentLadder = null;

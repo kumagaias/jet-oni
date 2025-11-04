@@ -112,7 +112,7 @@ export class RealtimeSyncManager {
     this.predictionEnabled = config.predictionEnabled ?? true;
     this.disconnectTimeout = config.disconnectTimeout ?? 10000; // 10 seconds
     this.maxReconnectAttempts = config.maxReconnectAttempts ?? 3;
-    this.throttleInterval = config.throttleInterval ?? 1000; // 1 message/second
+    this.throttleInterval = config.throttleInterval ?? 500; // 2 messages/second
   }
 
   /**

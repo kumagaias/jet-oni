@@ -31,7 +31,6 @@ import { UILoading } from './ui/ui-loading';
 import { ToastNotification } from './ui/toast-notification';
 import { GameAPIClient } from './api/game-api-client';
 import { RealtimeSyncManager } from './sync/realtime-sync-manager';
-import { InputState } from '../shared/types/game';
 import { HostMonitor } from './game/host-monitor';
 import { en } from './i18n/translations/en';
 import { jp } from './i18n/translations/jp';
@@ -168,7 +167,7 @@ async function initGame(): Promise<void> {
       
       // Initialize tag system
       const tagSystem = new TagSystem(gameState);
-      tagSystem.onTag((event) => {
+      tagSystem.onTag((_event) => {
       });
       
       // Initialize ONI spawn item system
@@ -698,6 +697,7 @@ async function initGame(): Promise<void> {
             isDashing: localPlayer.isDashing,
             isJetpacking: localPlayer.isJetpacking,
             isOnSurface: localPlayer.isOnSurface,
+            survivedTime: localPlayer.survivedTime,
           });
         }
         
@@ -821,18 +821,18 @@ async function initGame(): Promise<void> {
       toast.init();
       
       // Set up tag event handler to show toast notifications
-      tagSystem.onTag((event) => {
+      tagSystem.onTag((tagEvent) => {
         const localPlayerId = gameState.getLocalPlayer().id;
-        const tagger = gameState.getPlayer(event.taggerId);
-        const tagged = gameState.getPlayer(event.taggedId);
+        const tagger = gameState.getPlayer(tagEvent.taggerId);
+        const tagged = gameState.getPlayer(tagEvent.taggedId);
         const taggerName = tagger?.username || 'Someone';
         const taggedName = tagged?.username || 'Someone';
         
         // Show message to all players with player names
-        if (event.taggedId === localPlayerId) {
+        if (tagEvent.taggedId === localPlayerId) {
           // Local player got tagged
           toast.showGotTagged(taggerName, 'You');
-        } else if (event.taggerId === localPlayerId) {
+        } else if (tagEvent.taggerId === localPlayerId) {
           // Local player tagged someone
           toast.showTagged(taggedName, 'You');
         } else {
@@ -883,11 +883,12 @@ async function initGame(): Promise<void> {
       let currentGameId: string | null = null;
       
       // Listen for game start countdown event (when host presses start button)
-      window.addEventListener('gameStartCountdown', ((e: CustomEvent) => {
+      window.addEventListener('gameStartCountdown', ((e: Event) => {
+        const customEvent = e as CustomEvent;
         
         // If this is the host (no startTimestamp in detail), broadcast game-start to all players
-        if (!e.detail?.startTimestamp && isHost) {
-          const config = e.detail?.config || gameState.getGameConfig();
+        if (!customEvent.detail?.startTimestamp && isHost) {
+          const config = customEvent.detail?.config || gameState.getGameConfig();
           realtimeSyncManager.sendGameStart(config);
         }
         
@@ -905,13 +906,13 @@ async function initGame(): Promise<void> {
         gameEngine.resume();
         
         // Set game config if provided
-        if (e.detail?.config) {
-          gameState.setGameConfig(e.detail.config);
+        if (customEvent.detail?.config) {
+          gameState.setGameConfig(customEvent.detail.config);
         }
         
         // Set game ID
-        if (e.detail?.gameId) {
-          currentGameId = e.detail.gameId as string;
+        if (customEvent.detail?.gameId) {
+          currentGameId = customEvent.detail.gameId as string;
         }
         
         // Change phase to countdown
@@ -921,7 +922,7 @@ async function initGame(): Promise<void> {
         uiControls.show();
         
         // Start countdown (10 seconds) with timestamp synchronization
-        const startTimestamp = e.detail?.startTimestamp || Date.now();
+        const startTimestamp = customEvent.detail?.startTimestamp || Date.now();
         uiCountdown.start(10, () => {
           // Countdown complete - trigger actual game start
           window.dispatchEvent(new CustomEvent('gameStart', {
@@ -937,16 +938,26 @@ async function initGame(): Promise<void> {
       let gameStarted = false;
       
       // Listen for game start event (after countdown)
-      window.addEventListener('gameStart', (async (e: CustomEvent) => {
+      window.addEventListener('gameStart', (async (e: Event) => {
+        const customEvent = e as CustomEvent;
         if (gameStarted) {
           return;
         }
         gameStarted = true;
         
+        // Clear all remote player models from previous game
+        for (const [playerId, model] of remotePlayerModels.entries()) {
+          gameEngine.removeFromScene(model.getModel());
+        }
+        remotePlayerModels.clear();
+        aiPlayerModels.clear();
+        
+        // Clear all players from game state (except local player)
+        gameState.clearRemotePlayers();
         
         // Regenerate city with gameId as seed for consistent map across all players
-        if (e.detail?.gameId) {
-          const gameId = e.detail.gameId as string;
+        if (customEvent.detail?.gameId) {
+          const gameId = customEvent.detail.gameId as string;
           
           // Remove old city
           gameEngine.removeFromScene(city);
@@ -988,8 +999,8 @@ async function initGame(): Promise<void> {
         gameEngine.resume();
         
         // Set game config if provided
-        if (e.detail?.config) {
-          gameState.setGameConfig(e.detail.config);
+        if (customEvent.detail?.config) {
+          gameState.setGameConfig(customEvent.detail.config);
         } else {
           // Default config if not provided
           gameState.setGameConfig({
@@ -1020,8 +1031,9 @@ async function initGame(): Promise<void> {
             }
             
             // Update local game state with server players
+            const updatedLocalPlayerId = matchingServerPlayer?.id || localPlayer.id;
             for (const player of serverGameState.players) {
-              if (player.id !== localPlayer.id) {
+              if (player.id !== updatedLocalPlayerId) {
                 // Set random spawn position for each player (spread across entire map)
                 const spawnX = (Math.random() - 0.5) * 360; // Random X between -180 and 180
                 const spawnZ = (Math.random() - 0.5) * 360; // Random Z between -180 and 180
@@ -1071,9 +1083,6 @@ async function initGame(): Promise<void> {
         uiHud.update(0); // Force initial update to show correct player counts
         uiControls.show();
         
-        // Debug: Log initial player state (once at game start)
-        const allPlayersAtStart = gameState.getAllPlayers();
-        
         // Set random spawn position for local player (spread across entire map)
         const spawnX = (Math.random() - 0.5) * 360; // Random X between -180 and 180
         const spawnZ = (Math.random() - 0.5) * 360; // Random Z between -180 and 180
@@ -1082,8 +1091,8 @@ async function initGame(): Promise<void> {
         localPlayer.velocity = { x: 0, y: 0, z: 0 };
         
         // Start Realtime synchronization if gameId is provided
-        if (e.detail?.gameId) {
-          currentGameId = e.detail.gameId as string;
+        if (customEvent.detail?.gameId) {
+          currentGameId = customEvent.detail.gameId as string;
           const playerId = gameState.getLocalPlayer().id;
           void realtimeSyncManager.connect(currentGameId, playerId);
           
@@ -1150,6 +1159,21 @@ async function initGame(): Promise<void> {
           await hostMonitor.deleteGameOnExit();
         }
         
+        // Clear remote player models
+        remotePlayerModels.forEach((model) => {
+          gameEngine.removeFromScene(model.getModel());
+        });
+        remotePlayerModels.clear();
+        
+        // Clear AI player models
+        aiPlayerModels.forEach((model) => {
+          gameEngine.removeFromScene(model.getModel());
+        });
+        aiPlayerModels.clear();
+        
+        // Clear remote players from game state
+        gameState.clearRemotePlayers();
+        
         // Clean up
         hostMonitor.stop();
         isHost = false;
@@ -1157,7 +1181,8 @@ async function initGame(): Promise<void> {
       }) as EventListener);
       
       // Listen for lobby event (when user creates a game)
-      window.addEventListener('showLobby', (async (e: CustomEvent) => {
+      window.addEventListener('showLobby', (async (e: Event) => {
+        const customEvent = e as CustomEvent;
         
         // Clean up previous game state first
         
@@ -1182,6 +1207,9 @@ async function initGame(): Promise<void> {
         });
         aiPlayerModels.clear();
         
+        // Clear remote players from game state
+        gameState.clearRemotePlayers();
+        
         // Reset game state
         gameState.setGamePhase('lobby');
         gameHasStarted = false;
@@ -1202,7 +1230,7 @@ async function initGame(): Promise<void> {
         // Pause game engine
         gameEngine.pause();
         
-        const { currentPlayers, maxPlayers, isHost: isHostFlag, gameId } = e.detail;
+        const { currentPlayers, maxPlayers, isHost: isHostFlag, gameId } = customEvent.detail;
         isHost = isHostFlag;
         
         // Set current game ID
@@ -1251,13 +1279,6 @@ async function initGame(): Promise<void> {
         
         // Set game phase to ended immediately to stop game loop updates
         gameState.setGamePhase('ended');
-        
-        // Calculate final survived time for local player (if runner)
-        const localPlayer = gameState.getLocalPlayer();
-        if (!localPlayer.isOni && gameStartTime > 0) {
-          const totalGameTime = (Date.now() - gameStartTime) / 1000; // Convert to seconds
-          localPlayer.survivedTime = totalGameTime;
-        }
         
         // Show "Game Over" message immediately
         const gameOverMessage = document.createElement('div');
@@ -1338,6 +1359,7 @@ async function initGame(): Promise<void> {
                 // Reset game state
                 gameState.setGamePhase('lobby');
                 gameHasStarted = false;
+                gameStarted = false;
                 wasOni = false;
                 
                 // Clean up visual effects
@@ -1373,6 +1395,9 @@ async function initGame(): Promise<void> {
                   gameEngine.removeFromScene(model.getModel());
                 });
                 aiPlayerModels.clear();
+                
+                // Clear remote players from game state
+                gameState.clearRemotePlayers();
                 
                 // Reset local player position
                 gameState.setLocalPlayerPosition({ x: 0, y: 2, z: 0 });

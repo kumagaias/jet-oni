@@ -516,6 +516,13 @@ export class GameState {
   }
 
   /**
+   * Clear all remote players (keep local player)
+   */
+  public clearRemotePlayers(): void {
+    this.remotePlayers.clear();
+  }
+
+  /**
    * Clear all state
    */
   public clear(): void {

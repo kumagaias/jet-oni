@@ -131,4 +131,5 @@ export interface PlayerResult {
   survivedTime: number;
   wasTagged: boolean;
   isAI: boolean;
+  tagCount?: number;
 }

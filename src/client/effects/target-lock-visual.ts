@@ -1,8 +1,7 @@
 import * as THREE from 'three';
 import { Player } from '../../shared/types/game';
-import { TAG_DISTANCE } from '../../shared/constants';
 
-const DETECTION_RANGE = 100; // 100 units detection range
+const DETECTION_RANGE = 500; // 500 units detection range
 const LOCK_ON_COLOR = 0xff0000; // Red
 const LOCK_ON_OPACITY = 0.8;
 const LOCK_ON_COOLDOWN = 3000; // 3 seconds in milliseconds (reduced for better gameplay)
@@ -60,8 +59,8 @@ export class TargetLockVisual {
       return; // Still in cooldown
     }
 
-    // Find nearby runners that are visible on screen
-    const nearbyRunners = this.findNearbyRunners(localPlayer, allPlayers, camera);
+    // Find nearby runners that have clear line of sight
+    const nearbyRunners = this.findNearbyRunners(localPlayer, allPlayers);
     
     // If we found runners, trigger lock-on
     if (nearbyRunners.length > 0) {
@@ -106,11 +105,25 @@ export class TargetLockVisual {
    * Update existing lock-on indicators
    */
   private updateExistingLockOns(allPlayers: Player[], camera: THREE.Camera): void {
+    const localPlayer = allPlayers.find(p => p.isOni);
+    if (!localPlayer) return;
+
+    const toRemove: string[] = [];
+
     for (const [id, indicator] of this.lockIndicators.entries()) {
       // Find the player
       const player = allPlayers.find(p => p.id === id);
       
       if (player) {
+        // Check if line of sight is still clear
+        const hasLOS = this.hasLineOfSight(localPlayer.position, player.position);
+        
+        if (!hasLOS) {
+          // Line of sight blocked, remove lock-on
+          toRemove.push(id);
+          continue;
+        }
+
         // Update indicator position (follow the player)
         indicator.position.set(
           player.position.x,
@@ -146,10 +159,18 @@ export class TargetLockVisual {
         }
       } else {
         // Player no longer exists, remove indicator
-        this.scene.remove(indicator);
-        this.lockIndicators.delete(id);
-        this.lockedTargetIds.delete(id);
+        toRemove.push(id);
       }
+    }
+
+    // Remove indicators that lost line of sight or player no longer exists
+    for (const id of toRemove) {
+      const indicator = this.lockIndicators.get(id);
+      if (indicator) {
+        this.scene.remove(indicator);
+      }
+      this.lockIndicators.delete(id);
+      this.lockedTargetIds.delete(id);
     }
   }
 
@@ -182,26 +203,21 @@ export class TargetLockVisual {
       }
       
       if (distance <= DETECTION_RANGE) {
-        // Check if player is visible on screen (frustum check)
-        const playerPosition = new THREE.Vector3(player.position.x, player.position.y + 1.5, player.position.z);
-        const frustum = new THREE.Frustum();
-        const projScreenMatrix = new THREE.Matrix4();
-        projScreenMatrix.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse);
-        frustum.setFromProjectionMatrix(projScreenMatrix);
-        const isVisible = frustum.containsPoint(playerPosition);
+        // Check line of sight (building occlusion)
+        const hasLOS = this.hasLineOfSight(localPlayer.position, player.position);
         
         if (shouldLog) {
-          console.log('[TargetLock] Runner', player.id, 'in range. Distance:', distance.toFixed(1), 'Visible on screen:', isVisible);
+          console.log('[TargetLock] Runner', player.id, 'in range. Distance:', distance.toFixed(1), 'LOS:', hasLOS ? '✓ Clear' : '✗ Blocked');
         }
         
-        if (isVisible) {
+        if (hasLOS) {
           nearby.push(player);
           if (shouldLog) {
             console.log('[TargetLock] ✓ Found nearby runner', player.id, 'at distance', distance.toFixed(1));
           }
         } else {
           if (shouldLog) {
-            console.log('[TargetLock] ✗ Runner', player.id, 'not visible on screen');
+            console.log('[TargetLock] ✗ Runner', player.id, 'blocked by building');
           }
         }
       }
@@ -214,23 +230,34 @@ export class TargetLockVisual {
     return nearby;
   }
 
+
+
+  /**
+   * Calculate distance between two positions
+   */
+  private calculateDistance(pos1: { x: number; y: number; z: number }, pos2: { x: number; y: number; z: number }): number {
+    const dx = pos2.x - pos1.x;
+    const dy = pos2.y - pos1.y;
+    const dz = pos2.z - pos1.z;
+    return Math.sqrt(dx * dx + dy * dy + dz * dz);
+  }
+
   /**
    * Check if there's a clear line of sight between two positions
    * Returns false if blocked by buildings or walls
    */
   private hasLineOfSight(from: { x: number; y: number; z: number }, to: { x: number; y: number; z: number }): boolean {
-    // Create a raycaster from ONI to runner
-    const origin = new THREE.Vector3(from.x, from.y + 1.5, from.z); // Eye level
-    const target = new THREE.Vector3(to.x, to.y + 1.5, to.z); // Target eye level
+    // Create a raycaster from ONI to runner at head height
+    const origin = new THREE.Vector3(from.x, from.y + 2, from.z); // Head level (higher to avoid ground)
+    const target = new THREE.Vector3(to.x, to.y + 2, to.z); // Target head level
     const direction = new THREE.Vector3().subVectors(target, origin).normalize();
     const distance = origin.distanceTo(target);
 
     // Add small offset to avoid self-intersection
-    const raycaster = new THREE.Raycaster(origin, direction, 0.1, distance - 0.1);
+    const raycaster = new THREE.Raycaster(origin, direction, 0.5, distance - 0.5);
 
-    // Only check against Mesh objects (buildings, walls)
-    // Skip ground, sprites, lines, points, and other non-solid objects
-    const meshObjects: THREE.Mesh[] = [];
+    // Only check against building meshes (large vertical structures)
+    const buildingMeshes: THREE.Mesh[] = [];
     this.scene.traverse((obj) => {
       if (obj instanceof THREE.Mesh) {
         // Skip UI elements and player models
@@ -245,22 +272,41 @@ export class TargetLockVisual {
         // Skip cars (they shouldn't block line of sight for lock-on)
         if (obj.parent?.name?.includes('car') || obj.name?.includes('car')) return;
         
-        // Skip if geometry is too large (likely ground or sky)
-        const geometry = obj.geometry;
-        if (geometry instanceof THREE.PlaneGeometry || geometry instanceof THREE.CircleGeometry) {
-          const params = geometry.parameters;
-          if (params.width > 1000 || params.height > 1000 || params.radius > 500) {
-            return; // Skip very large planes (ground)
-          }
-        }
+        // Skip pedestrians and other small objects
+        if (obj.parent?.name?.includes('pedestrian') || obj.name?.includes('pedestrian')) return;
         
-        // Skip small objects (cars, props, etc.) - only check buildings
-        // Buildings are typically larger than 5x5x5 units
+        // Skip ladders and other climbable objects
+        if (obj.parent?.name?.includes('ladder') || obj.name?.includes('ladder')) return;
+        
+        // Get bounding box to check object size
         const bbox = new THREE.Box3().setFromObject(obj);
         const size = new THREE.Vector3();
         bbox.getSize(size);
-        if (size.x < 5 || size.y < 5 || size.z < 5) {
-          return; // Skip small objects
+        
+        // Only check buildings (large objects with significant height)
+        // Buildings are typically larger than 10x10x10 units
+        if (size.x < 10 && size.z < 10) {
+          return; // Skip small objects (not buildings)
+        }
+        
+        // Must have significant height to be a building
+        if (size.y < 10) {
+          return; // Skip flat objects (roads, ground, etc.)
+        }
+        
+        // Skip if geometry is too large (likely ground or sky)
+        const geometry = obj.geometry;
+        if (geometry instanceof THREE.PlaneGeometry) {
+          const params = geometry.parameters;
+          if (params.width > 1000 || params.height > 1000) {
+            return; // Skip very large planes (ground)
+          }
+        }
+        if (geometry instanceof THREE.CircleGeometry) {
+          const params = geometry.parameters;
+          if (params.radius > 500) {
+            return; // Skip very large circles (ground)
+          }
         }
         
         // Skip if it's a player model (check parent names)
@@ -274,39 +320,16 @@ export class TargetLockVisual {
           parent = parent.parent;
         }
         if (!isPlayer) {
-          meshObjects.push(obj);
+          buildingMeshes.push(obj);
         }
       }
     });
 
-    // Check for intersections with mesh objects only
-    const intersects = raycaster.intersectObjects(meshObjects, false);
+    // Check for intersections with building meshes only
+    const intersects = raycaster.intersectObjects(buildingMeshes, false);
 
-    // If we hit any solid object, line of sight is blocked
-    if (intersects.length > 0) {
-      // Debug: log what's blocking the line of sight (throttled)
-      const now = Date.now();
-      if (now - this.lastDebugLogTime > 2000) {
-        const blocker = intersects[0].object;
-        console.log('[TargetLock] LOS blocked by:', blocker.name || blocker.type, 'at distance', intersects[0].distance.toFixed(1));
-        console.log('[TargetLock] Blocker geometry:', blocker.geometry?.type);
-        console.log('[TargetLock] Total mesh objects checked:', meshObjects.length);
-      }
-      return false;
-    }
-
-    // No blocking objects found, line of sight is clear
-    return true;
-  }
-
-  /**
-   * Calculate distance between two positions
-   */
-  private calculateDistance(pos1: { x: number; y: number; z: number }, pos2: { x: number; y: number; z: number }): number {
-    const dx = pos2.x - pos1.x;
-    const dy = pos2.y - pos1.y;
-    const dz = pos2.z - pos1.z;
-    return Math.sqrt(dx * dx + dy * dy + dz * dz);
+    // If we hit any building, line of sight is blocked
+    return intersects.length === 0;
   }
 
   /**

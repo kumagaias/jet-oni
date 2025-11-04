@@ -260,7 +260,7 @@ export class UIMenu {
                 text-overflow: ellipsis;
                 white-space: nowrap;
               ">
-                ${player.username}${isCurrentPlayer ? ' (You)' : ''}
+                ${player.username}${isCurrentPlayer ? ` (${this.i18n.t('lobby.you')})` : ''}
               </span>
             </div>
             ${isPlayerHost ? `
@@ -274,7 +274,7 @@ export class UIMenu {
                 box-shadow: 0 2px 4px rgba(255, 215, 0, 0.3);
                 flex-shrink: 0;
                 margin-left: 8px;
-              ">👑 HOST</span>
+              ">👑 ${this.i18n.t('lobby.host')}</span>
             ` : ''}
           </div>
         `;
@@ -308,7 +308,7 @@ export class UIMenu {
                 font-size: 13px;
                 font-style: italic;
               ">
-                AI Player ${players.length + index + 1}
+                ${this.i18n.t('lobby.aiPlayer')} ${players.length + index + 1}
               </span>
             </div>
             <span style="
@@ -1324,7 +1324,7 @@ export class UIMenu {
           
 
           <p id="waiting-message" style="color: #666; font-size: 14px; margin-top: 15px; animation: pulse 2s infinite;">
-            Waiting for players...
+            ${this.i18n.t('lobby.waiting')}
           </p>
         </div>
         
@@ -1340,7 +1340,7 @@ export class UIMenu {
             color: #ff0000;
             border-radius: 4px;
             font-weight: bold;
-          ">LEAVE</button>
+          ">${this.i18n.t('menu.back')}</button>
           
           ${isHost ? `
             <button id="btn-start" style="

@@ -106,23 +106,11 @@ export class TargetLockVisual {
    * Update existing lock-on indicators
    */
   private updateExistingLockOns(allPlayers: Player[], camera: THREE.Camera): void {
-    // Get local player (ONI) position for line of sight check
-    const localPlayer = allPlayers.find(p => p.isOni);
-    
     for (const [id, indicator] of this.lockIndicators.entries()) {
       // Find the player
       const player = allPlayers.find(p => p.id === id);
       
-      if (player && localPlayer) {
-        // Check if line of sight is still clear
-        if (!this.hasLineOfSight(localPlayer.position, player.position)) {
-          // Line of sight blocked, remove lock-on
-          this.scene.remove(indicator);
-          this.lockIndicators.delete(id);
-          this.lockedTargetIds.delete(id);
-          continue;
-        }
-
+      if (player) {
         // Update indicator position (follow the player)
         indicator.position.set(
           player.position.x,

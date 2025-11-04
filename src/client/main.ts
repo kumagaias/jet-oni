@@ -365,10 +365,10 @@ async function initGame(): Promise<void> {
             position: fixed;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
+            width: 100vw;
+            height: 100vh;
             pointer-events: none;
-            z-index: 1;
+            z-index: 10;
             background-color: transparent;
             transition: background-color 0.3s ease;
           `;
@@ -377,7 +377,7 @@ async function initGame(): Promise<void> {
         
         // Always show red overlay when ONI (fixed to screen, not affected by player movement)
         if (localPlayer.isOni) {
-          oniOverlay.style.backgroundColor = 'rgba(255, 0, 0, 0.15)';
+          oniOverlay.style.backgroundColor = 'rgba(255, 0, 0, 0.2)';
         } else {
           oniOverlay.style.backgroundColor = 'transparent';
         }

@@ -129,7 +129,7 @@ export class RealtimeSyncManager {
     this.predictionEnabled = config.predictionEnabled ?? true;
     this.disconnectTimeout = config.disconnectTimeout ?? 30000; // 30 seconds
     this.maxReconnectAttempts = config.maxReconnectAttempts ?? 3;
-    this.throttleInterval = config.throttleInterval ?? 100; // 10 messages/second
+    this.throttleInterval = config.throttleInterval ?? 1000; // 1 message/second (reduced to avoid rate limits)
   }
 
   /**
@@ -246,7 +246,7 @@ export class RealtimeSyncManager {
       config,
     };
 
-    // Send via server API with retry logic
+    // Always send critical messages via server API for reliability
     this.sendViaServer(message, 'game-start');
   }
 
@@ -265,7 +265,7 @@ export class RealtimeSyncManager {
       timestamp: Date.now(),
     };
 
-    // Send via server API with retry logic
+    // Always send critical messages via server API for reliability
     this.sendViaServer(message, 'game-end');
   }
 
@@ -421,6 +421,15 @@ export class RealtimeSyncManager {
     // Skip messages from local player
     if (data.playerId === this.playerId) {
       return;
+    }
+    
+    // Skip AI player messages if this is the host (host manages AI locally)
+    // We determine if we're the host by checking if we have AI players in our local state
+    // This is a simple heuristic: if we're sending AI updates, we're the host
+    if (data.isAI) {
+      // For now, accept all AI player updates
+      // The host will also receive these, but they will update the remote players map
+      // which is separate from the AI players map
     }
 
     const now = Date.now();
@@ -734,6 +743,7 @@ export class RealtimeSyncManager {
       itemType,
     };
 
+    // Always send critical messages via server API for reliability
     this.sendViaServer(message, 'item-collected');
   }
 
@@ -756,6 +766,7 @@ export class RealtimeSyncManager {
       items,
     };
 
+    // Send via server API (silently fail if server is down)
     this.sendViaServer(message, 'items-sync', true);
   }
 

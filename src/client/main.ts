@@ -534,7 +534,15 @@ async function initGame(): Promise<void> {
           // 2. Remote players see the cloaked state via their own client
           // 3. Cloak visual effect is handled by the cloak item itself
           
-          aiController.update(deltaTime);
+          // Update AI controller (host only)
+          if (isHost) {
+            aiController.update(deltaTime);
+            
+            // Debug: Log AI update (throttled)
+            if (Math.random() < 0.01) {
+              console.log(`[AI Debug] AI controller updated, aiPlayerModels size: ${aiPlayerModels.size}`);
+            }
+          }
           
           // Update tag system (check for tags between players)
           const tagEvent = tagSystem.update(deltaTime);
@@ -545,184 +553,200 @@ async function initGame(): Promise<void> {
           }
         }
         
-        // Apply physics to AI players and update models
-        for (const [aiId, aiModel] of aiPlayerModels) {
-          const aiPlayer = gameState.getPlayer(aiId);
-          if (!aiPlayer) {
-            console.warn(`[AI] AI player ${aiId} not found in game state`);
-            continue;
+        // Apply physics to AI players and update models (host only)
+        if (isHost) {
+          // Debug: Log AI physics loop (throttled)
+          if (Math.random() < 0.01) {
+            const allPlayers = gameState.getAllPlayers();
+            const aiPlayers = allPlayers.filter(p => p.isAI);
+            console.log(`[AI Debug] AI physics loop, aiPlayerModels size: ${aiPlayerModels.size}, AI in GameState: ${aiPlayers.length}`);
           }
           
-          if (aiPlayer) {
-            // Apply physics to AI player
-            const physicsResult = playerPhysics.applyPhysics(
-              aiPlayer.position,
-              aiPlayer.velocity,
-              deltaTime,
-              aiPlayer.isJetpacking
-            );
+          for (const [aiId, aiModel] of aiPlayerModels) {
+            const aiPlayer = gameState.getPlayer(aiId);
+            if (!aiPlayer) {
+              console.warn(`[AI] AI player ${aiId} not found in game state`);
+              continue;
+            }
             
-            // Apply collision detection
-            const collisionResult = collisionSystem.checkCollision(
-              aiPlayer.position,
-              physicsResult.position,
-              0.5 // AI player radius
-            );
-            
-            // If collision occurred, try to move AI around obstacle
-            let finalVelocity = physicsResult.velocity;
-            let finalPosition = collisionResult.position;
-            
-            if (collisionResult.collided) {
-              // When AI hits a wall, try multiple escape strategies
-              const speed = Math.sqrt(aiPlayer.velocity.x ** 2 + aiPlayer.velocity.z ** 2);
+            if (aiPlayer) {
+              // Apply physics to AI player
+              const physicsResult = playerPhysics.applyPhysics(
+                aiPlayer.position,
+                aiPlayer.velocity,
+                deltaTime,
+                aiPlayer.isJetpacking
+              );
               
-              // Strategy 1: Try perpendicular directions (left and right)
-              const perpendicular1 = {
-                x: -aiPlayer.velocity.z,
-                y: aiPlayer.velocity.y,
-                z: aiPlayer.velocity.x,
-              };
-              const perpendicular2 = {
-                x: aiPlayer.velocity.z,
-                y: aiPlayer.velocity.y,
-                z: -aiPlayer.velocity.x,
-              };
+              // Apply collision detection
+              const collisionResult = collisionSystem.checkCollision(
+                aiPlayer.position,
+                physicsResult.position,
+                0.5 // AI player radius
+              );
               
-              // Normalize perpendicular vectors
-              const perp1Length = Math.sqrt(perpendicular1.x ** 2 + perpendicular1.z ** 2);
-              const perp2Length = Math.sqrt(perpendicular2.x ** 2 + perpendicular2.z ** 2);
+              // If collision occurred, try to move AI around obstacle
+              let finalVelocity = physicsResult.velocity;
+              let finalPosition = collisionResult.position;
               
-              if (perp1Length > 0) {
-                perpendicular1.x = (perpendicular1.x / perp1Length) * speed;
-                perpendicular1.z = (perpendicular1.z / perp1Length) * speed;
-              }
-              if (perp2Length > 0) {
-                perpendicular2.x = (perpendicular2.x / perp2Length) * speed;
-                perpendicular2.z = (perpendicular2.z / perp2Length) * speed;
-              }
-              
-              // Try moving in perpendicular directions
-              const altPosition1 = {
-                x: aiPlayer.position.x + perpendicular1.x * deltaTime,
-                y: aiPlayer.position.y + perpendicular1.y * deltaTime,
-                z: aiPlayer.position.z + perpendicular1.z * deltaTime,
-              };
-              const altPosition2 = {
-                x: aiPlayer.position.x + perpendicular2.x * deltaTime,
-                y: aiPlayer.position.y + perpendicular2.y * deltaTime,
-                z: aiPlayer.position.z + perpendicular2.z * deltaTime,
-              };
-              
-              const altCollision1 = collisionSystem.checkCollision(aiPlayer.position, altPosition1, 0.5);
-              const altCollision2 = collisionSystem.checkCollision(aiPlayer.position, altPosition2, 0.5);
-              
-              // Use the first non-colliding alternative
-              if (!altCollision1.collided) {
-                finalPosition = altCollision1.position;
-                finalVelocity = perpendicular1;
-              } else if (!altCollision2.collided) {
-                finalPosition = altCollision2.position;
-                finalVelocity = perpendicular2;
-              } else {
-                // Strategy 2: Try diagonal directions
-                const diagonal1 = {
-                  x: (aiPlayer.velocity.x + perpendicular1.x) * 0.5,
+              if (collisionResult.collided) {
+                // When AI hits a wall, try multiple escape strategies
+                const speed = Math.sqrt(aiPlayer.velocity.x ** 2 + aiPlayer.velocity.z ** 2);
+                
+                // Strategy 1: Try perpendicular directions (left and right)
+                const perpendicular1 = {
+                  x: -aiPlayer.velocity.z,
                   y: aiPlayer.velocity.y,
-                  z: (aiPlayer.velocity.z + perpendicular1.z) * 0.5,
+                  z: aiPlayer.velocity.x,
                 };
-                const diagonal2 = {
-                  x: (aiPlayer.velocity.x + perpendicular2.x) * 0.5,
+                const perpendicular2 = {
+                  x: aiPlayer.velocity.z,
                   y: aiPlayer.velocity.y,
-                  z: (aiPlayer.velocity.z + perpendicular2.z) * 0.5,
+                  z: -aiPlayer.velocity.x,
                 };
                 
-                const diagPosition1 = {
-                  x: aiPlayer.position.x + diagonal1.x * deltaTime,
-                  y: aiPlayer.position.y + diagonal1.y * deltaTime,
-                  z: aiPlayer.position.z + diagonal1.z * deltaTime,
+                // Normalize perpendicular vectors
+                const perp1Length = Math.sqrt(perpendicular1.x ** 2 + perpendicular1.z ** 2);
+                const perp2Length = Math.sqrt(perpendicular2.x ** 2 + perpendicular2.z ** 2);
+                
+                if (perp1Length > 0) {
+                  perpendicular1.x = (perpendicular1.x / perp1Length) * speed;
+                  perpendicular1.z = (perpendicular1.z / perp1Length) * speed;
+                }
+                if (perp2Length > 0) {
+                  perpendicular2.x = (perpendicular2.x / perp2Length) * speed;
+                  perpendicular2.z = (perpendicular2.z / perp2Length) * speed;
+                }
+                
+                // Try moving in perpendicular directions
+                const altPosition1 = {
+                  x: aiPlayer.position.x + perpendicular1.x * deltaTime,
+                  y: aiPlayer.position.y + perpendicular1.y * deltaTime,
+                  z: aiPlayer.position.z + perpendicular1.z * deltaTime,
                 };
-                const diagPosition2 = {
-                  x: aiPlayer.position.x + diagonal2.x * deltaTime,
-                  y: aiPlayer.position.y + diagonal2.y * deltaTime,
-                  z: aiPlayer.position.z + diagonal2.z * deltaTime,
+                const altPosition2 = {
+                  x: aiPlayer.position.x + perpendicular2.x * deltaTime,
+                  y: aiPlayer.position.y + perpendicular2.y * deltaTime,
+                  z: aiPlayer.position.z + perpendicular2.z * deltaTime,
                 };
                 
-                const diagCollision1 = collisionSystem.checkCollision(aiPlayer.position, diagPosition1, 0.5);
-                const diagCollision2 = collisionSystem.checkCollision(aiPlayer.position, diagPosition2, 0.5);
+                const altCollision1 = collisionSystem.checkCollision(aiPlayer.position, altPosition1, 0.5);
+                const altCollision2 = collisionSystem.checkCollision(aiPlayer.position, altPosition2, 0.5);
                 
-                if (!diagCollision1.collided) {
-                  finalPosition = diagCollision1.position;
-                  finalVelocity = diagonal1;
-                } else if (!diagCollision2.collided) {
-                  finalPosition = diagCollision2.position;
-                  finalVelocity = diagonal2;
+                // Use the first non-colliding alternative
+                if (!altCollision1.collided) {
+                  finalPosition = altCollision1.position;
+                  finalVelocity = perpendicular1;
+                } else if (!altCollision2.collided) {
+                  finalPosition = altCollision2.position;
+                  finalVelocity = perpendicular2;
                 } else {
-                  // Strategy 3: Try backing up slightly and then moving perpendicular
-                  const backupPosition = {
-                    x: aiPlayer.position.x - aiPlayer.velocity.x * deltaTime * 0.5,
-                    y: aiPlayer.position.y,
-                    z: aiPlayer.position.z - aiPlayer.velocity.z * deltaTime * 0.5,
+                  // Strategy 2: Try diagonal directions
+                  const diagonal1 = {
+                    x: (aiPlayer.velocity.x + perpendicular1.x) * 0.5,
+                    y: aiPlayer.velocity.y,
+                    z: (aiPlayer.velocity.z + perpendicular1.z) * 0.5,
+                  };
+                  const diagonal2 = {
+                    x: (aiPlayer.velocity.x + perpendicular2.x) * 0.5,
+                    y: aiPlayer.velocity.y,
+                    z: (aiPlayer.velocity.z + perpendicular2.z) * 0.5,
                   };
                   
-                  const backupCollision = collisionSystem.checkCollision(aiPlayer.position, backupPosition, 0.5);
+                  const diagPosition1 = {
+                    x: aiPlayer.position.x + diagonal1.x * deltaTime,
+                    y: aiPlayer.position.y + diagonal1.y * deltaTime,
+                    z: aiPlayer.position.z + diagonal1.z * deltaTime,
+                  };
+                  const diagPosition2 = {
+                    x: aiPlayer.position.x + diagonal2.x * deltaTime,
+                    y: aiPlayer.position.y + diagonal2.y * deltaTime,
+                    z: aiPlayer.position.z + diagonal2.z * deltaTime,
+                  };
                   
-                  if (!backupCollision.collided) {
-                    finalPosition = backupCollision.position;
-                    // Choose a random perpendicular direction
-                    finalVelocity = Math.random() > 0.5 ? perpendicular1 : perpendicular2;
+                  const diagCollision1 = collisionSystem.checkCollision(aiPlayer.position, diagPosition1, 0.5);
+                  const diagCollision2 = collisionSystem.checkCollision(aiPlayer.position, diagPosition2, 0.5);
+                  
+                  if (!diagCollision1.collided) {
+                    finalPosition = diagCollision1.position;
+                    finalVelocity = diagonal1;
+                  } else if (!diagCollision2.collided) {
+                    finalPosition = diagCollision2.position;
+                    finalVelocity = diagonal2;
                   } else {
-                    // Last resort: Stop moving
-                    finalVelocity = {
-                      x: 0,
-                      y: physicsResult.velocity.y,
-                      z: 0,
+                    // Strategy 3: Try backing up slightly and then moving perpendicular
+                    const backupPosition = {
+                      x: aiPlayer.position.x - aiPlayer.velocity.x * deltaTime * 0.5,
+                      y: aiPlayer.position.y,
+                      z: aiPlayer.position.z - aiPlayer.velocity.z * deltaTime * 0.5,
                     };
+                    
+                    const backupCollision = collisionSystem.checkCollision(aiPlayer.position, backupPosition, 0.5);
+                    
+                    if (!backupCollision.collided) {
+                      finalPosition = backupCollision.position;
+                      // Choose a random perpendicular direction
+                      finalVelocity = Math.random() > 0.5 ? perpendicular1 : perpendicular2;
+                    } else {
+                      // Last resort: Stop moving
+                      finalVelocity = {
+                        x: 0,
+                        y: physicsResult.velocity.y,
+                        z: 0,
+                      };
+                    }
+                  }
+                }
+              }
+              
+              // Update AI player position and state
+              gameState.setPlayerPosition(aiId, finalPosition);
+              gameState.setPlayerVelocity(aiId, finalVelocity);
+              gameState.setPlayerOnSurface(aiId, physicsResult.isOnSurface);
+              
+              // Get updated player state from game state
+              const updatedAiPlayer = gameState.getPlayer(aiId);
+              if (updatedAiPlayer) {
+                // Update AI player model with the latest position from game state
+                aiModel.setPosition(
+                  updatedAiPlayer.position.x,
+                  updatedAiPlayer.position.y,
+                  updatedAiPlayer.position.z
+                );
+                if (updatedAiPlayer.rotation) {
+                  aiModel.setRotation(updatedAiPlayer.rotation.yaw);
+                }
+                aiModel.setIsOni(updatedAiPlayer.isOni);
+                
+                // Host: Send AI player state via Realtime (throttled to 2 updates/sec per AI)
+                if (isHost) {
+                  const now = Date.now();
+                  const lastSync = aiLastSyncTime.get(aiId) || 0;
+                  
+                  if (now - lastSync >= AI_SYNC_INTERVAL) {
+                    aiLastSyncTime.set(aiId, now);
+                    
+                    realtimeSyncManager.sendPlayerState({
+                      position: updatedAiPlayer.position,
+                      velocity: updatedAiPlayer.velocity,
+                      rotation: updatedAiPlayer.rotation,
+                      fuel: updatedAiPlayer.fuel,
+                      isOni: updatedAiPlayer.isOni,
+                      isDashing: updatedAiPlayer.isDashing,
+                      isJetpacking: updatedAiPlayer.isJetpacking,
+                      isOnSurface: updatedAiPlayer.isOnSurface,
+                      beaconCooldown: updatedAiPlayer.beaconCooldown,
+                      survivedTime: updatedAiPlayer.survivedTime,
+                      wasTagged: updatedAiPlayer.wasTagged,
+                      isCloaked: updatedAiPlayer.isCloaked,
+                      isAI: true, // Mark as AI player
+                    }, updatedAiPlayer.id);
                   }
                 }
               }
             }
-            
-            // Update AI player position and state
-            gameState.setPlayerPosition(aiId, finalPosition);
-            gameState.setPlayerVelocity(aiId, finalVelocity);
-            gameState.setPlayerOnSurface(aiId, physicsResult.isOnSurface);
-            
-            // Get updated player state from game state
-            const updatedAiPlayer = gameState.getPlayer(aiId);
-            if (updatedAiPlayer) {
-              // Update AI player model with the latest position from game state
-              aiModel.setPosition(
-                updatedAiPlayer.position.x,
-                updatedAiPlayer.position.y,
-                updatedAiPlayer.position.z
-              );
-              if (updatedAiPlayer.rotation) {
-                aiModel.setRotation(updatedAiPlayer.rotation.yaw);
-              }
-              aiModel.setIsOni(updatedAiPlayer.isOni);
-              
-              // Host: Send AI player state via Realtime (throttled to 10 updates/sec per AI)
-              if (isHost) {
-                realtimeSyncManager.sendPlayerState({
-                  position: updatedAiPlayer.position,
-                  velocity: updatedAiPlayer.velocity,
-                  rotation: updatedAiPlayer.rotation,
-                  fuel: updatedAiPlayer.fuel,
-                  isOni: updatedAiPlayer.isOni,
-                  isDashing: updatedAiPlayer.isDashing,
-                  isJetpacking: updatedAiPlayer.isJetpacking,
-                  isOnSurface: updatedAiPlayer.isOnSurface,
-                  beaconCooldown: updatedAiPlayer.beaconCooldown,
-                  survivedTime: updatedAiPlayer.survivedTime,
-                  wasTagged: updatedAiPlayer.wasTagged,
-                  isCloaked: updatedAiPlayer.isCloaked,
-                  isAI: true, // Mark as AI player
-                }, updatedAiPlayer.id);
-              }
-            }
           }
-        }
+        } // End of isHost check for AI physics
         
         // Update beacon visuals (will be used for Super ONI ability later)
         beaconVisual.update(gameState.getAllPlayers(), false, localPlayer.id);
@@ -835,11 +859,6 @@ async function initGame(): Promise<void> {
         // Send player state to sync manager (only during gameplay, not in lobby)
         const phase = gameState.getGamePhase();
         
-        // Debug: Log sync conditions (throttled to 1/10)
-        if (phase === 'playing' && currentGameId !== null && Math.random() < 0.1) {
-          console.log(`[Sync Debug] phase: ${phase}, gameId: ${currentGameId}, isHost: ${isHost}, connected: ${realtimeSyncManager.isConnected()}`);
-        }
-        
         if (phase === 'playing' && currentGameId !== null && realtimeSyncManager.isConnected()) {
           const localPlayer = gameState.getLocalPlayer();
           const isCloaked = Date.now() < cloakActiveUntil;
@@ -920,8 +939,14 @@ async function initGame(): Promise<void> {
         
         // Update or create models for remote players
         for (const remotePlayer of remotePlayers) {
-          let model = remotePlayerModels.get(remotePlayer.id);
           const isAIPlayer = remotePlayer.isAI ?? false;
+          
+          // Skip AI players if we're the host (host manages AI locally)
+          if (isHost && isAIPlayer) {
+            continue;
+          }
+          
+          let model = remotePlayerModels.get(remotePlayer.id);
           
           if (!model) {
             // Create new model for remote player
@@ -929,11 +954,6 @@ async function initGame(): Promise<void> {
             model.setName(remotePlayer.username);
             gameEngine.addToScene(model.getModel());
             remotePlayerModels.set(remotePlayer.id, model);
-            
-            // If AI player, also add to AI models map
-            if (isAIPlayer) {
-              aiPlayerModels.set(remotePlayer.id, model);
-            }
           }
           
           // Update model position and state (interpolated position from GameSyncManager)
@@ -1065,7 +1085,11 @@ async function initGame(): Promise<void> {
       
       // Track last AI sync time per AI player (to throttle Realtime updates)
       const aiLastSyncTime: Map<string, number> = new Map();
-      const AI_SYNC_INTERVAL = 200; // Send AI updates every 200ms (5 times per second)
+      const AI_SYNC_INTERVAL = 500; // Send AI updates every 500ms (2 times per second)
+      
+      // Debug: Track AI sync count
+      let aiSyncCount = 0;
+      let lastAiSyncLog = 0;
       
       // Listen for game start countdown event (when host presses start button)
       window.addEventListener('gameStartCountdown', ((e: Event) => {
@@ -1095,9 +1119,13 @@ async function initGame(): Promise<void> {
           gameState.setGameConfig(customEvent.detail.config);
         }
         
-        // Set game ID
+        // Set game ID and connect to Realtime
         if (customEvent.detail?.gameId) {
           currentGameId = customEvent.detail.gameId as string;
+          
+          // Connect to Realtime before countdown starts (so we can send game-start message)
+          const playerId = gameState.getLocalPlayer().id;
+          void realtimeSyncManager.connect(currentGameId, playerId);
         }
         
         // Change phase to countdown
@@ -1138,13 +1166,18 @@ async function initGame(): Promise<void> {
         }
         remotePlayerModels.clear();
         
-        // DON'T clear AI player models - they should persist
-        // aiPlayerModels.clear(); // REMOVED
+        // Clear AI player models for both host and non-host
+        // They will be recreated from server game state
+        for (const [playerId, model] of aiPlayerModels.entries()) {
+          gameEngine.removeFromScene(model.getModel());
+        }
+        aiPlayerModels.clear();
         
-        // Clear remote players from game state (but keep AI players)
+        // Clear all remote players from game state
         const allPlayers = gameState.getAllPlayers();
         for (const player of allPlayers) {
-          if (!player.isAI && player.id !== gameState.getLocalPlayer().id) {
+          // Remove all players except local player
+          if (player.id !== gameState.getLocalPlayer().id) {
             gameState.removePlayer(player.id);
           }
         }
@@ -1241,23 +1274,31 @@ async function initGame(): Promise<void> {
                   position: spawnPosition,
                 };
                 
-                gameState.updateRemotePlayer(playerWithSpawn);
-                
-                // Create 3D model for remote player if not exists
-                if (!remotePlayerModels.has(player.id)) {
-                  const remoteModel = new PlayerModel(player.isOni);
-                  remoteModel.setName(player.username);
-                  remoteModel.setPosition(spawnPosition.x, spawnPosition.y, spawnPosition.z);
-                  remoteModel.setIsOni(player.isOni); // Ensure ONI status is set
-                  gameEngine.addToScene(remoteModel.getModel());
-                  remotePlayerModels.set(player.id, remoteModel);
-                }
-                
-                // If AI player, also add to AI models map
-                if (player.isAI && !aiPlayerModels.has(player.id)) {
-                  const aiModel = remotePlayerModels.get(player.id);
-                  if (aiModel) {
+                // Host: Add AI players to aiPlayerModels
+                // Non-host: Add all players (including AI) to remotePlayerModels
+                if (isHost && player.isAI) {
+                  // Host: Add AI player to game state and aiPlayerModels
+                  gameState.updateRemotePlayer(playerWithSpawn);
+                  
+                  if (!aiPlayerModels.has(player.id)) {
+                    const aiModel = new PlayerModel(player.isOni);
+                    aiModel.setName(player.username);
+                    aiModel.setPosition(spawnPosition.x, spawnPosition.y, spawnPosition.z);
+                    aiModel.setIsOni(player.isOni);
+                    gameEngine.addToScene(aiModel.getModel());
                     aiPlayerModels.set(player.id, aiModel);
+                  }
+                } else {
+                  // Non-host or human player: Add to remotePlayerModels
+                  gameState.updateRemotePlayer(playerWithSpawn);
+                  
+                  if (!remotePlayerModels.has(player.id)) {
+                    const remoteModel = new PlayerModel(player.isOni);
+                    remoteModel.setName(player.username);
+                    remoteModel.setPosition(spawnPosition.x, spawnPosition.y, spawnPosition.z);
+                    remoteModel.setIsOni(player.isOni);
+                    gameEngine.addToScene(remoteModel.getModel());
+                    remotePlayerModels.set(player.id, remoteModel);
                   }
                 }
               }
@@ -1286,11 +1327,15 @@ async function initGame(): Promise<void> {
         localPlayer.position = { x: spawnX, y: 2, z: spawnZ };
         localPlayer.velocity = { x: 0, y: 0, z: 0 };
         
-        // Start Realtime synchronization if gameId is provided
+        // Start Realtime synchronization if not already connected
         if (customEvent.detail?.gameId) {
           currentGameId = customEvent.detail.gameId as string;
-          const playerId = gameState.getLocalPlayer().id;
-          void realtimeSyncManager.connect(currentGameId, playerId);
+          
+          // Only connect if not already connected (may have connected during countdown)
+          if (!realtimeSyncManager.isConnected()) {
+            const playerId = gameState.getLocalPlayer().id;
+            void realtimeSyncManager.connect(currentGameId, playerId);
+          }
           
           // Start host monitoring if not already started
           if (!hostMonitor.isMonitoring()) {

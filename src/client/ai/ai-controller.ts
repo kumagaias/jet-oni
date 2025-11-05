@@ -131,8 +131,6 @@ export class AIController {
     allPlayers: Player[],
     deltaTime: number
   ): AIDecision {
-    // Filter out cloaked player from consideration
-    const visiblePlayers = allPlayers.filter(p => p.id !== this.cloakedPlayerId);
     // Update ability timer
     const abilityTimer = this.abilityTimers.get(aiPlayer.id) || 0;
     this.abilityTimers.set(aiPlayer.id, abilityTimer + deltaTime);
@@ -220,13 +218,10 @@ export class AIController {
     allPlayers: Player[],
     deltaTime: number
   ): AIDecision {
-    // Filter out cloaked player
-    const visiblePlayers = allPlayers.filter(p => p.id !== this.cloakedPlayerId);
-    
     // Find nearest runner (with target distribution to avoid clustering)
     const nearestRunner = this.behaviorSystem.findNearestRunner(
       aiPlayer, 
-      visiblePlayers,
+      allPlayers,
       this.assignedTargets
     );
     

@@ -1063,6 +1063,10 @@ async function initGame(): Promise<void> {
       // Track current game ID for sync
       let currentGameId: string | null = null;
       
+      // Track last AI sync time per AI player (to throttle Realtime updates)
+      const aiLastSyncTime: Map<string, number> = new Map();
+      const AI_SYNC_INTERVAL = 200; // Send AI updates every 200ms (5 times per second)
+      
       // Listen for game start countdown event (when host presses start button)
       window.addEventListener('gameStartCountdown', ((e: Event) => {
         const customEvent = e as CustomEvent;

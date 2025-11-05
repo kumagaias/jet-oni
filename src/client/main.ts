@@ -1484,6 +1484,23 @@ async function initGame(): Promise<void> {
         // Call endGame API if we have a game ID
         if (currentGameId) {
           try {
+            // First, update all player states to server (including survivedTime)
+            const allPlayers = gameState.getAllPlayers();
+            const updatePromises = allPlayers.map(player => 
+              gameApiClient.updatePlayerState(currentGameId, player.id, {
+                survivedTime: player.survivedTime,
+                wasTagged: player.wasTagged,
+                isOni: player.isOni,
+                tagCount: player.tagCount,
+              }).catch(error => {
+                console.error(`Failed to update player ${player.id} state:`, error);
+              })
+            );
+            
+            // Wait for all updates to complete
+            await Promise.all(updatePromises);
+            
+            // Then end the game
             const endGameResponse = await gameApiClient.endGame(currentGameId);
             
             // Keep game finished message visible until results screen is ready

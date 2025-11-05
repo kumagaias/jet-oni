@@ -16,6 +16,7 @@ export interface PlayerStateUpdate {
   beaconCooldown?: number;
   survivedTime?: number;
   wasTagged?: boolean;
+  isCloaked?: boolean;
 }
 
 /**
@@ -35,6 +36,7 @@ export interface RealtimeMessage {
   beaconCooldown?: number;
   survivedTime?: number;
   wasTagged?: boolean;
+  isCloaked?: boolean;
   timestamp: number;
   // Game start specific fields
   startTimestamp?: number;

@@ -772,6 +772,8 @@ async function initGame(): Promise<void> {
         
         if (phase === 'playing' && currentGameId !== null && realtimeSyncManager.isConnected()) {
           const localPlayer = gameState.getLocalPlayer();
+          const isCloaked = Date.now() < cloakActiveUntil;
+          
           realtimeSyncManager.sendPlayerState({
             position: localPlayer.position,
             velocity: localPlayer.velocity,
@@ -782,6 +784,7 @@ async function initGame(): Promise<void> {
             isJetpacking: localPlayer.isJetpacking,
             isOnSurface: localPlayer.isOnSurface,
             survivedTime: localPlayer.survivedTime,
+            isCloaked: isCloaked,
           });
           
           // Host: Send AI player states to server via HTTP API (every 500ms)
@@ -927,6 +930,13 @@ async function initGame(): Promise<void> {
           }
           model.setIsOni(remotePlayer.isOni);
           
+          // Update model opacity based on cloak state
+          if (remotePlayer.isCloaked) {
+            model.setOpacity(0.3); // 30% opacity when cloaked
+          } else {
+            model.setOpacity(1.0); // 100% opacity when not cloaked
+          }
+          
           // Update game state with remote player data
           gameState.updateRemotePlayer({
             id: remotePlayer.id,
@@ -944,6 +954,7 @@ async function initGame(): Promise<void> {
             beaconCooldown: remotePlayer.beaconCooldown,
             tagCount: remotePlayer.tagCount ?? 0,
             isAI: remotePlayer.isAI ?? false, // Preserve AI flag from remote player
+            isCloaked: remotePlayer.isCloaked,
           });
         }
         

@@ -37,6 +37,7 @@ export interface Player {
   isDashing: boolean;
   isJetpacking: boolean;
   beaconCooldown: number;
+  isCloaked?: boolean; // Whether player is currently cloaked (invisible)
 }
 
 export interface GameState {

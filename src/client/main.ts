@@ -478,12 +478,10 @@ async function initGame(): Promise<void> {
           const isCloaked = Date.now() < cloakActiveUntil;
           aiController.setCloakedPlayer(isCloaked ? localPlayer.id : null);
           
-          // Update local player model opacity based on cloak state
-          if (isCloaked) {
-            playerModel.setOpacity(0.3); // 30% opacity when cloaked
-          } else {
-            playerModel.setOpacity(1.0); // 100% opacity when not cloaked
-          }
+          // Note: Local player model opacity is not updated here because:
+          // 1. Local player is in first-person view (no model visible)
+          // 2. Remote players see the cloaked state via their own client
+          // 3. Cloak visual effect is handled by the cloak item itself
           
           aiController.update(deltaTime);
           

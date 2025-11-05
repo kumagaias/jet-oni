@@ -29,6 +29,7 @@ import { UIMenu } from './ui/ui-menu';
 import { UICountdown } from './ui/ui-countdown';
 import { UILoading } from './ui/ui-loading';
 import { ToastNotification } from './ui/toast-notification';
+import { UIMinimap } from './ui/ui-minimap';
 import { GameAPIClient } from './api/game-api-client';
 import { AIAPIClient } from './api/ai-api-client';
 import { RealtimeSyncManager } from './sync/realtime-sync-manager';
@@ -302,14 +303,15 @@ async function initGame(): Promise<void> {
       let debugMode = false;
       
       window.addEventListener('keydown', (e) => {
+        // Check if in dev subreddit (check every time in case URL changes)
+        const url = window.location.href.toLowerCase();
+        const isDevSubreddit = url.includes('jet_oni_dev') || 
+                               url.includes('localhost') ||
+                               url.includes('playtest');
+        
+        // F2: Toggle debug mode and minimap
         if (e.key === 'F2') {
           e.preventDefault();
-          
-          // Check if in dev subreddit (check every time in case URL changes)
-          const url = window.location.href.toLowerCase();
-          const isDevSubreddit = url.includes('jet_oni_dev') || 
-                                 url.includes('localhost') ||
-                                 url.includes('playtest');
           
           // Only allow debug mode in dev subreddit
           if (!isDevSubreddit) {
@@ -318,6 +320,45 @@ async function initGame(): Promise<void> {
           
           debugMode = !debugMode;
           debugInfo.style.display = debugMode ? 'block' : 'none';
+          
+          // Toggle minimap
+          if (debugMode) {
+            uiMinimap.show();
+          } else {
+            uiMinimap.hide();
+          }
+        }
+        
+        // F4: Gather all players to center (dev mode only)
+        if (e.key === 'F4') {
+          e.preventDefault();
+          
+          // Only allow in dev subreddit
+          if (!isDevSubreddit) {
+            return;
+          }
+          
+          // Gather all players to center in a circle
+          const players = gameState.getAllPlayers();
+          const radius = 20; // 20 units apart
+          const angleStep = (Math.PI * 2) / players.length;
+          
+          players.forEach((player, index) => {
+            const angle = angleStep * index;
+            const x = Math.cos(angle) * radius;
+            const z = Math.sin(angle) * radius;
+            
+            gameState.setPlayerPosition(player.id, {
+              x: x,
+              y: 2, // Ground level
+              z: z,
+            });
+            
+            // Reset velocity
+            gameState.setPlayerVelocity(player.id, { x: 0, y: 0, z: 0 });
+          });
+          
+          console.log(`[Debug] Gathered ${players.length} players to center`);
         }
       });
       
@@ -459,6 +500,9 @@ async function initGame(): Promise<void> {
         
         // Update UI controls
         uiControls.update(gameState);
+        
+        // Update minimap (if visible)
+        uiMinimap.update();
         
         // Update AI players (only during gameplay)
         if (gameState.getGamePhase() === 'playing') {
@@ -1006,6 +1050,10 @@ async function initGame(): Promise<void> {
       
       // Initialize countdown UI
       const uiCountdown = new UICountdown(i18n);
+      
+      // Initialize minimap (dev mode only)
+      const uiMinimap = new UIMinimap(gameState);
+      uiMinimap.create();
       
       // Initialize HUD (but keep it hidden until game starts)
       const { UIHud } = await import('./ui/ui-hud');

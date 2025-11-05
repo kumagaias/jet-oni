@@ -314,6 +314,9 @@ export class RealtimeSyncManager {
     if (state.wasTagged !== undefined) {
       message.wasTagged = state.wasTagged;
     }
+    if (state.isCloaked !== undefined) {
+      message.isCloaked = state.isCloaked;
+    }
 
     // Send via server API (silently fail if server is down)
     this.sendViaServer(message, 'player-update', true);
@@ -407,6 +410,9 @@ export class RealtimeSyncManager {
         if (data.wasTagged !== undefined) {
           existing.wasTagged = data.wasTagged;
         }
+        if (data.isCloaked !== undefined) {
+          existing.isCloaked = data.isCloaked;
+        }
       }
     } else {
       // Add new remote player - check for required fields
@@ -429,6 +435,7 @@ export class RealtimeSyncManager {
           beaconCooldown: data.beaconCooldown ?? 0,
           survivedTime: data.survivedTime ?? 0,
           wasTagged: data.wasTagged ?? false,
+          isCloaked: data.isCloaked ?? false,
           tagCount: 0,
           targetPosition: { ...data.position },
           targetVelocity: { ...data.velocity },

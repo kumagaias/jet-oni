@@ -68,6 +68,26 @@ export class OniSpawnItem {
   }
 
   /**
+   * Place ONI spawn items at specific positions (for syncing from host)
+   */
+  public placeItemsAtPositions(itemsData: Array<{ id: string; position: Vector3; state: OniSpawnItemState }>): void {
+    this.clearItems();
+
+    for (let i = 0; i < itemsData.length; i++) {
+      const data = itemsData[i];
+      const item = this.createOniSpawnItemWithId(data.position, data.id);
+      item.state = data.state;
+      
+      // If already collected, remove from scene
+      if (data.state === OniSpawnItemState.COLLECTED) {
+        this.scene.remove(item.mesh);
+      }
+      
+      this.items.push(item);
+    }
+  }
+
+  /**
    * Generate a random position on the map
    */
   private generateRandomPosition(): Vector3 {
@@ -116,9 +136,9 @@ export class OniSpawnItem {
   }
 
   /**
-   * Create an ONI spawn item mesh
+   * Create an ONI spawn item mesh with custom ID (for syncing)
    */
-  private createOniSpawnItem(position: Vector3, index: number): OniSpawnItemData {
+  private createOniSpawnItemWithId(position: Vector3, id: string): OniSpawnItemData {
     const group = new THREE.Group();
 
     // Create multiple rotating rings
@@ -161,12 +181,22 @@ export class OniSpawnItem {
     this.scene.add(group);
 
     return {
-      id: `oni-spawn-${Date.now()}-${index}`,
+      id,
       position: { ...position },
       state: OniSpawnItemState.PLACED,
       mesh: group,
     };
   }
+
+  /**
+   * Create an ONI spawn item mesh
+   */
+  private createOniSpawnItem(position: Vector3, index: number): OniSpawnItemData {
+    const id = `oni-spawn-${Date.now()}-${index}`;
+    return this.createOniSpawnItemWithId(position, id);
+  }
+
+
 
   /**
    * Check if player can collect ONI spawn item (oni only, within radius)

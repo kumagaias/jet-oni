@@ -1,123 +1,172 @@
 import * as THREE from 'three';
-import { BeaconItem, BeaconItemData } from './beacon-item';
-import { BeaconActivation } from './beacon-activation';
+import { CloakItem, CloakItemData } from './cloak-item';
+import { OniSpawnItem, OniSpawnItemData } from './oni-spawn-item';
 import { Vector3, Player } from '../../shared/types/game';
 
 /**
  * ItemManager manages all items in the game
  */
 export class ItemManager {
-  private beaconItem: BeaconItem;
-  private beaconActivation: BeaconActivation;
-  private onBeaconCollectedCallback?: (playerId: string) => void;
+  private cloakItem: CloakItem;
+  private oniSpawnItem: OniSpawnItem;
+  private onCloakCollectedCallback?: (playerId: string, itemId: string) => void;
+  private onOniSpawnCollectedCallback?: (playerId: string, itemId: string) => void;
 
   constructor(scene: THREE.Scene) {
-    this.beaconItem = new BeaconItem(scene);
-    this.beaconActivation = new BeaconActivation();
+    this.cloakItem = new CloakItem(scene);
+    this.oniSpawnItem = new OniSpawnItem(scene);
   }
 
   /**
    * Initialize items for a new round
    */
   public initializeRound(buildings: { position: Vector3; width: number; depth: number }[]): void {
-    this.beaconItem.placeItems(buildings);
+    this.cloakItem.placeItems(buildings);
+    this.oniSpawnItem.placeItems(buildings);
   }
 
   /**
    * Update items (animations, etc.)
    */
   public update(deltaTime: number, players: Player[]): void {
-    // Animate beacon items
-    this.beaconItem.animate(deltaTime);
+    // Animate items
+    this.cloakItem.animate(deltaTime);
+    this.oniSpawnItem.animate(deltaTime);
 
-    // Update beacon activation
-    this.beaconActivation.update();
-
-    // Check for beacon collection
-    for (const player of players) {
-      const collectedBeacon = this.beaconItem.checkCollection(
-        player.position,
-        player.isOni
+    // Check for item collection (local player only)
+    const localPlayer = players.find(p => !p.isAI);
+    if (localPlayer) {
+      // Check cloak collection (runners only)
+      const collectedCloak = this.cloakItem.checkCollection(
+        localPlayer.position,
+        localPlayer.isOni
       );
 
-      if (collectedBeacon) {
-        this.collectBeacon(collectedBeacon, player.id);
+      if (collectedCloak) {
+        this.collectCloak(collectedCloak, localPlayer.id);
+      }
+
+      // Check oni spawn collection (oni only)
+      const collectedOniSpawn = this.oniSpawnItem.checkCollection(
+        localPlayer.position,
+        localPlayer.isOni
+      );
+
+      if (collectedOniSpawn) {
+        this.collectOniSpawn(collectedOniSpawn, localPlayer.id);
       }
     }
   }
 
   /**
-   * Collect a beacon item
+   * Collect a cloak item
    */
-  private collectBeacon(beacon: BeaconItemData, playerId: string): void {
-    const success = this.beaconItem.collectItem(beacon.id);
+  private collectCloak(cloak: CloakItemData, playerId: string): void {
+    const success = this.cloakItem.collectItem(cloak.id);
 
-    if (success) {
-      // Activate beacon immediately
-      this.beaconActivation.activate(playerId);
-
-      // Trigger callback
-      if (this.onBeaconCollectedCallback) {
-        this.onBeaconCollectedCallback(playerId);
-      }
+    if (success && this.onCloakCollectedCallback) {
+      this.onCloakCollectedCallback(playerId, cloak.id);
     }
   }
 
   /**
-   * Set callback for when beacon is collected
+   * Collect an oni spawn item
    */
-  public onBeaconCollected(callback: (playerId: string) => void): void {
-    this.onBeaconCollectedCallback = callback;
+  private collectOniSpawn(oniSpawn: OniSpawnItemData, playerId: string): void {
+    const success = this.oniSpawnItem.collectItem(oniSpawn.id);
+
+    if (success && this.onOniSpawnCollectedCallback) {
+      this.onOniSpawnCollectedCallback(playerId, oniSpawn.id);
+    }
   }
 
   /**
-   * Get all beacon items
+   * Set callback for when cloak is collected
    */
-  public getBeaconItems(): BeaconItemData[] {
-    return this.beaconItem.getItems();
+  public onCloakCollected(callback: (playerId: string, itemId: string) => void): void {
+    this.onCloakCollectedCallback = callback;
   }
 
   /**
-   * Get placed beacon items
+   * Set callback for when oni spawn is collected
    */
-  public getPlacedBeaconItems(): BeaconItemData[] {
-    return this.beaconItem.getPlacedItems();
+  public onOniSpawnCollected(callback: (playerId: string, itemId: string) => void): void {
+    this.onOniSpawnCollectedCallback = callback;
   }
 
   /**
-   * Check if beacon is currently active
+   * Get all cloak items
    */
-  public isBeaconActive(): boolean {
-    return this.beaconActivation.isBeaconActive();
+  public getCloakItems(): CloakItemData[] {
+    return this.cloakItem.getItems();
   }
 
   /**
-   * Get remaining beacon active time
+   * Get placed cloak items
    */
-  public getBeaconRemainingTime(): number {
-    return this.beaconActivation.getRemainingActiveTime();
+  public getPlacedCloakItems(): CloakItemData[] {
+    return this.cloakItem.getPlacedItems();
   }
 
   /**
-   * Get player who activated the beacon
+   * Get all oni spawn items
    */
-  public getBeaconActivatedBy(): string | null {
-    return this.beaconActivation.getActivatedBy();
+  public getOniSpawnItems(): OniSpawnItemData[] {
+    return this.oniSpawnItem.getItems();
+  }
+
+  /**
+   * Get placed oni spawn items
+   */
+  public getPlacedOniSpawnItems(): OniSpawnItemData[] {
+    return this.oniSpawnItem.getPlacedItems();
+  }
+
+  /**
+   * Sync item state from remote (for non-host players)
+   */
+  public syncItemState(itemId: string, itemType: 'cloak' | 'oni-spawn'): void {
+    if (itemType === 'cloak') {
+      this.cloakItem.collectItem(itemId);
+    } else if (itemType === 'oni-spawn') {
+      this.oniSpawnItem.collectItem(itemId);
+    }
+  }
+
+  /**
+   * Get all items state for synchronization
+   */
+  public getItemsState(): {
+    cloaks: Array<{ id: string; position: Vector3; state: 'placed' | 'collected' }>;
+    oniSpawns: Array<{ id: string; position: Vector3; state: 'placed' | 'collected' }>;
+  } {
+    return {
+      cloaks: this.cloakItem.getItems().map(item => ({
+        id: item.id,
+        position: item.position,
+        state: item.state,
+      })),
+      oniSpawns: this.oniSpawnItem.getItems().map(item => ({
+        id: item.id,
+        position: item.position,
+        state: item.state,
+      })),
+    };
   }
 
   /**
    * Clear all items
    */
   public clear(): void {
-    this.beaconItem.clearItems();
-    this.beaconActivation.reset();
+    this.cloakItem.clearItems();
+    this.oniSpawnItem.clearItems();
   }
 
   /**
    * Dispose all resources
    */
   public dispose(): void {
-    this.beaconItem.dispose();
-    this.beaconActivation.reset();
+    this.cloakItem.dispose();
+    this.oniSpawnItem.dispose();
   }
 }

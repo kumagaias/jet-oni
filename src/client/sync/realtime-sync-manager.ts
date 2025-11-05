@@ -17,13 +17,14 @@ export interface PlayerStateUpdate {
   survivedTime?: number;
   wasTagged?: boolean;
   isCloaked?: boolean;
+  isAI?: boolean;
 }
 
 /**
  * Realtime message format
  */
 export interface RealtimeMessage {
-  type: 'player-update' | 'game-start' | 'timer-sync' | 'game-end';
+  type: 'player-update' | 'game-start' | 'timer-sync' | 'game-end' | 'item-collected' | 'items-sync';
   playerId: string;
   position?: Vector3;
   velocity?: Vector3;
@@ -37,6 +38,7 @@ export interface RealtimeMessage {
   survivedTime?: number;
   wasTagged?: boolean;
   isCloaked?: boolean;
+  isAI?: boolean;
   timestamp: number;
   // Game start specific fields
   startTimestamp?: number;
@@ -48,6 +50,14 @@ export interface RealtimeMessage {
   // Timer sync specific fields
   gameStartTime?: number;
   serverTime?: number;
+  // Item sync specific fields
+  itemId?: string;
+  itemType?: 'beacon' | 'cloak' | 'oni-spawn';
+  items?: {
+    beacons: Array<{ id: string; position: Vector3; state: 'placed' | 'collected' }>;
+    cloaks: Array<{ id: string; position: Vector3; state: 'placed' | 'collected' }>;
+    oniSpawns: Array<{ id: string; position: Vector3; state: 'placed' | 'collected' }>;
+  };
 }
 
 /**
@@ -317,6 +327,9 @@ export class RealtimeSyncManager {
     if (state.isCloaked !== undefined) {
       message.isCloaked = state.isCloaked;
     }
+    if (state.isAI !== undefined) {
+      message.isAI = state.isAI;
+    }
 
     // Send via server API (silently fail if server is down)
     this.sendViaServer(message, 'player-update', true);
@@ -369,6 +382,38 @@ export class RealtimeSyncManager {
       return;
     }
 
+    // Handle item-collected messages
+    if (data.type === 'item-collected') {
+      // Dispatch itemCollected event
+      if (data.itemId && data.itemType) {
+        window.dispatchEvent(
+          new CustomEvent('itemCollected', {
+            detail: {
+              itemId: data.itemId,
+              itemType: data.itemType,
+              playerId: data.playerId,
+            },
+          })
+        );
+      }
+      return;
+    }
+
+    // Handle items-sync messages (full item state sync)
+    if (data.type === 'items-sync') {
+      // Dispatch itemsSync event
+      if (data.items) {
+        window.dispatchEvent(
+          new CustomEvent('itemsSync', {
+            detail: {
+              items: data.items,
+            },
+          })
+        );
+      }
+      return;
+    }
+
     if (data.type !== 'player-update') {
       return;
     }
@@ -413,6 +458,9 @@ export class RealtimeSyncManager {
         if (data.isCloaked !== undefined) {
           existing.isCloaked = data.isCloaked;
         }
+        if (data.isAI !== undefined) {
+          existing.isAI = data.isAI;
+        }
       }
     } else {
       // Add new remote player - check for required fields
@@ -428,7 +476,7 @@ export class RealtimeSyncManager {
           rotation: { ...data.rotation },
           fuel: data.fuel,
           isOni: data.isOni,
-          isAI: false,
+          isAI: data.isAI ?? false, // Use AI flag from message, default to false
           isDashing: data.isDashing,
           isJetpacking: data.isJetpacking,
           isOnSurface: data.isOnSurface,
@@ -668,6 +716,47 @@ export class RealtimeSyncManager {
 
     // Send via server API (silently fail if server is down)
     this.sendViaServer(message, 'timer-sync', true);
+  }
+
+  /**
+   * Send item collected message
+   */
+  sendItemCollected(itemId: string, itemType: 'beacon' | 'cloak' | 'oni-spawn'): void {
+    if (!this.isRunning || this.connectionState !== 'connected') {
+      return;
+    }
+
+    const message: RealtimeMessage = {
+      type: 'item-collected',
+      playerId: this.playerId!,
+      timestamp: Date.now(),
+      itemId,
+      itemType,
+    };
+
+    this.sendViaServer(message, 'item-collected');
+  }
+
+  /**
+   * Send full items state sync (host only)
+   */
+  sendItemsSync(items: {
+    beacons: Array<{ id: string; position: { x: number; y: number; z: number }; state: 'placed' | 'collected' }>;
+    cloaks: Array<{ id: string; position: { x: number; y: number; z: number }; state: 'placed' | 'collected' }>;
+    oniSpawns: Array<{ id: string; position: { x: number; y: number; z: number }; state: 'placed' | 'collected' }>;
+  }): void {
+    if (!this.isRunning || this.connectionState !== 'connected') {
+      return;
+    }
+
+    const message: RealtimeMessage = {
+      type: 'items-sync',
+      playerId: this.playerId!,
+      timestamp: Date.now(),
+      items,
+    };
+
+    this.sendViaServer(message, 'items-sync', true);
   }
 
   /**

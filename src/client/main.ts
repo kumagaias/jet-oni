@@ -427,6 +427,9 @@ async function initGame(): Promise<void> {
         if (collectedOniSpawn) {
           oniSpawnItem.collectItem(collectedOniSpawn.id);
           
+          // Broadcast item collection to other players
+          realtimeSyncManager.sendItemCollected(collectedOniSpawn.id, 'oni-spawn');
+          
           // Show collection message
           toast.show('ONI Spawn Item collected! 2 AI ONI incoming!', 'warning', 3000);
           
@@ -473,6 +476,10 @@ async function initGame(): Promise<void> {
         const collectedCloak = cloakItem.checkCollection(localPlayer.position, localPlayer.isOni);
         if (collectedCloak) {
           cloakItem.collectItem(collectedCloak.id);
+          
+          // Broadcast item collection to other players
+          realtimeSyncManager.sendItemCollected(collectedCloak.id, 'cloak');
+          
           // Activate cloak for 60 seconds
           cloakActiveUntil = Date.now() + CLOAK_DURATION * 1000;
           // Show toast message
@@ -694,6 +701,25 @@ async function initGame(): Promise<void> {
                 aiModel.setRotation(updatedAiPlayer.rotation.yaw);
               }
               aiModel.setIsOni(updatedAiPlayer.isOni);
+              
+              // Host: Send AI player state via Realtime (throttled to 10 updates/sec per AI)
+              if (isHost) {
+                realtimeSyncManager.sendPlayerState({
+                  position: updatedAiPlayer.position,
+                  velocity: updatedAiPlayer.velocity,
+                  rotation: updatedAiPlayer.rotation,
+                  fuel: updatedAiPlayer.fuel,
+                  isOni: updatedAiPlayer.isOni,
+                  isDashing: updatedAiPlayer.isDashing,
+                  isJetpacking: updatedAiPlayer.isJetpacking,
+                  isOnSurface: updatedAiPlayer.isOnSurface,
+                  beaconCooldown: updatedAiPlayer.beaconCooldown,
+                  survivedTime: updatedAiPlayer.survivedTime,
+                  wasTagged: updatedAiPlayer.wasTagged,
+                  isCloaked: updatedAiPlayer.isCloaked,
+                  isAI: true, // Mark as AI player
+                }, updatedAiPlayer.id);
+              }
             }
           }
         }
@@ -809,8 +835,8 @@ async function initGame(): Promise<void> {
         // Send player state to sync manager (only during gameplay, not in lobby)
         const phase = gameState.getGamePhase();
         
-        // Debug: Log sync conditions
-        if (phase === 'playing' && currentGameId !== null) {
+        // Debug: Log sync conditions (throttled to 1/10)
+        if (phase === 'playing' && currentGameId !== null && Math.random() < 0.1) {
           console.log(`[Sync Debug] phase: ${phase}, gameId: ${currentGameId}, isHost: ${isHost}, connected: ${realtimeSyncManager.isConnected()}`);
         }
         
@@ -831,67 +857,8 @@ async function initGame(): Promise<void> {
             isCloaked: isCloaked,
           });
           
-          // Host: Send AI player states to server via HTTP API (every 500ms)
-          // Non-host: Fetch AI player states from server via HTTP API (every 500ms)
-          const now = Date.now();
-          if (!lastAiSyncTime || now - lastAiSyncTime > 500) {
-            lastAiSyncTime = now;
-            
-            if (isHost) {
-              // Host: Send AI players to server
-              console.log(`[AI Sync] aiPlayerModels size: ${aiPlayerModels.size}`);
-              
-              const aiPlayers = Array.from(aiPlayerModels.keys())
-                .map(aiId => {
-                  const player = gameState.getPlayer(aiId);
-                  console.log(`[AI Sync] AI ${aiId}: ${player ? 'found' : 'NOT FOUND'}, isAI: ${player?.isAI}`);
-                  return player;
-                })
-                .filter((p): p is NonNullable<typeof p> => p !== null && p.isAI);
-              
-              console.log(`[AI Sync] Host sending ${aiPlayers.length} AI players to server`);
-              
-              if (aiPlayers.length > 0) {
-                aiApiClient.updateAIPlayers(currentGameId, aiPlayers).catch(error => {
-                  console.error('Failed to update AI players:', error);
-                });
-              } else {
-                console.warn('[AI Sync] Host has no AI players to send');
-                console.warn(`[AI Sync] All players in game state:`, gameState.getAllPlayers().map(p => ({ id: p.id, isAI: p.isAI })));
-              }
-            } else {
-              // Non-host: Fetch AI players from server
-              aiApiClient.getAIPlayers(currentGameId).then(aiPlayers => {
-                console.log(`[AI Sync] Non-host received ${aiPlayers.length} AI players from server`);
-                
-                for (const aiPlayer of aiPlayers) {
-                  // Update or create AI player model
-                  let model = aiPlayerModels.get(aiPlayer.id);
-                  
-                  if (!model) {
-                    console.log(`[AI Sync] Creating new AI player model: ${aiPlayer.id}`);
-                    // Create new AI player model
-                    model = new PlayerModel(false);
-                    model.setName(aiPlayer.username);
-                    gameEngine.addToScene(model.getModel());
-                    aiPlayerModels.set(aiPlayer.id, model);
-                  }
-                  
-                  // Update model position and state
-                  model.setPosition(aiPlayer.position.x, aiPlayer.position.y, aiPlayer.position.z);
-                  if (aiPlayer.rotation) {
-                    model.setRotation(aiPlayer.rotation.yaw);
-                  }
-                  model.setIsOni(aiPlayer.isOni);
-                  
-                  // Update game state
-                  gameState.updateRemotePlayer(aiPlayer);
-                }
-              }).catch(error => {
-                console.error('Failed to fetch AI players:', error);
-              });
-            }
-          }
+          // AI players are now synced via Realtime (see AI update loop above)
+          // No need for separate HTTP API sync
         }
         
         // Update interpolation for remote players
@@ -954,6 +921,7 @@ async function initGame(): Promise<void> {
         // Update or create models for remote players
         for (const remotePlayer of remotePlayers) {
           let model = remotePlayerModels.get(remotePlayer.id);
+          const isAIPlayer = remotePlayer.isAI ?? false;
           
           if (!model) {
             // Create new model for remote player
@@ -961,6 +929,11 @@ async function initGame(): Promise<void> {
             model.setName(remotePlayer.username);
             gameEngine.addToScene(model.getModel());
             remotePlayerModels.set(remotePlayer.id, model);
+            
+            // If AI player, also add to AI models map
+            if (isAIPlayer) {
+              aiPlayerModels.set(remotePlayer.id, model);
+            }
           }
           
           // Update model position and state (interpolated position from GameSyncManager)
@@ -997,7 +970,7 @@ async function initGame(): Promise<void> {
             wasTagged: remotePlayer.wasTagged,
             beaconCooldown: remotePlayer.beaconCooldown,
             tagCount: remotePlayer.tagCount ?? 0,
-            isAI: remotePlayer.isAI ?? false, // Preserve AI flag from remote player
+            isAI: isAIPlayer, // Preserve AI flag from remote player
             isCloaked: remotePlayer.isCloaked,
           });
         }
@@ -1089,9 +1062,6 @@ async function initGame(): Promise<void> {
       
       // Track current game ID for sync
       let currentGameId: string | null = null;
-      
-      // Track last AI sync time to reduce server load
-      let lastAiSyncTime: number = 0;
       
       // Listen for game start countdown event (when host presses start button)
       window.addEventListener('gameStartCountdown', ((e: Event) => {
@@ -1371,6 +1341,59 @@ async function initGame(): Promise<void> {
         
         // Place cloak items on the map
         cloakItem.placeItems(buildings);
+        
+        // If host, broadcast initial item state to all players
+        if (isHost) {
+          setTimeout(() => {
+            const itemsState = {
+              beacons: [],
+              cloaks: cloakItem.getItems().map(item => ({
+                id: item.id,
+                position: item.position,
+                state: item.state,
+              })),
+              oniSpawns: oniSpawnItem.getItems().map(item => ({
+                id: item.id,
+                position: item.position,
+                state: item.state,
+              })),
+            };
+            realtimeSyncManager.sendItemsSync(itemsState);
+          }, 500); // Small delay to ensure all players are connected
+        }
+      }) as unknown as EventListener);
+      
+      // Listen for item collected events from other players
+      window.addEventListener('itemCollected', ((event: CustomEvent) => {
+        const { itemId, itemType, playerId } = event.detail;
+        
+        // Skip if it's from local player (already handled)
+        const localPlayer = gameState.getLocalPlayer();
+        if (playerId === localPlayer.id) {
+          return;
+        }
+        
+        // Collect the item locally
+        if (itemType === 'cloak') {
+          cloakItem.collectItem(itemId);
+        } else if (itemType === 'oni-spawn') {
+          oniSpawnItem.collectItem(itemId);
+        }
+      }) as unknown as EventListener);
+      
+      // Listen for full items sync from host
+      window.addEventListener('itemsSync', ((event: CustomEvent) => {
+        const { items } = event.detail;
+        
+        // Place cloak items at positions from host
+        if (items.cloaks && items.cloaks.length > 0) {
+          cloakItem.placeItemsAtPositions(items.cloaks);
+        }
+        
+        // Place oni spawn items at positions from host
+        if (items.oniSpawns && items.oniSpawns.length > 0) {
+          oniSpawnItem.placeItemsAtPositions(items.oniSpawns);
+        }
       }) as unknown as EventListener);
       
       // Listen for lobby exit event (when host leaves lobby)
@@ -1541,8 +1564,12 @@ async function initGame(): Promise<void> {
         // Call endGame API if we have a game ID
         if (currentGameId) {
           try {
+            console.log('[Game End] Starting game end process...');
+            
             // First, update all player states to server (including survivedTime)
             const allPlayers = gameState.getAllPlayers();
+            console.log('[Game End] Updating player states for', allPlayers.length, 'players');
+            
             const updatePromises = allPlayers.map(player => 
               gameApiClient.updatePlayerState(currentGameId, player.id, {
                 survivedTime: player.survivedTime,
@@ -1556,15 +1583,19 @@ async function initGame(): Promise<void> {
             
             // Wait for all updates to complete
             await Promise.all(updatePromises);
+            console.log('[Game End] Player states updated');
             
             // Then end the game
+            console.log('[Game End] Calling endGame API...');
             const endGameResponse = await gameApiClient.endGame(currentGameId);
+            console.log('[Game End] endGame response:', endGameResponse);
             
             // Keep game finished message visible until results screen is ready
             // Don't remove it here - will be removed when showing results
             
             // Show results screen with game results
             if (endGameResponse.success && endGameResponse.results) {
+              console.log('[Game End] Showing results screen...');
               const { UIResults } = await import('./ui/ui-results');
               const { GameResults } = await import('./game/game-results');
               const gameResults = new GameResults();
@@ -1685,11 +1716,56 @@ async function initGame(): Promise<void> {
               style.remove();
               
               uiResults.show(gameState.getLocalPlayer().id);
+            } else {
+              console.error('[Game End] Failed to get results:', endGameResponse);
+              // Remove game finished message and show error
+              gameOverMessage.remove();
+              style.remove();
+              
+              // Show error toast
+              toast.show('Failed to load game results. Returning to menu...', 'error', 3000);
+              
+              // Return to menu after delay
+              setTimeout(() => {
+                // Reset and return to menu
+                gameState.setGamePhase('lobby');
+                gameHasStarted = false;
+                gameStarted = false;
+                currentGameId = null;
+                uiMenu.showTitleScreen();
+              }, 3000);
             }
           } catch (error) {
-            console.error('Failed to end game:', error);
-            // Show error message but still transition to ended state
+            console.error('[Game End] Error during game end:', error);
+            
+            // Remove game finished message
+            gameOverMessage.remove();
+            style.remove();
+            
+            // Show error toast
+            toast.show('Error ending game. Returning to menu...', 'error', 3000);
+            
+            // Return to menu after delay
+            setTimeout(() => {
+              // Reset and return to menu
+              gameState.setGamePhase('lobby');
+              gameHasStarted = false;
+              gameStarted = false;
+              currentGameId = null;
+              uiMenu.showTitleScreen();
+            }, 3000);
           }
+        } else {
+          console.warn('[Game End] No currentGameId, cannot end game properly');
+          // Remove game finished message
+          gameOverMessage.remove();
+          style.remove();
+          
+          // Return to menu
+          gameState.setGamePhase('lobby');
+          gameHasStarted = false;
+          gameStarted = false;
+          uiMenu.showTitleScreen();
         }
         
         // currentGameId will be cleared in the back to menu callback

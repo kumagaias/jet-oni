@@ -821,6 +821,16 @@ export class UIMenu {
           this.currentGameId = response.gameId;
           this.currentPlayerId = response.playerId;
           
+          // Dispatch showLobby event to notify main.ts
+          window.dispatchEvent(new CustomEvent('showLobby', {
+            detail: {
+              gameId: response.gameId,
+              isHost: true,
+              currentPlayers: 1,
+              maxPlayers: config.totalPlayers,
+            },
+          }));
+          
           // Initialize lobby manager
           this.lobbyManager = new LobbyManager({
             gameApiClient: this.gameApiClient,
@@ -1188,6 +1198,16 @@ export class UIMenu {
         // Store game ID and player ID
         this.currentGameId = gameId;
         this.currentPlayerId = response.playerId;
+        
+        // Dispatch showLobby event to notify main.ts
+        window.dispatchEvent(new CustomEvent('showLobby', {
+          detail: {
+            gameId: gameId,
+            isHost: false,
+            currentPlayers: response.gameState.players.length,
+            maxPlayers: response.gameState.config.totalPlayers,
+          },
+        }));
         
         // Initialize lobby manager
         this.lobbyManager = new LobbyManager({

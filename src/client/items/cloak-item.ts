@@ -67,6 +67,26 @@ export class CloakItem {
   }
 
   /**
+   * Place cloak items at specific positions (for syncing from host)
+   */
+  public placeItemsAtPositions(itemsData: Array<{ id: string; position: Vector3; state: CloakItemState }>): void {
+    this.clearItems();
+
+    for (let i = 0; i < itemsData.length; i++) {
+      const data = itemsData[i];
+      const item = this.createCloakItemWithId(data.position, data.id);
+      item.state = data.state;
+      
+      // If already collected, remove from scene
+      if (data.state === CloakItemState.COLLECTED) {
+        this.scene.remove(item.mesh);
+      }
+      
+      this.items.push(item);
+    }
+  }
+
+  /**
    * Generate a random position on the map
    */
   private generateRandomPosition(): Vector3 {
@@ -115,9 +135,9 @@ export class CloakItem {
   }
 
   /**
-   * Create a cloak item mesh (ghostly appearance)
+   * Create a cloak item mesh with custom ID (for syncing)
    */
-  private createCloakItem(position: Vector3, index: number): CloakItemData {
+  private createCloakItemWithId(position: Vector3, id: string): CloakItemData {
     const group = new THREE.Group();
 
     // Create floating cloak shape (like a ghost)
@@ -174,12 +194,22 @@ export class CloakItem {
     this.scene.add(group);
 
     return {
-      id: `cloak-${Date.now()}-${index}`,
+      id,
       position: { ...position },
       state: CloakItemState.PLACED,
       mesh: group,
     };
   }
+
+  /**
+   * Create a cloak item mesh (ghostly appearance)
+   */
+  private createCloakItem(position: Vector3, index: number): CloakItemData {
+    const id = `cloak-${Date.now()}-${index}`;
+    return this.createCloakItemWithId(position, id);
+  }
+
+
 
   /**
    * Check if player can collect cloak (runner only, within radius)

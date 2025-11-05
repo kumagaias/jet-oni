@@ -82,3 +82,32 @@ export interface InputState {
   mouseX: number;
   mouseY: number;
 }
+
+/**
+ * Item types
+ */
+export type ItemType = 'beacon' | 'cloak' | 'oni-spawn';
+
+/**
+ * Item state
+ */
+export type ItemState = 'placed' | 'collected';
+
+/**
+ * Item data for synchronization
+ */
+export interface ItemData {
+  id: string;
+  type: ItemType;
+  position: Vector3;
+  state: ItemState;
+}
+
+/**
+ * Items state for a game
+ */
+export interface ItemsState {
+  beacons: ItemData[];
+  cloaks: ItemData[];
+  oniSpawns: ItemData[];
+}

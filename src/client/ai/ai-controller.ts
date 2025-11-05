@@ -61,6 +61,11 @@ export class AIController {
   private abilityTimers: Map<string, number> = new Map();
   private assignedTargets: Map<string, string> = new Map(); // Map of oniId -> runnerId
   private cloakedPlayerId: string | null = null; // Player who is currently cloaked
+  
+  // Stuck detection
+  private lastPositions: Map<string, { x: number; y: number; z: number; time: number }> = new Map();
+  private stuckThreshold: number = 2.0; // If moved less than 2 units in 2 seconds, consider stuck
+  private stuckCheckInterval: number = 2000; // Check every 2 seconds
 
   constructor(gameState: GameState, config: Partial<AIConfig> = {}) {
     this.gameState = gameState;
@@ -132,11 +137,79 @@ export class AIController {
     const abilityTimer = this.abilityTimers.get(aiPlayer.id) || 0;
     this.abilityTimers.set(aiPlayer.id, abilityTimer + deltaTime);
     
+    // Check if AI is stuck
+    const isStuck = this.checkIfStuck(aiPlayer);
+    
+    if (isStuck) {
+      // If stuck, force a random wander direction with jetpack
+      const randomDirection = {
+        x: (Math.random() - 0.5) * 2,
+        y: 0,
+        z: (Math.random() - 0.5) * 2,
+      };
+      
+      // Normalize direction
+      const length = Math.sqrt(randomDirection.x ** 2 + randomDirection.z ** 2);
+      if (length > 0) {
+        randomDirection.x /= length;
+        randomDirection.z /= length;
+      }
+      
+      return {
+        behavior: AIBehavior.WANDER,
+        targetPlayerId: null,
+        moveDirection: randomDirection,
+        useAbility: aiPlayer.isOni, // Use jetpack if ONI to get unstuck
+        abilityType: aiPlayer.isOni ? 'jetpack' : 'dash',
+      };
+    }
+    
     if (aiPlayer.isOni) {
       return this.makeOniDecision(aiPlayer, allPlayers, deltaTime);
     } else {
       return this.makeRunnerDecision(aiPlayer, allPlayers, deltaTime);
     }
+  }
+  
+  /**
+   * Check if AI player is stuck (not moving much)
+   */
+  private checkIfStuck(aiPlayer: Player): boolean {
+    const now = Date.now();
+    const lastPos = this.lastPositions.get(aiPlayer.id);
+    
+    if (!lastPos) {
+      // First time checking, record position
+      this.lastPositions.set(aiPlayer.id, {
+        x: aiPlayer.position.x,
+        y: aiPlayer.position.y,
+        z: aiPlayer.position.z,
+        time: now,
+      });
+      return false;
+    }
+    
+    // Check if enough time has passed
+    if (now - lastPos.time < this.stuckCheckInterval) {
+      return false;
+    }
+    
+    // Calculate distance moved
+    const dx = aiPlayer.position.x - lastPos.x;
+    const dy = aiPlayer.position.y - lastPos.y;
+    const dz = aiPlayer.position.z - lastPos.z;
+    const distanceMoved = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    
+    // Update last position
+    this.lastPositions.set(aiPlayer.id, {
+      x: aiPlayer.position.x,
+      y: aiPlayer.position.y,
+      z: aiPlayer.position.z,
+      time: now,
+    });
+    
+    // If moved less than threshold, consider stuck
+    return distanceMoved < this.stuckThreshold;
   }
 
   /**
@@ -365,6 +438,7 @@ export class AIController {
   public resetPlayer(playerId: string): void {
     this.behaviorSystem.resetPlayer(playerId);
     this.abilityTimers.delete(playerId);
+    this.lastPositions.delete(playerId);
   }
 
   /**
@@ -373,5 +447,6 @@ export class AIController {
   public reset(): void {
     this.behaviorSystem.reset();
     this.abilityTimers.clear();
+    this.lastPositions.clear();
   }
 }

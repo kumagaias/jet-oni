@@ -1379,8 +1379,6 @@ export class UIMenu {
            'Are you sure you want to leave the game?');
       
       this.showConfirmDialog(confirmMessage, async () => {
-        console.log('[UIMenu] User confirmed leaving lobby');
-        
         // User confirmed - proceed with leaving
         backButton.disabled = true;
         backButton.textContent = 'Loading...';
@@ -1388,17 +1386,12 @@ export class UIMenu {
         try {
           // If host, delete the game
           if (isHost && this.currentGameId) {
-            console.log('[UIMenu] Deleting game as host:', this.currentGameId);
             await this.gameApiClient.deleteGame(this.currentGameId);
-            console.log('[UIMenu] Host deleted game successfully');
           }
           // If participant, leave the game
           else if (!isHost && this.currentGameId && this.currentPlayerId) {
-            console.log('[UIMenu] Leaving game as participant:', this.currentGameId);
             const result = await this.gameApiClient.leaveGame(this.currentGameId, this.currentPlayerId);
-            if (result.success) {
-              console.log('[UIMenu] Participant left game successfully');
-            } else {
+            if (!result.success) {
               console.error('[UIMenu] Failed to leave game:', result.error);
             }
           }
@@ -1406,11 +1399,9 @@ export class UIMenu {
           console.error('[UIMenu] Error during exit:', error);
         }
         
-        console.log('[UIMenu] Dispatching lobbyExit event');
         // Dispatch lobby exit event to trigger cleanup
         window.dispatchEvent(new Event('lobbyExit'));
         
-        console.log('[UIMenu] Cleaning up lobby manager');
         // Clean up lobby manager
         if (this.lobbyManager) {
           this.lobbyManager.destroy();
@@ -1421,9 +1412,7 @@ export class UIMenu {
         this.currentGameId = null;
         this.currentPlayerId = null;
         
-        console.log('[UIMenu] Showing title screen');
         this.showTitleScreen();
-        console.log('[UIMenu] Title screen shown');
       });
     });
     

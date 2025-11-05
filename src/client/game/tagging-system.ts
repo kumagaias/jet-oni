@@ -49,25 +49,49 @@ export class TaggingSystem {
     const localPlayer = this.gameState.getLocalPlayer();
     const allPlayers = this.gameState.getAllPlayers();
 
-    // Only check if local player is oni
-    if (!localPlayer.isOni) return null;
+    // Case 1: Local player is ONI - check if they can tag runners
+    if (localPlayer.isOni) {
+      // Check distance to all runner players
+      for (const player of allPlayers) {
+        // Skip self and other oni
+        if (player.id === localPlayer.id || player.isOni) continue;
 
-    // Check distance to all runner players
-    for (const player of allPlayers) {
-      // Skip self and other oni
-      if (player.id === localPlayer.id || player.isOni) continue;
+        // Calculate distance
+        const distance = this.calculateDistance(localPlayer.position, player.position);
 
-      // Calculate distance
-      const distance = this.calculateDistance(localPlayer.position, player.position);
+        // Check if within tagging distance
+        if (distance <= TAG_DISTANCE) {
+          // Tag the player
+          const tagEvent = this.tagPlayer(localPlayer.id, player.id);
+          this.lastTagTime = now;
+          return tagEvent;
+        }
+      }
+    }
+    
+    // Case 2: Local player is Runner - check if any ONI can tag them
+    if (!localPlayer.isOni) {
+      // Check distance to all oni players
+      for (const player of allPlayers) {
+        // Skip self and non-oni
+        if (player.id === localPlayer.id || !player.isOni) continue;
 
-      // Check if within tagging distance
-      if (distance <= TAG_DISTANCE) {
-        // Tag the player
-        const tagEvent = this.tagPlayer(localPlayer.id, player.id);
-        this.lastTagTime = now;
-        return tagEvent;
-      } else if (distance < TAG_DISTANCE * 2) {
-        // Log near-miss for debugging
+        // Calculate distance
+        const distance = this.calculateDistance(localPlayer.position, player.position);
+
+        // Debug: Log when ONI is close
+        if (distance <= TAG_DISTANCE * 2) {
+          console.log(`[Tag] ONI ${player.id} (AI: ${player.isAI}) is ${distance.toFixed(2)} units away (tag distance: ${TAG_DISTANCE})`);
+        }
+
+        // Check if within tagging distance
+        if (distance <= TAG_DISTANCE) {
+          console.log(`[Tag] Local runner tagged by ONI ${player.id} (AI: ${player.isAI})`);
+          // Local player gets tagged by remote ONI
+          const tagEvent = this.tagPlayer(player.id, localPlayer.id);
+          this.lastTagTime = now;
+          return tagEvent;
+        }
       }
     }
 
@@ -113,6 +137,8 @@ export class TaggingSystem {
     if (playerId === localPlayer.id) {
       // Convert local player to oni
       this.gameState.setLocalPlayerIsOni(true);
+      this.gameState.setLocalPlayerWasTagged(true);
+      this.gameState.setLocalPlayerSurvivedTime(survivedTime);
       
       // Reset abilities for oni
       this.gameState.setLocalPlayerDashing(false);

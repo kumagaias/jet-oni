@@ -173,6 +173,8 @@ export class CarSystem {
    * Update all cars
    */
   public update(deltaTime: number): void {
+    const carsToRespawn: CarData[] = [];
+    
     for (const car of this.cars) {
       // Update position along path
       car.pathPosition += car.speed * deltaTime;
@@ -193,16 +195,81 @@ export class CarSystem {
         car.velocity.z = car.speed;
       }
 
-      // Check if car is in water and adjust height
-      let yPosition = 0.5; // Default car height
+      // Check if car is in water - if so, respawn it on a road
       if (this.playerPhysics && this.playerPhysics.isInWater(car.position)) {
-        yPosition = 0.5 - WATER_SINK_DEPTH; // Sink into water
+        // Mark for respawn
+        carsToRespawn.push(car);
+        continue;
       }
-      car.position.y = yPosition;
+
+      // Default car height
+      car.position.y = 0.5;
 
       // Update mesh position
       car.mesh.position.set(car.position.x, car.position.y, car.position.z);
     }
+    
+    // Respawn cars that entered water
+    for (const car of carsToRespawn) {
+      this.respawnCarOnRoad(car);
+    }
+  }
+
+  /**
+   * Respawn a car on a valid road position (not in water)
+   */
+  private respawnCarOnRoad(car: CarData): void {
+    // Try to find a valid road position (not in water)
+    let attempts = 0;
+    const maxAttempts = 10;
+    
+    while (attempts < maxAttempts) {
+      // Choose a random road
+      const roadIndex = Math.floor(Math.random() * this.roadPositions.length);
+      
+      if (car.path === 'horizontal') {
+        const z = this.roadPositions[roadIndex] ?? 0;
+        const x = (Math.random() - 0.5) * 300;
+        const testPosition = { x, y: 0.5, z };
+        
+        // Check if this position is in water
+        if (!this.playerPhysics || !this.playerPhysics.isInWater(testPosition)) {
+          // Valid position - respawn here
+          car.position.x = x;
+          car.position.z = z;
+          car.pathPosition = x;
+          car.mesh.position.set(car.position.x, car.position.y, car.position.z);
+          return;
+        }
+      } else {
+        const x = this.roadPositions[roadIndex] ?? 0;
+        const z = (Math.random() - 0.5) * 300;
+        const testPosition = { x, y: 0.5, z };
+        
+        // Check if this position is in water
+        if (!this.playerPhysics || !this.playerPhysics.isInWater(testPosition)) {
+          // Valid position - respawn here
+          car.position.x = x;
+          car.position.z = z;
+          car.pathPosition = z;
+          car.mesh.position.set(car.position.x, car.position.y, car.position.z);
+          return;
+        }
+      }
+      
+      attempts++;
+    }
+    
+    // If we couldn't find a valid position after max attempts,
+    // just place it at the edge of the map
+    if (car.path === 'horizontal') {
+      car.position.x = -200;
+      car.pathPosition = -200;
+    } else {
+      car.position.z = -200;
+      car.pathPosition = -200;
+    }
+    car.mesh.position.set(car.position.x, car.position.y, car.position.z);
   }
 
   /**

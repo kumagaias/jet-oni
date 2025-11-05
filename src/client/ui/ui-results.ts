@@ -108,8 +108,8 @@ export class UIResults {
     // Winner announcement
     const winnerBox = document.createElement('div');
     winnerBox.style.cssText = `
-      background: ${runnersWin ? 'rgba(76, 175, 80, 0.2)' : 'rgba(244, 67, 54, 0.2)'};
-      border: 2px solid ${runnersWin ? '#4caf50' : '#f44336'};
+      background: ${runnersWin ? 'rgba(76, 175, 80, 0.2)' : 'rgba(255, 0, 0, 0.3)'};
+      border: 2px solid ${runnersWin ? '#4caf50' : '#ff0000'};
       border-radius: 8px;
       padding: 15px;
       margin-bottom: 20px;
@@ -118,7 +118,7 @@ export class UIResults {
 
     const winnerText = document.createElement('div');
     winnerText.style.cssText = `
-      color: ${runnersWin ? '#4caf50' : '#f44336'};
+      color: ${runnersWin ? '#4caf50' : '#ff0000'};
       font-size: 18px;
       font-weight: bold;
       margin-bottom: 10px;

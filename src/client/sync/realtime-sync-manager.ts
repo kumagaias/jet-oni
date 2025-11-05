@@ -22,7 +22,7 @@ export interface PlayerStateUpdate {
  * Realtime message format
  */
 export interface RealtimeMessage {
-  type: 'player-update' | 'game-start' | 'timer-sync';
+  type: 'player-update' | 'game-start' | 'timer-sync' | 'game-end';
   playerId: string;
   position?: Vector3;
   velocity?: Vector3;
@@ -106,13 +106,18 @@ export class RealtimeSyncManager {
   private connectionState: 'disconnected' | 'connecting' | 'connected' = 'disconnected';
   private reconnectAttempts: number = 0;
   private reconnectTimeout: number | null = null;
+  
+  // Error throttling
+  private lastErrorLogTime: number = 0;
+  private errorLogThrottle: number = 5000; // Log errors at most once per 5 seconds
+  private disconnectedPlayers: Set<string> = new Set(); // Track already logged disconnections
 
   constructor(config: RealtimeSyncConfig = {}) {
     this.interpolationDuration = config.interpolationDuration ?? 500;
     this.predictionEnabled = config.predictionEnabled ?? true;
-    this.disconnectTimeout = config.disconnectTimeout ?? 10000; // 10 seconds
+    this.disconnectTimeout = config.disconnectTimeout ?? 30000; // 30 seconds
     this.maxReconnectAttempts = config.maxReconnectAttempts ?? 3;
-    this.throttleInterval = config.throttleInterval ?? 500; // 2 messages/second
+    this.throttleInterval = config.throttleInterval ?? 100; // 10 messages/second
   }
 
   /**
@@ -208,6 +213,7 @@ export class RealtimeSyncManager {
     this.remotePlayers.clear();
     this.lastSentState = null;
     this.reconnectAttempts = 0;
+    this.disconnectedPlayers.clear(); // Clear disconnection tracking
 
   }
 
@@ -228,31 +234,33 @@ export class RealtimeSyncManager {
       config,
     };
 
-    fetch('/api/realtime/broadcast', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        gameId: this.gameId,
-        message,
-      }),
-    })
-      .then((response) => {
-        if (!response.ok) {
-          console.error(`[Realtime] Game-start broadcast failed with status ${response.status}`);
-        }
-        // Success - no action needed
-      })
-      .catch((error) => {
-        console.error('[Realtime] Failed to broadcast game-start:', error);
-      });
+    // Send via server API with retry logic
+    this.sendViaServer(message, 'game-start');
+  }
+
+  /**
+   * Send game end message (host only)
+   */
+  sendGameEnd(): void {
+    if (!this.isRunning || this.connectionState !== 'connected') {
+      console.warn('[Realtime] Cannot send game-end: not connected');
+      return;
+    }
+
+    const message: RealtimeMessage = {
+      type: 'game-end',
+      playerId: this.playerId!,
+      timestamp: Date.now(),
+    };
+
+    // Send via server API with retry logic
+    this.sendViaServer(message, 'game-end');
   }
 
   /**
    * Send local player state via Realtime (with throttling)
    */
-  sendPlayerState(state: PlayerStateUpdate): void {
+  sendPlayerState(state: PlayerStateUpdate, playerId?: string): void {
     // Check connection state
     if (!this.isRunning) {
       this.lastSentState = state;
@@ -264,21 +272,25 @@ export class RealtimeSyncManager {
       return;
     }
 
-    // Throttle sending
+    // Throttle sending (only for local player, not AI)
     const now = Date.now();
-    const timeSinceLastSend = now - this.lastSendTime;
-    if (timeSinceLastSend < this.throttleInterval) {
+    if (!playerId) {
+      const timeSinceLastSend = now - this.lastSendTime;
+      if (timeSinceLastSend < this.throttleInterval) {
+        this.lastSentState = state;
+        return;
+      }
       this.lastSentState = state;
-      return;
+      this.lastSendTime = now;
     }
 
-    this.lastSentState = state;
-    this.lastSendTime = now;
+    // Use provided playerId or default to local player
+    const targetPlayerId = playerId || this.playerId!;
 
     // Create Realtime message
     const message: RealtimeMessage = {
       type: 'player-update',
-      playerId: this.playerId!,
+      playerId: targetPlayerId,
       position: state.position,
       velocity: state.velocity,
       rotation: state.rotation,
@@ -301,35 +313,8 @@ export class RealtimeSyncManager {
       message.wasTagged = state.wasTagged;
     }
 
-    // Validate gameId before sending
-    if (!this.gameId) {
-      console.warn('[Realtime] Cannot send player state: gameId is not set');
-      return;
-    }
-
-    // Send via server API (Devvit Web requires server-side realtime.send)
-    fetch('/api/realtime/broadcast', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        gameId: this.gameId,
-        message,
-      }),
-    })
-      .then((response) => {
-        if (!response.ok) {
-          console.error(`[Realtime] Broadcast failed with status ${response.status}`);
-          return response.text().then(text => {
-            console.error('[Realtime] Error response:', text);
-          });
-        }
-        // Success - no action needed
-      })
-      .catch((error) => {
-        console.error('[Realtime] Failed to broadcast player state:', error);
-      });
+    // Send via server API (silently fail if server is down)
+    this.sendViaServer(message, 'player-update', true);
   }
 
   /**
@@ -366,6 +351,15 @@ export class RealtimeSyncManager {
             },
           })
         );
+      }
+      return;
+    }
+
+    // Handle game-end messages (from host)
+    if (data.type === 'game-end') {
+      // Dispatch gameEnd event for non-host players
+      if (data.playerId !== this.playerId) {
+        window.dispatchEvent(new Event('gameEnd'));
       }
       return;
     }
@@ -607,9 +601,14 @@ export class RealtimeSyncManager {
 
       // If player hasn't updated in disconnectTimeout, consider disconnected
       if (timeSinceUpdate > this.disconnectTimeout) {
-        console.warn(
-          `Player ${playerId} (${player.username}) disconnected (timeout: ${timeSinceUpdate}ms)`
-        );
+        // Only log once per player to avoid spam
+        if (!this.disconnectedPlayers.has(playerId)) {
+          console.warn(
+            `Player ${playerId} (${player.username}) disconnected (timeout: ${timeSinceUpdate}ms)`
+          );
+          this.disconnectedPlayers.add(playerId);
+        }
+        
         playersToRemove.push(playerId);
 
         // Notify disconnect callbacks
@@ -658,6 +657,21 @@ export class RealtimeSyncManager {
       serverTime: Date.now(),
     };
 
+    // Send via server API (silently fail if server is down)
+    this.sendViaServer(message, 'timer-sync', true);
+  }
+
+  /**
+   * Send message via server API with error handling and optional retry
+   */
+  private sendViaServer(message: RealtimeMessage, messageType: string, silent: boolean = false): void {
+    if (!this.gameId) {
+      if (!silent) {
+        console.warn(`[Realtime] Cannot send ${messageType}: gameId is not set`);
+      }
+      return;
+    }
+
     fetch('/api/realtime/broadcast', {
       method: 'POST',
       headers: {
@@ -667,8 +681,24 @@ export class RealtimeSyncManager {
         gameId: this.gameId,
         message,
       }),
-    }).catch((error) => {
-      console.error('[Realtime] Failed to broadcast timer-sync:', error);
-    });
+    })
+      .then((response) => {
+        if (!response.ok) {
+          // Only log errors occasionally to avoid spam
+          const now = Date.now();
+          if (!silent && now - this.lastErrorLogTime > this.errorLogThrottle) {
+            console.error(`[Realtime] ${messageType} broadcast failed with status ${response.status}`);
+            this.lastErrorLogTime = now;
+          }
+        }
+      })
+      .catch((error) => {
+        // Only log errors occasionally to avoid spam
+        const now = Date.now();
+        if (!silent && now - this.lastErrorLogTime > this.errorLogThrottle) {
+          console.error(`[Realtime] Failed to broadcast ${messageType}:`, error);
+          this.lastErrorLogTime = now;
+        }
+      });
   }
 }

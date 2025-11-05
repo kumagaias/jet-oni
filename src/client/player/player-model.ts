@@ -224,6 +224,24 @@ export class PlayerModel {
   }
 
   /**
+   * Set player opacity (for cloak effect)
+   */
+  public setOpacity(opacity: number): void {
+    this.model.traverse((object) => {
+      if (object instanceof THREE.Mesh) {
+        const material = object.material as THREE.MeshStandardMaterial;
+        material.transparent = true;
+        material.opacity = opacity;
+      }
+    });
+    
+    // Also update name tag opacity
+    if (this.nameTag) {
+      this.nameTag.material.opacity = opacity;
+    }
+  }
+
+  /**
    * Dispose of the model
    */
   public dispose(): void {

@@ -113,6 +113,7 @@ export const jp: Translations = {
     roundStarting: 'ラウンド{round}開始...',
     getReady: '準備してください！',
     gameOver: 'ゲーム終了！',
+    gameFinished: 'ゲーム終了！',
     playerDisconnected: '{player}が切断されました',
     playerReplacedWithAI: '{player}がAIに置き換えられました',
     notifications: {

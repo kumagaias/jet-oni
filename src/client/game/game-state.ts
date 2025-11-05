@@ -136,10 +136,24 @@ export class GameState {
   }
 
   /**
+   * Set local player username
+   */
+  public setLocalPlayerUsername(username: string): void {
+    this.localPlayer.username = username;
+  }
+
+  /**
    * Set whether local player is oni
    */
   public setLocalPlayerIsOni(isOni: boolean): void {
     this.localPlayer.isOni = isOni;
+  }
+
+  /**
+   * Set whether local player was tagged
+   */
+  public setLocalPlayerWasTagged(wasTagged: boolean): void {
+    this.localPlayer.wasTagged = wasTagged;
   }
 
   /**
@@ -177,6 +191,13 @@ export class GameState {
     if (this.isPlaying() && !this.localPlayer.isOni) {
       this.localPlayer.survivedTime += deltaTime;
     }
+  }
+
+  /**
+   * Set local player survived time
+   */
+  public setLocalPlayerSurvivedTime(survivedTime: number): void {
+    this.localPlayer.survivedTime = survivedTime;
   }
 
   /**

@@ -17,7 +17,6 @@ export class TargetLockVisual {
   private currentLockEndTime = 0; // When current lock-on should end
   private lockedTargetIds = new Set<string>(); // Currently locked targets
   private onTargetLockedCallback?: (targetIds: string[]) => void;
-  private lastDebugLogTime = 0; // For throttling debug logs
 
   constructor(scene: THREE.Scene) {
     this.scene = scene;
@@ -179,15 +178,6 @@ export class TargetLockVisual {
    */
   private findNearbyRunners(localPlayer: Player, allPlayers: Player[]): Player[] {
     const nearby: Player[] = [];
-    let checkedCount = 0;
-    const now = Date.now();
-    
-    // Throttle debug logs to once per 2 seconds
-    const shouldLog = now - this.lastDebugLogTime > 2000;
-    if (shouldLog) {
-      this.lastDebugLogTime = now;
-      console.log('[TargetLock] Starting search. Local player:', localPlayer.id, 'at', localPlayer.position);
-    }
 
     for (const player of allPlayers) {
       // Skip self and other ONI players
@@ -195,36 +185,16 @@ export class TargetLockVisual {
         continue;
       }
 
-      checkedCount++;
       const distance = this.calculateDistance(localPlayer.position, player.position);
-      
-      if (shouldLog) {
-        console.log('[TargetLock] Checking runner', player.id, 'at distance', distance.toFixed(1), '(range:', DETECTION_RANGE, ')');
-      }
       
       if (distance <= DETECTION_RANGE) {
         // Check line of sight (building occlusion)
         const hasLOS = this.hasLineOfSight(localPlayer.position, player.position);
         
-        if (shouldLog) {
-          console.log('[TargetLock] Runner', player.id, 'in range. Distance:', distance.toFixed(1), 'LOS:', hasLOS ? '✓ Clear' : '✗ Blocked');
-        }
-        
         if (hasLOS) {
           nearby.push(player);
-          if (shouldLog) {
-            console.log('[TargetLock] ✓ Found nearby runner', player.id, 'at distance', distance.toFixed(1));
-          }
-        } else {
-          if (shouldLog) {
-            console.log('[TargetLock] ✗ Runner', player.id, 'blocked by building');
-          }
         }
       }
-    }
-    
-    if (shouldLog && checkedCount > 0 && nearby.length === 0) {
-      console.log('[TargetLock] Checked', checkedCount, 'runners, none in range or LOS blocked');
     }
 
     return nearby;
@@ -247,14 +217,15 @@ export class TargetLockVisual {
    * Returns false if blocked by buildings or walls
    */
   private hasLineOfSight(from: { x: number; y: number; z: number }, to: { x: number; y: number; z: number }): boolean {
-    // Create a raycaster from ONI to runner at head height
-    const origin = new THREE.Vector3(from.x, from.y + 2, from.z); // Head level (higher to avoid ground)
-    const target = new THREE.Vector3(to.x, to.y + 2, to.z); // Target head level
+    // Create a raycaster from ONI to runner at eye height
+    // Player position is at ground level, so add eye height (1.7)
+    const origin = new THREE.Vector3(from.x, from.y + 1.7, from.z); // Eye level
+    const target = new THREE.Vector3(to.x, to.y + 1.7, to.z); // Target eye level
     const direction = new THREE.Vector3().subVectors(target, origin).normalize();
     const distance = origin.distanceTo(target);
 
     // Add small offset to avoid self-intersection
-    const raycaster = new THREE.Raycaster(origin, direction, 0.5, distance - 0.5);
+    const raycaster = new THREE.Raycaster(origin, direction, 1.0, distance - 1.0);
 
     // Only check against building meshes (large vertical structures)
     const buildingMeshes: THREE.Mesh[] = [];
@@ -284,13 +255,14 @@ export class TargetLockVisual {
         bbox.getSize(size);
         
         // Only check buildings (large objects with significant height)
-        // Buildings are typically larger than 10x10x10 units
-        if (size.x < 10 && size.z < 10) {
+        // Buildings are typically larger than 5x5x5 units
+        if (size.x < 5 && size.z < 5) {
           return; // Skip small objects (not buildings)
         }
         
-        // Must have significant height to be a building
-        if (size.y < 10) {
+        // Must have significant height to be a building (taller than player eye level)
+        // Reduced from 5 to 3 to catch more buildings
+        if (size.y < 3) {
           return; // Skip flat objects (roads, ground, etc.)
         }
         

@@ -160,11 +160,23 @@ export class GameManager {
     gameState.status = 'ended';
     gameState.endTime = Date.now();
 
+    // Calculate game duration
+    const gameStartTime = gameState.startTime || Date.now();
+    const gameEndTime = Date.now();
+    const gameDuration = (gameEndTime - gameStartTime) / 1000; // Convert to seconds
+
     // Calculate results
     const playerResults: PlayerResult[] = gameState.players.map((player) => ({
       id: player.id,
       username: player.username,
-      survivedTime: player.survivedTime,
+      // For runners who weren't tagged, survival time is the full game duration
+      // For players who were tagged, use their recorded survival time
+      // For ONI players (isOni=true and wasTagged=false), survival time is 0
+      survivedTime: player.isOni && !player.wasTagged 
+        ? 0 
+        : player.wasTagged 
+          ? (player.survivedTime || 0) 
+          : gameDuration,
       wasTagged: player.wasTagged,
       isAI: player.isAI,
     }));

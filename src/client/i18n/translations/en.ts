@@ -113,6 +113,7 @@ export const en: Translations = {
     roundStarting: 'Round {round} starting...',
     getReady: 'Get ready!',
     gameOver: 'GAME OVER!',
+    gameFinished: 'GAME FINISHED!',
     playerDisconnected: '{player} disconnected',
     playerReplacedWithAI: '{player} was replaced with AI',
     notifications: {

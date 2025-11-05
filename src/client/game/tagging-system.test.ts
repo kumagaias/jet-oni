@@ -80,7 +80,7 @@ describe('TaggingSystem', () => {
       expect(tagEvent).toBeNull();
     });
 
-    it('should not detect tag when local player is not oni', () => {
+    it('should detect tag when remote oni is within TAG_DISTANCE of local runner', () => {
       // Set local player as runner
       gameState.setLocalPlayerIsOni(false);
       gameState.setLocalPlayerPosition({ x: 0, y: 0, z: 0 });
@@ -105,8 +105,10 @@ describe('TaggingSystem', () => {
       // Update tagging system
       const tagEvent = taggingSystem.update(0.016);
 
-      // Should not detect tag (runner can't tag)
-      expect(tagEvent).toBeNull();
+      // Should detect tag (remote oni can tag local runner)
+      expect(tagEvent).not.toBeNull();
+      expect(tagEvent?.taggerId).toBe('player2');
+      expect(tagEvent?.taggedId).toBe('player1');
     });
   });
 

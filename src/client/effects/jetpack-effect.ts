@@ -53,8 +53,6 @@ export class JetpackEffect {
     }
   }
 
-  private lastDebugLogTime = 0;
-
   /**
    * Update effect for a single player
    */
@@ -65,12 +63,7 @@ export class JetpackEffect {
       playerParticles = [];
       this.particles.set(player.id, playerParticles);
       
-      // Debug log when creating new particle system (throttled)
-      const now = Date.now();
-      if (now - this.lastDebugLogTime > 2000) {
-        this.lastDebugLogTime = now;
-        console.log('[JetpackEffect] Creating particles for player', player.id, 'at', player.position);
-      }
+      // Create new particle system for player
     }
 
     // Spawn new particles

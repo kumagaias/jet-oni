@@ -168,6 +168,10 @@ app.use(realtimeApiRouter);
 // Mount sync API routes (for future use)
 app.use(syncApiRouter);
 
+// Mount AI API routes
+import aiApiRouter from './api/ai-api';
+app.use(aiApiRouter);
+
 app.use(router);
 
 // Start periodic cleanup of stale games

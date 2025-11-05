@@ -30,6 +30,7 @@ import { UICountdown } from './ui/ui-countdown';
 import { UILoading } from './ui/ui-loading';
 import { ToastNotification } from './ui/toast-notification';
 import { GameAPIClient } from './api/game-api-client';
+import { AIAPIClient } from './api/ai-api-client';
 import { RealtimeSyncManager } from './sync/realtime-sync-manager';
 import { HostMonitor } from './game/host-monitor';
 import { en } from './i18n/translations/en';
@@ -37,17 +38,13 @@ import { jp } from './i18n/translations/jp';
 import { InitResponse } from '../shared/types/api';
 import { MAX_FUEL } from '../shared/constants';
 
-// Debug: Log that main.ts is executing
-console.log('[Main] main.ts executing');
-console.log('[Main] User agent:', navigator.userAgent);
-console.log('[Main] Window size:', window.innerWidth, 'x', window.innerHeight);
+// Main.ts executing
 
 // Create translations object
 const translations = { en, jp };
 
 // Initialize i18n system
 const i18n = new I18n(translations);
-console.log('[Main] i18n initialized');
 
 // Initialize UI manager
 const uiManager = new UIManager();
@@ -118,6 +115,9 @@ async function initGame(): Promise<void> {
       
       // Initialize game state with player ID
       const gameState = new GameState(playerId);
+      
+      // Set local player username (Reddit username)
+      gameState.setLocalPlayerUsername(data.username || playerId);
       
       // Start in lobby state
       gameState.setGamePhase('lobby');
@@ -478,15 +478,32 @@ async function initGame(): Promise<void> {
           const isCloaked = Date.now() < cloakActiveUntil;
           aiController.setCloakedPlayer(isCloaked ? localPlayer.id : null);
           
+          // Update local player model opacity based on cloak state
+          if (isCloaked) {
+            playerModel.setOpacity(0.3); // 30% opacity when cloaked
+          } else {
+            playerModel.setOpacity(1.0); // 100% opacity when not cloaked
+          }
+          
           aiController.update(deltaTime);
           
           // Update tag system (check for tags between players)
-          tagSystem.update();
+          const tagEvent = tagSystem.update(deltaTime);
+          
+          // Handle tag event if it occurred
+          if (tagEvent) {
+            console.log(`Tag event: ${tagEvent.taggerId} tagged ${tagEvent.taggedId}`);
+          }
         }
         
         // Apply physics to AI players and update models
         for (const [aiId, aiModel] of aiPlayerModels) {
           const aiPlayer = gameState.getPlayer(aiId);
+          if (!aiPlayer) {
+            console.warn(`[AI] AI player ${aiId} not found in game state`);
+            continue;
+          }
+          
           if (aiPlayer) {
             // Apply physics to AI player
             const physicsResult = playerPhysics.applyPhysics(
@@ -508,8 +525,10 @@ async function initGame(): Promise<void> {
             let finalPosition = collisionResult.position;
             
             if (collisionResult.collided) {
-              // Instead of reducing velocity, try to move AI around obstacle
-              // Calculate perpendicular direction to try
+              // When AI hits a wall, try multiple escape strategies
+              const speed = Math.sqrt(aiPlayer.velocity.x ** 2 + aiPlayer.velocity.z ** 2);
+              
+              // Strategy 1: Try perpendicular directions (left and right)
               const perpendicular1 = {
                 x: -aiPlayer.velocity.z,
                 y: aiPlayer.velocity.y,
@@ -520,6 +539,19 @@ async function initGame(): Promise<void> {
                 y: aiPlayer.velocity.y,
                 z: -aiPlayer.velocity.x,
               };
+              
+              // Normalize perpendicular vectors
+              const perp1Length = Math.sqrt(perpendicular1.x ** 2 + perpendicular1.z ** 2);
+              const perp2Length = Math.sqrt(perpendicular2.x ** 2 + perpendicular2.z ** 2);
+              
+              if (perp1Length > 0) {
+                perpendicular1.x = (perpendicular1.x / perp1Length) * speed;
+                perpendicular1.z = (perpendicular1.z / perp1Length) * speed;
+              }
+              if (perp2Length > 0) {
+                perpendicular2.x = (perpendicular2.x / perp2Length) * speed;
+                perpendicular2.z = (perpendicular2.z / perp2Length) * speed;
+              }
               
               // Try moving in perpendicular directions
               const altPosition1 = {
@@ -536,7 +568,7 @@ async function initGame(): Promise<void> {
               const altCollision1 = collisionSystem.checkCollision(aiPlayer.position, altPosition1, 0.5);
               const altCollision2 = collisionSystem.checkCollision(aiPlayer.position, altPosition2, 0.5);
               
-              // Use the first non-colliding alternative, or reduce velocity if both collide
+              // Use the first non-colliding alternative
               if (!altCollision1.collided) {
                 finalPosition = altCollision1.position;
                 finalVelocity = perpendicular1;
@@ -544,12 +576,61 @@ async function initGame(): Promise<void> {
                 finalPosition = altCollision2.position;
                 finalVelocity = perpendicular2;
               } else {
-                // Both alternatives collide, reduce velocity
-                finalVelocity = {
-                  x: physicsResult.velocity.x * 0.3,
-                  y: physicsResult.velocity.y,
-                  z: physicsResult.velocity.z * 0.3,
+                // Strategy 2: Try diagonal directions
+                const diagonal1 = {
+                  x: (aiPlayer.velocity.x + perpendicular1.x) * 0.5,
+                  y: aiPlayer.velocity.y,
+                  z: (aiPlayer.velocity.z + perpendicular1.z) * 0.5,
                 };
+                const diagonal2 = {
+                  x: (aiPlayer.velocity.x + perpendicular2.x) * 0.5,
+                  y: aiPlayer.velocity.y,
+                  z: (aiPlayer.velocity.z + perpendicular2.z) * 0.5,
+                };
+                
+                const diagPosition1 = {
+                  x: aiPlayer.position.x + diagonal1.x * deltaTime,
+                  y: aiPlayer.position.y + diagonal1.y * deltaTime,
+                  z: aiPlayer.position.z + diagonal1.z * deltaTime,
+                };
+                const diagPosition2 = {
+                  x: aiPlayer.position.x + diagonal2.x * deltaTime,
+                  y: aiPlayer.position.y + diagonal2.y * deltaTime,
+                  z: aiPlayer.position.z + diagonal2.z * deltaTime,
+                };
+                
+                const diagCollision1 = collisionSystem.checkCollision(aiPlayer.position, diagPosition1, 0.5);
+                const diagCollision2 = collisionSystem.checkCollision(aiPlayer.position, diagPosition2, 0.5);
+                
+                if (!diagCollision1.collided) {
+                  finalPosition = diagCollision1.position;
+                  finalVelocity = diagonal1;
+                } else if (!diagCollision2.collided) {
+                  finalPosition = diagCollision2.position;
+                  finalVelocity = diagonal2;
+                } else {
+                  // Strategy 3: Try backing up slightly and then moving perpendicular
+                  const backupPosition = {
+                    x: aiPlayer.position.x - aiPlayer.velocity.x * deltaTime * 0.5,
+                    y: aiPlayer.position.y,
+                    z: aiPlayer.position.z - aiPlayer.velocity.z * deltaTime * 0.5,
+                  };
+                  
+                  const backupCollision = collisionSystem.checkCollision(aiPlayer.position, backupPosition, 0.5);
+                  
+                  if (!backupCollision.collided) {
+                    finalPosition = backupCollision.position;
+                    // Choose a random perpendicular direction
+                    finalVelocity = Math.random() > 0.5 ? perpendicular1 : perpendicular2;
+                  } else {
+                    // Last resort: Stop moving
+                    finalVelocity = {
+                      x: 0,
+                      y: physicsResult.velocity.y,
+                      z: 0,
+                    };
+                  }
+                }
               }
             }
             
@@ -686,6 +767,11 @@ async function initGame(): Promise<void> {
         // Send player state to sync manager (only during gameplay, not in lobby)
         const phase = gameState.getGamePhase();
         
+        // Debug: Log sync conditions
+        if (phase === 'playing' && currentGameId !== null) {
+          console.log(`[Sync Debug] phase: ${phase}, gameId: ${currentGameId}, isHost: ${isHost}, connected: ${realtimeSyncManager.isConnected()}`);
+        }
+        
         if (phase === 'playing' && currentGameId !== null && realtimeSyncManager.isConnected()) {
           const localPlayer = gameState.getLocalPlayer();
           realtimeSyncManager.sendPlayerState({
@@ -699,6 +785,68 @@ async function initGame(): Promise<void> {
             isOnSurface: localPlayer.isOnSurface,
             survivedTime: localPlayer.survivedTime,
           });
+          
+          // Host: Send AI player states to server via HTTP API (every 500ms)
+          // Non-host: Fetch AI player states from server via HTTP API (every 500ms)
+          const now = Date.now();
+          if (!lastAiSyncTime || now - lastAiSyncTime > 500) {
+            lastAiSyncTime = now;
+            
+            if (isHost) {
+              // Host: Send AI players to server
+              console.log(`[AI Sync] aiPlayerModels size: ${aiPlayerModels.size}`);
+              
+              const aiPlayers = Array.from(aiPlayerModels.keys())
+                .map(aiId => {
+                  const player = gameState.getPlayer(aiId);
+                  console.log(`[AI Sync] AI ${aiId}: ${player ? 'found' : 'NOT FOUND'}, isAI: ${player?.isAI}`);
+                  return player;
+                })
+                .filter((p): p is NonNullable<typeof p> => p !== null && p.isAI);
+              
+              console.log(`[AI Sync] Host sending ${aiPlayers.length} AI players to server`);
+              
+              if (aiPlayers.length > 0) {
+                aiApiClient.updateAIPlayers(currentGameId, aiPlayers).catch(error => {
+                  console.error('Failed to update AI players:', error);
+                });
+              } else {
+                console.warn('[AI Sync] Host has no AI players to send');
+                console.warn(`[AI Sync] All players in game state:`, gameState.getAllPlayers().map(p => ({ id: p.id, isAI: p.isAI })));
+              }
+            } else {
+              // Non-host: Fetch AI players from server
+              aiApiClient.getAIPlayers(currentGameId).then(aiPlayers => {
+                console.log(`[AI Sync] Non-host received ${aiPlayers.length} AI players from server`);
+                
+                for (const aiPlayer of aiPlayers) {
+                  // Update or create AI player model
+                  let model = aiPlayerModels.get(aiPlayer.id);
+                  
+                  if (!model) {
+                    console.log(`[AI Sync] Creating new AI player model: ${aiPlayer.id}`);
+                    // Create new AI player model
+                    model = new PlayerModel(false);
+                    model.setName(aiPlayer.username);
+                    gameEngine.addToScene(model.getModel());
+                    aiPlayerModels.set(aiPlayer.id, model);
+                  }
+                  
+                  // Update model position and state
+                  model.setPosition(aiPlayer.position.x, aiPlayer.position.y, aiPlayer.position.z);
+                  if (aiPlayer.rotation) {
+                    model.setRotation(aiPlayer.rotation.yaw);
+                  }
+                  model.setIsOni(aiPlayer.isOni);
+                  
+                  // Update game state
+                  gameState.updateRemotePlayer(aiPlayer);
+                }
+              }).catch(error => {
+                console.error('Failed to fetch AI players:', error);
+              });
+            }
+          }
         }
         
         // Update interpolation for remote players
@@ -725,6 +873,9 @@ async function initGame(): Promise<void> {
       
       // Initialize GameAPIClient
       const gameApiClient = new GameAPIClient();
+      
+      // Initialize AIAPIClient
+      const aiApiClient = new AIAPIClient();
       
       // Initialize RealtimeSyncManager
       const realtimeSyncManager = new RealtimeSyncManager();
@@ -853,13 +1004,9 @@ async function initGame(): Promise<void> {
       uiHud.hide(); // Hide until game starts
       
       // Initialize UI controls for mobile
-      console.log('[Main] About to create UIControls...');
       const { UIControls } = await import('./ui/ui-controls');
-      console.log('[Main] UIControls imported');
       const uiControls = new UIControls(gameState, i18n);
-      console.log('[Main] UIControls instance created');
       uiControls.hide(); // Hide until game starts
-      console.log('[Main] UIControls hidden');
       
       // Add HUD update to game loop
       let lastGameEndCheck = 0;
@@ -873,6 +1020,10 @@ async function initGame(): Promise<void> {
           if (now - lastGameEndCheck > 1000) {
             lastGameEndCheck = now;
             if (gameState.shouldGameEnd()) {
+              // If host, broadcast game-end to all players
+              if (isHost && currentGameId && realtimeSyncManager.isConnected()) {
+                realtimeSyncManager.sendGameEnd();
+              }
               window.dispatchEvent(new Event('gameEnd'));
             }
           }
@@ -881,6 +1032,9 @@ async function initGame(): Promise<void> {
       
       // Track current game ID for sync
       let currentGameId: string | null = null;
+      
+      // Track last AI sync time to reduce server load
+      let lastAiSyncTime: number = 0;
       
       // Listen for game start countdown event (when host presses start button)
       window.addEventListener('gameStartCountdown', ((e: Event) => {
@@ -945,15 +1099,26 @@ async function initGame(): Promise<void> {
         }
         gameStarted = true;
         
+        console.log(`[Game Start] isHost: ${isHost}, aiPlayerModels size before clear: ${aiPlayerModels.size}`);
+        
         // Clear all remote player models from previous game
         for (const [playerId, model] of remotePlayerModels.entries()) {
           gameEngine.removeFromScene(model.getModel());
         }
         remotePlayerModels.clear();
-        aiPlayerModels.clear();
         
-        // Clear all players from game state (except local player)
-        gameState.clearRemotePlayers();
+        // DON'T clear AI player models - they should persist
+        // aiPlayerModels.clear(); // REMOVED
+        
+        // Clear remote players from game state (but keep AI players)
+        const allPlayers = gameState.getAllPlayers();
+        for (const player of allPlayers) {
+          if (!player.isAI && player.id !== gameState.getLocalPlayer().id) {
+            gameState.removePlayer(player.id);
+          }
+        }
+        
+        console.log(`[Game Start] aiPlayerModels size after: ${aiPlayerModels.size}`);
         
         // Regenerate city with gameId as seed for consistent map across all players
         if (customEvent.detail?.gameId) {
@@ -1232,6 +1397,7 @@ async function initGame(): Promise<void> {
         
         const { currentPlayers, maxPlayers, isHost: isHostFlag, gameId } = customEvent.detail;
         isHost = isHostFlag;
+        console.log(`[Lobby] isHost set to: ${isHost}, gameId: ${gameId}`);
         
         // Set current game ID
         if (gameId) {
@@ -1280,7 +1446,12 @@ async function initGame(): Promise<void> {
         // Set game phase to ended immediately to stop game loop updates
         gameState.setGamePhase('ended');
         
-        // Show "Game Over" message immediately
+        // If host, broadcast game-end message to all players
+        if (isHost && currentGameId) {
+          realtimeSyncManager.sendGameEnd();
+        }
+        
+        // Show "Game Finished" message immediately
         const gameOverMessage = document.createElement('div');
         gameOverMessage.style.cssText = `
           position: fixed;
@@ -1294,7 +1465,7 @@ async function initGame(): Promise<void> {
           z-index: 9999;
           animation: pulse 1s ease-in-out infinite;
         `;
-        gameOverMessage.textContent = i18n.t('game.gameOver');
+        gameOverMessage.textContent = i18n.t('game.gameFinished');
         document.body.appendChild(gameOverMessage);
         
         // Add pulse animation
@@ -1315,9 +1486,8 @@ async function initGame(): Promise<void> {
           try {
             const endGameResponse = await gameApiClient.endGame(currentGameId);
             
-            // Remove game over message
-            gameOverMessage.remove();
-            style.remove();
+            // Keep game finished message visible until results screen is ready
+            // Don't remove it here - will be removed when showing results
             
             // Show results screen with game results
             if (endGameResponse.success && endGameResponse.results) {
@@ -1326,14 +1496,26 @@ async function initGame(): Promise<void> {
               const gameResults = new GameResults();
               
               // Convert PlayerResult[] to Player[] for GameResults
-              // Use local survivedTime if available, fallback to server data
-              const players = gameState.getAllPlayers().map(player => {
-                const serverPlayer = endGameResponse.results?.players.find(p => p.id === player.id);
+              // Use server data for username and stats, merge with local player data
+              const players = endGameResponse.results.players.map(serverPlayer => {
+                const localPlayer = gameState.getPlayer(serverPlayer.id);
                 return {
-                  ...player,
-                  survivedTime: player.survivedTime || serverPlayer?.survivedTime || 0,
-                  wasTagged: serverPlayer?.wasTagged || player.wasTagged || false,
-                  tagCount: serverPlayer?.tagCount || player.tagCount || 0,
+                  id: serverPlayer.id,
+                  username: serverPlayer.username, // Use server username (Reddit username)
+                  position: localPlayer?.position || { x: 0, y: 0, z: 0 },
+                  velocity: localPlayer?.velocity || { x: 0, y: 0, z: 0 },
+                  rotation: localPlayer?.rotation || { yaw: 0, pitch: 0 },
+                  fuel: localPlayer?.fuel || 100,
+                  isOni: localPlayer?.isOni || false,
+                  isAI: serverPlayer.isAI || false,
+                  survivedTime: serverPlayer.survivedTime,
+                  wasTagged: serverPlayer.wasTagged,
+                  tagCount: serverPlayer.tagCount || 0,
+                  isDashing: false,
+                  isJetpacking: false,
+                  isOnSurface: true,
+                  beaconCooldown: 0,
+                  isClimbing: false,
                 };
               });
               
@@ -1423,6 +1605,10 @@ async function initGame(): Promise<void> {
                 uiMenu.showTitleScreen();
                 
               });
+              
+              // Remove game finished message before showing results
+              gameOverMessage.remove();
+              style.remove();
               
               uiResults.show(gameState.getLocalPlayer().id);
             }

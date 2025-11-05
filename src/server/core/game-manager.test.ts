@@ -319,6 +319,161 @@ describe('GameManager', () => {
 
       expect(results).toBeNull();
     });
+
+    it('should calculate survivedTime based on game duration for runners', async () => {
+      const gameStartTime = Date.now() - 120000; // 120 seconds ago
+      const mockGameState = {
+        gameId: 'test_game',
+        hostId: 'host_123',
+        status: 'playing' as const,
+        config: { totalPlayers: 2, roundDuration: 180, rounds: 1 },
+        players: [
+          {
+            id: 'p1',
+            username: 'Runner1',
+            isOni: false,
+            isAI: false,
+            survivedTime: 0, // Should be ignored and calculated from game duration
+            wasTagged: false,
+            position: { x: 0, y: 0, z: 0 },
+            velocity: { x: 0, y: 0, z: 0 },
+            fuel: 100,
+            isOnSurface: true,
+            isDashing: false,
+            isJetpacking: false,
+            beaconCooldown: 0,
+          },
+          {
+            id: 'p2',
+            username: 'Oni1',
+            isOni: true,
+            isAI: false,
+            survivedTime: 0,
+            wasTagged: false,
+            position: { x: 0, y: 0, z: 0 },
+            velocity: { x: 0, y: 0, z: 0 },
+            fuel: 100,
+            isOnSurface: true,
+            isDashing: false,
+            isJetpacking: false,
+            beaconCooldown: 0,
+          },
+        ],
+        startTime: gameStartTime,
+        endTime: 0,
+        currentRound: 1,
+        timeRemaining: 0,
+      };
+
+      mockRedis.get.mockResolvedValue(JSON.stringify(mockGameState));
+      mockRedis.set.mockResolvedValue(undefined);
+      mockRedis.zRem.mockResolvedValue(1);
+
+      const results = await gameManager.endGame('test_game');
+
+      expect(results).toBeDefined();
+      expect(results?.players).toHaveLength(2);
+      
+      // Runner should have survivedTime equal to game duration (around 120 seconds)
+      const runner = results?.players.find(p => p.username === 'Runner1');
+      expect(runner).toBeDefined();
+      expect(runner?.survivedTime).toBeGreaterThan(119);
+      expect(runner?.survivedTime).toBeLessThan(121);
+      
+      // ONI should have survivedTime of 0
+      const oni = results?.players.find(p => p.username === 'Oni1');
+      expect(oni).toBeDefined();
+      expect(oni?.survivedTime).toBe(0);
+    });
+
+    it('should use recorded survivedTime for tagged players', async () => {
+      const gameStartTime = Date.now() - 180000; // 180 seconds ago
+      const mockGameState = {
+        gameId: 'test_game',
+        hostId: 'host_123',
+        status: 'playing' as const,
+        config: { totalPlayers: 3, roundDuration: 180, rounds: 1 },
+        players: [
+          {
+            id: 'p1',
+            username: 'TaggedRunner',
+            isOni: true,
+            isAI: false,
+            survivedTime: 60, // Was tagged after 60 seconds
+            wasTagged: true,
+            position: { x: 0, y: 0, z: 0 },
+            velocity: { x: 0, y: 0, z: 0 },
+            fuel: 100,
+            isOnSurface: true,
+            isDashing: false,
+            isJetpacking: false,
+            beaconCooldown: 0,
+          },
+          {
+            id: 'p2',
+            username: 'Survivor',
+            isOni: false,
+            isAI: false,
+            survivedTime: 0, // Should be calculated from game duration
+            wasTagged: false,
+            position: { x: 0, y: 0, z: 0 },
+            velocity: { x: 0, y: 0, z: 0 },
+            fuel: 100,
+            isOnSurface: true,
+            isDashing: false,
+            isJetpacking: false,
+            beaconCooldown: 0,
+          },
+          {
+            id: 'p3',
+            username: 'OriginalOni',
+            isOni: true,
+            isAI: false,
+            survivedTime: 0, // ONI from start
+            wasTagged: false,
+            position: { x: 0, y: 0, z: 0 },
+            velocity: { x: 0, y: 0, z: 0 },
+            fuel: 100,
+            isOnSurface: true,
+            isDashing: false,
+            isJetpacking: false,
+            beaconCooldown: 0,
+          },
+        ],
+        startTime: gameStartTime,
+        endTime: 0,
+        currentRound: 1,
+        timeRemaining: 0,
+      };
+
+      mockRedis.get.mockResolvedValue(JSON.stringify(mockGameState));
+      mockRedis.set.mockResolvedValue(undefined);
+      mockRedis.zRem.mockResolvedValue(1);
+
+      const results = await gameManager.endGame('test_game');
+
+      expect(results).toBeDefined();
+      expect(results?.players).toHaveLength(3);
+      
+      // Tagged runner should keep their recorded survivedTime
+      const taggedRunner = results?.players.find(p => p.username === 'TaggedRunner');
+      expect(taggedRunner).toBeDefined();
+      expect(taggedRunner?.survivedTime).toBe(60);
+      
+      // Survivor should have full game duration
+      const survivor = results?.players.find(p => p.username === 'Survivor');
+      expect(survivor).toBeDefined();
+      expect(survivor?.survivedTime).toBeGreaterThan(179);
+      expect(survivor?.survivedTime).toBeLessThan(181);
+      
+      // Original ONI should have 0
+      const oni = results?.players.find(p => p.username === 'OriginalOni');
+      expect(oni).toBeDefined();
+      expect(oni?.survivedTime).toBe(0);
+      
+      // Winner should be the survivor (longest survival time)
+      expect(results?.winner?.username).toBe('Survivor');
+    });
   });
 
   describe('listGames', () => {

@@ -41,10 +41,22 @@ router.post(
           success: true,
         });
       } catch (realtimeError) {
-        // Realtime send failed - this can happen during server shutdown
-        // Return success anyway to avoid client-side errors
+        // Realtime send failed - this can happen during:
+        // 1. Server shutdown/restart
+        // 2. Network issues
+        // 3. Devvit infrastructure problems
+        // Return success anyway to avoid blocking the game
         // The message will be lost but the game can continue
-        console.warn('Realtime send failed (server may be shutting down):', realtimeError);
+        
+        // Only log the error type, not the full stack trace to reduce noise
+        const errorMessage = realtimeError instanceof Error ? realtimeError.message : String(realtimeError);
+        if (errorMessage.includes('context deadline exceeded')) {
+          // This is a common timeout error during server restarts - log once
+          console.warn('[Realtime] Send timeout (server may be restarting)');
+        } else {
+          console.warn('[Realtime] Send failed:', errorMessage);
+        }
+        
         res.json({
           success: true, // Return success to avoid client errors
         });

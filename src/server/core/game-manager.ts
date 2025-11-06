@@ -196,8 +196,17 @@ export class GameManager {
     // - If any runners survived (never tagged AND not initial ONI): Runners Win
     // - If all players became ONI (all tagged OR initial ONI): ONI Wins
     // Check original game state for isOni status
+    
+    // Debug: Log player states
+    console.log('[Game End] Player states:');
+    gameState.players.forEach((p) => {
+      console.log(`  ${p.username}: isOni=${p.isOni}, wasTagged=${p.wasTagged}, survivedTime=${p.survivedTime}`);
+    });
+    
     const survivors = gameState.players.filter((p) => !p.wasTagged && !p.isOni);
+    console.log(`[Game End] Survivors: ${survivors.length}`);
     const teamWinner = survivors.length > 0 ? 'runners' : 'oni';
+    console.log(`[Game End] Team winner: ${teamWinner}`);
     
     // Sort players by rank:
     // - For Runners Win: Sort by survival time (descending)

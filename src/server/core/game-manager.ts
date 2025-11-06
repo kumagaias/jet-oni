@@ -193,9 +193,10 @@ export class GameManager {
     });
 
     // Determine team winner:
-    // - If any runners survived (wasTagged=false): Runners Win
-    // - If all players became ONI (all wasTagged=true or initial ONI): ONI Wins
-    const survivors = playerResults.filter((p) => !p.wasTagged);
+    // - If any runners survived (never tagged AND not initial ONI): Runners Win
+    // - If all players became ONI (all tagged OR initial ONI): ONI Wins
+    // Check original game state for isOni status
+    const survivors = gameState.players.filter((p) => !p.wasTagged && !p.isOni);
     const teamWinner = survivors.length > 0 ? 'runners' : 'oni';
     
     // Sort players by rank:

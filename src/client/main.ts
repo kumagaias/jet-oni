@@ -1594,6 +1594,9 @@ async function initGame(): Promise<void> {
         `;
         document.head.appendChild(style);
         
+        // Stop host monitoring to prevent 404 errors
+        hostMonitor.stop();
+        
         // Disconnect from Realtime (don't wait)
         void realtimeSyncManager.disconnect();
         

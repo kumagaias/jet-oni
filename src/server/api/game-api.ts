@@ -483,50 +483,6 @@ router.post(
 );
 
 /**
- * POST /api/game/:id/heartbeat
- * Update host heartbeat timestamp
- */
-router.post(
-  '/api/game/:id/heartbeat',
-  async (
-    req: Request<{ id: string }, { success: boolean; error?: string }>,
-    res: Response<{ success: boolean; error?: string }>
-  ): Promise<void> => {
-    try {
-      const { id } = req.params;
-
-      if (!id) {
-        res.status(400).json({
-          success: false,
-          error: 'Game ID is required',
-        });
-        return;
-      }
-
-      const result = await gameManager.updateHostHeartbeat(id);
-
-      if (!result.success) {
-        res.status(400).json({
-          success: false,
-          error: result.error || 'Failed to update heartbeat',
-        });
-        return;
-      }
-
-      res.json({
-        success: true,
-      });
-    } catch (error) {
-      console.error('Error updating heartbeat:', error);
-      res.status(500).json({
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to update heartbeat',
-      });
-    }
-  }
-);
-
-/**
  * DELETE /api/game/:id
  * Delete a game (host only)
  */

@@ -199,7 +199,15 @@ export class UIResults {
         white-space: nowrap;
         font-size: 16px;
       `;
-      name.textContent = player.username;
+      // Remove "Player " prefix from human player names, keep "AI_" prefix for AI players
+      let displayName = player.username;
+      if (!player.isAI && displayName.startsWith('Player ')) {
+        displayName = displayName.substring(7); // Remove "Player " (7 characters)
+      } else if (!player.isAI && displayName.startsWith('player_')) {
+        // If it's a generated ID like "player_1234567890_abc", show a shortened version
+        displayName = displayName.substring(7, 20); // Show part of the ID
+      }
+      name.textContent = displayName;
       playerRow.appendChild(name);
 
       // Survival time or tag count

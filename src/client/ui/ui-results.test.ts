@@ -72,8 +72,9 @@ describe('UIResults', () => {
       const text = container?.textContent || '';
       
       // Both players should be shown in results
-      expect(text).toContain('Player 1');
-      expect(text).toContain('Player 2');
+      // "Player " prefix is removed, so "Player 1" becomes "1"
+      expect(text).toContain('1');
+      expect(text).toContain('2');
     });
 
     it('should highlight winner', () => {

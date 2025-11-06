@@ -234,50 +234,8 @@ async function initGame(): Promise<void> {
       // Track remote player models (for multiplayer)
       const remotePlayerModels: Map<string, PlayerModel> = new Map();
       
-      // Add AI players when in lobby (will be added when game is created)
-      const addAIPlayers = (count: number) => {
-        for (let i = 0; i < count; i++) {
-          const aiId = `ai-${i}`;
-          
-          // Check if this AI already exists
-          const existingPlayer = gameState.getPlayer(aiId);
-          if (existingPlayer) {
-            continue; // Skip if already exists
-          }
-          
-          // Spread AI players across the map (200x200 area)
-          const startPos = {
-            x: (Math.random() - 0.5) * 200,
-            y: 2,
-            z: (Math.random() - 0.5) * 200,
-          };
-          
-          gameState.updateRemotePlayer({
-            id: aiId,
-            username: `AI-${i + 1}`,
-            position: startPos,
-            velocity: { x: 0, y: 0, z: 0 },
-            rotation: { yaw: 0, pitch: 0 },
-            fuel: MAX_FUEL,
-            isOni: false,
-            isOnSurface: true,
-            isDashing: false,
-            isJetpacking: false,
-            survivedTime: 0,
-            wasTagged: false,
-            beaconCooldown: 0,
-            tagCount: 0,
-            isAI: true, // Mark as AI player
-          });
-          
-          // Create 3D model for AI player
-          const aiModel = new PlayerModel(false);
-          aiModel.setName(`AI-${i + 1}`);
-          aiModel.setPosition(startPos.x, startPos.y, startPos.z);
-          gameEngine.addToScene(aiModel.getModel());
-          aiPlayerModels.set(aiId, aiModel);
-        }
-      };
+      // Lobby AI players are no longer created on client side
+      // They will be created by the server when the game starts
       
       // Create debug info element (initially hidden)
       const debugInfo = document.createElement('div');
@@ -540,12 +498,7 @@ async function initGame(): Promise<void> {
           }
           
           // Update tag system (check for tags between players)
-          const tagEvent = tagSystem.update(deltaTime);
-          
-          // Handle tag event if it occurred
-          if (tagEvent) {
-            console.log(`Tag event: ${tagEvent.taggerId} tagged ${tagEvent.taggedId}`);
-          }
+          tagSystem.update(deltaTime);
         }
         
         // Apply physics to AI players and update models (host only)
@@ -907,7 +860,6 @@ async function initGame(): Promise<void> {
       
       // Register callback for player disconnection
       realtimeSyncManager.onPlayerDisconnect(async (playerId) => {
-        
         // If we have a current game, notify server to replace with AI
         if (currentGameId) {
           try {
@@ -918,8 +870,7 @@ async function initGame(): Promise<void> {
         }
       });
       
-      // Track if game has started to filter out old AI players
-      let gameHasStartedFlag = false;
+
       
       // Register callback for remote player updates
       realtimeSyncManager.onRemotePlayerUpdate((remotePlayers) => {
@@ -932,15 +883,21 @@ async function initGame(): Promise<void> {
         for (const remotePlayer of remotePlayers) {
           const isAIPlayer = remotePlayer.isAI ?? false;
           
-          // Skip AI players if we're the host (host manages AI locally)
+          // Host: Update AI player state (especially isOni) but don't create models
           if (isHost && isAIPlayer) {
-            continue;
-          }
-          
-          // Skip old lobby AI players (ai-0, ai-1, etc.) after game has started
-          // These are temporary lobby AIs that should not appear in the actual game
-          if (gameHasStartedFlag && remotePlayer.id.startsWith('ai-')) {
-            // Silently ignore old lobby AI players
+            // Update AI player state in GameState (for tag events)
+            const aiPlayer = gameState.getPlayer(remotePlayer.id);
+            if (aiPlayer) {
+              aiPlayer.isOni = remotePlayer.isOni;
+              aiPlayer.wasTagged = remotePlayer.wasTagged;
+              aiPlayer.survivedTime = remotePlayer.survivedTime;
+              
+              // Update AI model
+              const aiModel = aiPlayerModels.get(remotePlayer.id);
+              if (aiModel) {
+                aiModel.setIsOni(remotePlayer.isOni);
+              }
+            }
             continue;
           }
           
@@ -1033,6 +990,25 @@ async function initGame(): Promise<void> {
         } else {
           // Show tag event to all other players
           toast.show(`${taggedName} tagged by ${taggerName}!`, 'info', 3000);
+        }
+        
+        // Send updated state to Realtime immediately for the tagged player
+        if (tagged && currentGameId && realtimeSyncManager.isConnected()) {
+          realtimeSyncManager.sendPlayerState({
+            position: tagged.position,
+            velocity: tagged.velocity,
+            rotation: tagged.rotation,
+            fuel: tagged.fuel,
+            isOni: tagged.isOni, // Now ONI
+            isDashing: tagged.isDashing,
+            isJetpacking: tagged.isJetpacking,
+            isOnSurface: tagged.isOnSurface,
+            beaconCooldown: tagged.beaconCooldown,
+            survivedTime: tagged.survivedTime,
+            wasTagged: tagged.wasTagged,
+            isCloaked: false,
+            isAI: tagged.isAI,
+          }, tagged.id);
         }
       });
       
@@ -1156,7 +1132,7 @@ async function initGame(): Promise<void> {
         }
         gameStarted = true;
         
-        console.log(`[Game Start] isHost: ${isHost}, aiPlayerModels size before clear: ${aiPlayerModels.size}`);
+        console.log(`[Game Start] isHost: ${isHost}, aiPlayerModels size before clear: ${aiPlayerModels.size}, remotePlayerModels size: ${remotePlayerModels.size}`);
         
         // Clear all remote player models from previous game
         for (const [playerId, model] of remotePlayerModels.entries()) {
@@ -1179,8 +1155,7 @@ async function initGame(): Promise<void> {
         // Clear all remote players from game state
         gameState.clearRemotePlayers();
         
-        // Set flag to filter out old lobby AI players
-        gameHasStartedFlag = true;
+
         
         // Regenerate city with gameId as seed for consistent map across all players
         if (customEvent.detail?.gameId) {
@@ -1241,7 +1216,6 @@ async function initGame(): Promise<void> {
         if (currentGameId) {
           try {
             const serverGameState = await gameApiClient.getGameState(currentGameId);
-            console.log(`[Game Start] Server game state: ${serverGameState.players.length} players`, serverGameState.players.map(p => ({ id: p.id, username: p.username, isAI: p.isAI, isOni: p.isOni })));
             const localPlayer = gameState.getLocalPlayer();
             
             // Find the server player that matches the local player's username
@@ -1260,11 +1234,9 @@ async function initGame(): Promise<void> {
             
             // Update local game state with server players
             const updatedLocalPlayerId = matchingServerPlayer?.id || localPlayer.id;
-            console.log(`[Game Start] Processing ${serverGameState.players.length} players from server, local player ID: ${updatedLocalPlayerId}`);
             
             for (const player of serverGameState.players) {
               if (player.id !== updatedLocalPlayerId) {
-                console.log(`[Game Start] Adding player: ${player.id}, isAI: ${player.isAI}, isHost: ${isHost}`);
                 // Set random spawn position for each player (spread across entire map)
                 const spawnX = (Math.random() - 0.5) * 360; // Random X between -180 and 180
                 const spawnZ = (Math.random() - 0.5) * 360; // Random Z between -180 and 180
@@ -1289,6 +1261,7 @@ async function initGame(): Promise<void> {
                     aiModel.setIsOni(player.isOni);
                     gameEngine.addToScene(aiModel.getModel());
                     aiPlayerModels.set(player.id, aiModel);
+                    console.log(`[Game Start] Created AI model for ${player.id} at (${spawnPosition.x}, ${spawnPosition.y}, ${spawnPosition.z})`);
                   }
                 } else {
                   // Non-host or human player: Add to remotePlayerModels
@@ -1313,6 +1286,8 @@ async function initGame(): Promise<void> {
           const finalPlayers = gameState.getAllPlayers();
           console.log(`[Game Start] Final player count: ${finalPlayers.length}`, finalPlayers.map(p => ({ id: p.id, isAI: p.isAI })));
         }
+        
+        console.log(`[Game Start] After server fetch - aiPlayerModels size: ${aiPlayerModels.size}, remotePlayerModels size: ${remotePlayerModels.size}`);
         
         gameState.setGamePhase('playing');
         gameHasStarted = true; // Mark that game has started
@@ -1557,10 +1532,8 @@ async function initGame(): Promise<void> {
         }
         
         // Add AI players to fill remaining slots
-        const aiCount = maxPlayers - currentPlayers;
-        if (aiCount > 0) {
-          addAIPlayers(aiCount);
-        }
+        // AI players will be added by the server when the game starts
+        // No need to create them in the lobby
         
         // Show lobby with human player count only (not including AI)
         uiMenu.showLobbyScreen(currentPlayers, maxPlayers, isHostFlag);

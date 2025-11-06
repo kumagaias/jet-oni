@@ -111,7 +111,7 @@ export class GameAPIClient {
     } as UpdatePlayerStateRequest;
     
     const response = await this.post<UpdatePlayerStateResponse>(
-      `/api/game/${gameId}/update`,
+      `/game/${gameId}/update`,
       request
     );
     
@@ -127,7 +127,7 @@ export class GameAPIClient {
    * End the game and get results
    */
   async endGame(gameId: string): Promise<EndGameResponse> {
-    return this.post<EndGameResponse>(`/api/game/${gameId}/end`, {});
+    return this.post<EndGameResponse>(`/game/${gameId}/end`, {});
   }
 
   /**

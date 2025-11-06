@@ -201,6 +201,13 @@ export class GameState {
   }
 
   /**
+   * Set local player tag count
+   */
+  public setLocalPlayerTagCount(tagCount: number): void {
+    this.localPlayer.tagCount = tagCount;
+  }
+
+  /**
    * Get local player speed based on state
    */
   public getLocalPlayerSpeed(): number {

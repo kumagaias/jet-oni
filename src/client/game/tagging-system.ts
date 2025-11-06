@@ -103,13 +103,21 @@ export class TaggingSystem {
    */
   private tagPlayer(taggerId: string, taggedId: string): TagEvent {
     const taggedPlayer = this.gameState.getPlayer(taggedId);
+    const taggerPlayer = this.gameState.getPlayer(taggerId);
     
     if (!taggedPlayer) {
       throw new Error(`Player ${taggedId} not found`);
     }
+    
+    if (!taggerPlayer) {
+      throw new Error(`Player ${taggerId} not found`);
+    }
 
     // Record survival time before converting
     const survivedTime = taggedPlayer.survivedTime;
+
+    // Increment tagger's tag count
+    this.incrementTagCount(taggerId);
 
     // Create tag event
     const tagEvent: TagEvent = {
@@ -126,6 +134,24 @@ export class TaggingSystem {
     this.tagEvents.push(tagEvent);
 
     return tagEvent;
+  }
+  
+  /**
+   * Increment tag count for a player
+   */
+  private incrementTagCount(playerId: string): void {
+    const localPlayer = this.gameState.getLocalPlayer();
+    
+    if (playerId === localPlayer.id) {
+      // Increment local player tag count
+      this.gameState.setLocalPlayerTagCount((localPlayer.tagCount || 0) + 1);
+    } else {
+      // Increment remote player tag count
+      const player = this.gameState.getRemotePlayer(playerId);
+      if (player) {
+        player.tagCount = (player.tagCount || 0) + 1;
+      }
+    }
   }
 
   /**

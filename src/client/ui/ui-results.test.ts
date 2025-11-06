@@ -1,60 +1,44 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { UIResults } from './ui-results';
-import { GameResults } from '../game/game-results';
 import { I18n } from '../i18n/i18n';
-import { Player } from '../../shared/types/game';
+import type { GameResults, PlayerResult } from '../../shared/types/api';
 
 describe('UIResults', () => {
   let uiResults: UIResults;
-  let gameResults: GameResults;
+  let results: GameResults;
   let i18n: I18n;
-  let players: Player[];
 
   beforeEach(() => {
     // Setup DOM
     document.body.innerHTML = '';
     
     // Create instances
-    gameResults = new GameResults();
     i18n = new I18n('en');
-    uiResults = new UIResults(gameResults, i18n);
     
-    // Create test players
-    players = [
-      {
-        id: 'player1',
-        username: 'Player 1',
-        isOni: false,
-        isAI: false,
-        position: { x: 0, y: 0, z: 0 },
-        velocity: { x: 0, y: 0, z: 0 },
-        rotation: { yaw: 0, pitch: 0 },
-        fuel: 100,
-        survivedTime: 120,
-        wasTagged: false,
-        isOnSurface: true,
-        isDashing: false,
-        isJetpacking: false,
-        beaconCooldown: 0,
-      },
-      {
-        id: 'player2',
-        username: 'Player 2',
-        isOni: true,
-        isAI: false,
-        position: { x: 0, y: 0, z: 0 },
-        velocity: { x: 0, y: 0, z: 0 },
-        fuel: 100,
-        survivedTime: 60,
-        wasTagged: true,
-        isOnSurface: true,
-        isDashing: false,
-        isJetpacking: false,
-        beaconCooldown: 0,
-      },
-    ];
+    // Create test results (Runners Win scenario)
+    results = {
+      teamWinner: 'runners',
+      players: [
+        {
+          id: 'player1',
+          username: 'Player 1',
+          survivedTime: 120,
+          wasTagged: false,
+          isAI: false,
+          tagCount: 0,
+        },
+        {
+          id: 'player2',
+          username: 'Player 2',
+          survivedTime: 60,
+          wasTagged: true,
+          isAI: false,
+          tagCount: 1,
+        },
+      ],
+    };
     
-    gameResults.setResults(players, 'timeout');
+    uiResults = new UIResults(results, i18n);
   });
 
   afterEach(() => {
@@ -80,17 +64,16 @@ describe('UIResults', () => {
       expect(container?.style.display).toBe('flex');
     });
 
-    it('should display player list sorted by survival time', () => {
+    it('should display all players in results', () => {
       uiResults.create();
       uiResults.show('player1');
       
       const container = document.getElementById('results-screen');
       const text = container?.textContent || '';
       
-      // Player 1 escaped, so Runners win and only escaped players are shown
+      // Both players should be shown in results
       expect(text).toContain('Player 1');
-      // Player 2 was tagged, so they are not shown (ONI lost)
-      expect(text).not.toContain('Player 2');
+      expect(text).toContain('Player 2');
     });
 
     it('should highlight winner', () => {

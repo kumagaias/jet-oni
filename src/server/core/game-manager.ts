@@ -166,47 +166,57 @@ export class GameManager {
     const gameDuration = (gameEndTime - gameStartTime) / 1000; // Convert to seconds
 
     // Calculate results
-    const playerResults: PlayerResult[] = gameState.players.map((player) => ({
-      id: player.id,
-      username: player.username,
-      // For runners who weren't tagged, survival time is the full game duration
-      // For players who were tagged, use their recorded survival time
-      // For ONI players (isOni=true and wasTagged=false), survival time is 0
-      survivedTime: player.isOni && !player.wasTagged 
-        ? 0 
-        : player.wasTagged 
-          ? (player.survivedTime || 0) 
-          : gameDuration,
-      wasTagged: player.wasTagged,
-      isAI: player.isAI,
-    }));
-
-    // Sort by survival time (descending)
-    playerResults.sort((a, b) => b.survivedTime - a.survivedTime);
-
-    // Determine winner:
-    // - If there are survivors (runners who weren't tagged): longest survivor wins
-    // - If all players became oni: the one who was oni longest (tagged first) wins
-    let winnerCandidate: PlayerResult | undefined;
-    
-    const survivors = playerResults.filter((p) => !p.wasTagged);
-    if (survivors.length > 0) {
-      // Longest survivor wins
-      winnerCandidate = survivors[0];
-    } else {
-      // All players became oni, the one who was oni longest (tagged first = highest survivedTime) wins
-      const taggedPlayers = playerResults.filter((p) => p.wasTagged);
-      if (taggedPlayers.length > 0) {
-        winnerCandidate = taggedPlayers[0]; // Already sorted by survivedTime descending
-      } else {
-        // Fallback
-        winnerCandidate = playerResults[0];
+    const playerResults: PlayerResult[] = gameState.players.map((player) => {
+      // Calculate survival time:
+      // - For initial ONI (wasTagged=false, isOni=true): 0 seconds
+      // - For runners who survived (wasTagged=false, isOni=false): full game duration
+      // - For tagged players (wasTagged=true): their recorded survival time
+      let survivedTime = 0;
+      
+      if (!player.wasTagged && !player.isOni) {
+        // Runner who survived the entire game
+        survivedTime = gameDuration;
+      } else if (player.wasTagged) {
+        // Player who was tagged - use their recorded survival time
+        survivedTime = player.survivedTime || 0;
       }
+      // else: Initial ONI - survivedTime remains 0
+      
+      return {
+        id: player.id,
+        username: player.username,
+        survivedTime,
+        wasTagged: player.wasTagged,
+        isAI: player.isAI,
+        tagCount: player.tagCount || 0,
+      };
+    });
+
+    // Determine team winner:
+    // - If any runners survived (wasTagged=false): Runners Win
+    // - If all players became ONI (all wasTagged=true or initial ONI): ONI Wins
+    const survivors = playerResults.filter((p) => !p.wasTagged);
+    const teamWinner = survivors.length > 0 ? 'runners' : 'oni';
+    
+    // Sort players by rank:
+    // - For Runners Win: Sort by survival time (descending)
+    // - For ONI Win: Sort by tag count (descending), then by survival time (ascending - tagged first)
+    if (teamWinner === 'runners') {
+      playerResults.sort((a, b) => b.survivedTime - a.survivedTime);
+    } else {
+      playerResults.sort((a, b) => {
+        // First sort by tag count (descending)
+        const tagDiff = (b.tagCount || 0) - (a.tagCount || 0);
+        if (tagDiff !== 0) return tagDiff;
+        
+        // Then by survival time (ascending - who was ONI longest)
+        return a.survivedTime - b.survivedTime;
+      });
     }
 
     const results: GameResults = {
       players: playerResults,
-      ...(winnerCandidate && { winner: winnerCandidate }),
+      teamWinner,
     };
 
     await this.saveGameState(gameState);
@@ -224,17 +234,18 @@ export class GameManager {
     gameId: string,
     playerId: string,
     state: {
-      position: Vector3;
-      velocity: Vector3;
-      rotation: Rotation;
-      fuel: number;
-      isOni: boolean;
-      isDashing: boolean;
-      isJetpacking: boolean;
-      isOnSurface: boolean;
-      beaconCooldown: number;
-      survivedTime: number;
-      wasTagged: boolean;
+      position?: Vector3;
+      velocity?: Vector3;
+      rotation?: Rotation;
+      fuel?: number;
+      isOni?: boolean;
+      isDashing?: boolean;
+      isJetpacking?: boolean;
+      isOnSurface?: boolean;
+      beaconCooldown?: number;
+      survivedTime?: number;
+      wasTagged?: boolean;
+      tagCount?: number;
     }
   ): Promise<{ success: boolean; error?: string }> {
     const gameState = await this.getGameState(gameId);
@@ -259,29 +270,29 @@ export class GameManager {
       return { success: false, error: 'Player not found in game' };
     }
 
-    // Validate and sanitize state
-    if (!StateValidator.isValidVector(state.position)) {
+    // Validate and sanitize state (only if provided)
+    if (state.position && !StateValidator.isValidVector(state.position)) {
       return { success: false, error: 'Invalid position values' };
     }
 
-    if (!StateValidator.isValidVector(state.velocity)) {
+    if (state.velocity && !StateValidator.isValidVector(state.velocity)) {
       return { success: false, error: 'Invalid velocity values' };
     }
 
-    if (!StateValidator.isValidRotation(state.rotation)) {
+    if (state.rotation && !StateValidator.isValidRotation(state.rotation)) {
       return { success: false, error: 'Invalid rotation values' };
     }
 
-    if (!StateValidator.isValidNumber(state.fuel)) {
+    if (state.fuel !== undefined && !StateValidator.isValidNumber(state.fuel)) {
       return { success: false, error: 'Invalid fuel value' };
     }
 
-    // Apply validation and clamping
-    const validatedPosition = StateValidator.validatePosition(state.position);
-    const validatedVelocity = StateValidator.validateVelocity(state.velocity);
-    const validatedRotation = StateValidator.validateRotation(state.rotation);
-    const validatedFuel = StateValidator.validateFuel(state.fuel);
-    const validatedBeaconCooldown = StateValidator.validateBeaconCooldown(state.beaconCooldown);
+    // Apply validation and clamping (only if provided)
+    const validatedPosition = state.position ? StateValidator.validatePosition(state.position) : undefined;
+    const validatedVelocity = state.velocity ? StateValidator.validateVelocity(state.velocity) : undefined;
+    const validatedRotation = state.rotation ? StateValidator.validateRotation(state.rotation) : undefined;
+    const validatedFuel = state.fuel !== undefined ? StateValidator.validateFuel(state.fuel) : undefined;
+    const validatedBeaconCooldown = state.beaconCooldown !== undefined ? StateValidator.validateBeaconCooldown(state.beaconCooldown) : undefined;
 
     // Update player state
     const existingPlayer = gameState.players[playerIndex];
@@ -291,17 +302,18 @@ export class GameManager {
 
     gameState.players[playerIndex] = {
       ...existingPlayer,
-      position: validatedPosition,
-      velocity: validatedVelocity,
-      rotation: validatedRotation,
-      fuel: validatedFuel,
+      position: validatedPosition ?? existingPlayer.position,
+      velocity: validatedVelocity ?? existingPlayer.velocity,
+      rotation: validatedRotation ?? existingPlayer.rotation,
+      fuel: validatedFuel ?? existingPlayer.fuel,
       isOni: state.isOni ?? existingPlayer.isOni,
       isDashing: state.isDashing ?? existingPlayer.isDashing,
       isJetpacking: state.isJetpacking ?? existingPlayer.isJetpacking,
       isOnSurface: state.isOnSurface ?? existingPlayer.isOnSurface,
-      beaconCooldown: validatedBeaconCooldown,
+      beaconCooldown: validatedBeaconCooldown ?? existingPlayer.beaconCooldown,
       survivedTime: state.survivedTime ?? existingPlayer.survivedTime,
       wasTagged: state.wasTagged ?? existingPlayer.wasTagged,
+      tagCount: state.tagCount ?? existingPlayer.tagCount ?? 0,
     };
 
     await this.saveGameState(gameState);

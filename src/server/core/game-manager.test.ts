@@ -307,8 +307,8 @@ describe('GameManager', () => {
 
       expect(results).toBeDefined();
       expect(results?.players).toHaveLength(3);
-      expect(results?.winner).toBeDefined();
-      expect(results?.winner?.username).toBe('Player2');
+      expect(results?.teamWinner).toBe('runners'); // Player2 survived
+      expect(results?.players[0].username).toBe('Player2'); // Top player
       expect(mockRedis.zRem).toHaveBeenCalled();
     });
 
@@ -471,8 +471,10 @@ describe('GameManager', () => {
       expect(oni).toBeDefined();
       expect(oni?.survivedTime).toBe(0);
       
-      // Winner should be the survivor (longest survival time)
-      expect(results?.winner?.username).toBe('Survivor');
+      // Team winner should be runners (survivor exists)
+      expect(results?.teamWinner).toBe('runners');
+      // Top player should be the survivor (longest survival time)
+      expect(results?.players[0].username).toBe('Survivor');
     });
   });
 

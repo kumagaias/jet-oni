@@ -827,6 +827,13 @@ async function initGame(): Promise<void> {
         // Update debug info
         const oniSpawnItemsCount = oniSpawnItem.getPlacedItems().length;
         
+        // Get AI player info
+        const aiPlayers = gameState.getAllPlayers().filter(p => p.isAI);
+        const aiInfo = aiPlayers.map(ai => {
+          const speed = Math.sqrt(ai.velocity.x ** 2 + ai.velocity.z ** 2);
+          return `${ai.username}: ${ai.isOni ? 'ONI' : 'RUN'} spd=${speed.toFixed(1)}`;
+        }).join('<br>          ');
+        
         debugInfo.innerHTML = `
           <strong>[DEBUG MODE]</strong><br>
           Role: ${localPlayer.isOni ? 'ONI' : 'RUNNER'}<br>
@@ -838,6 +845,7 @@ async function initGame(): Promise<void> {
           Dashing: ${localPlayer.isDashing ? 'Yes' : 'No'}<br>
           Climbing: ${localPlayer.isClimbing ? 'Yes' : 'No'}<br>
           ${localPlayer.isOni ? `ONI Spawn Items: ${oniSpawnItemsCount}<br>` : ''}
+          ${aiPlayers.length > 0 ? `<br><strong>AI Players (${aiPlayers.length}):</strong><br>          ${aiInfo}<br>` : ''}
           <br>
           <strong>F3:</strong> Toggle ONI/Runner${localPlayer.isOni ? '<br><strong>Collect ONI spawn items to summon AI ONI</strong>' : ''}
         `;
@@ -1600,9 +1608,13 @@ async function initGame(): Promise<void> {
             
             const updatePromises = allPlayers.map(player => 
               gameApiClient.updatePlayerState(currentGameId, player.id, {
+                position: player.position,
+                velocity: player.velocity,
+                rotation: player.rotation,
+                fuel: player.fuel,
+                isOni: player.isOni,
                 survivedTime: player.survivedTime,
                 wasTagged: player.wasTagged,
-                isOni: player.isOni,
                 tagCount: player.tagCount,
               }).catch(error => {
                 console.error(`Failed to update player ${player.id} state:`, error);
@@ -1625,35 +1637,9 @@ async function initGame(): Promise<void> {
             if (endGameResponse.success && endGameResponse.results) {
               console.log('[Game End] Showing results screen...');
               const { UIResults } = await import('./ui/ui-results');
-              const { GameResults } = await import('./game/game-results');
-              const gameResults = new GameResults();
               
-              // Convert PlayerResult[] to Player[] for GameResults
-              // Use server data for username and stats, merge with local player data
-              const players = endGameResponse.results.players.map(serverPlayer => {
-                const localPlayer = gameState.getPlayer(serverPlayer.id);
-                return {
-                  id: serverPlayer.id,
-                  username: serverPlayer.username, // Use server username (Reddit username)
-                  position: localPlayer?.position || { x: 0, y: 0, z: 0 },
-                  velocity: localPlayer?.velocity || { x: 0, y: 0, z: 0 },
-                  rotation: localPlayer?.rotation || { yaw: 0, pitch: 0 },
-                  fuel: localPlayer?.fuel || 100,
-                  isOni: localPlayer?.isOni || false,
-                  isAI: serverPlayer.isAI || false,
-                  survivedTime: serverPlayer.survivedTime,
-                  wasTagged: serverPlayer.wasTagged,
-                  tagCount: serverPlayer.tagCount || 0,
-                  isDashing: false,
-                  isJetpacking: false,
-                  isOnSurface: true,
-                  beaconCooldown: 0,
-                  isClimbing: false,
-                };
-              });
-              
-              gameResults.setResults(players, null);
-              const uiResults = new UIResults(gameResults, i18n);
+              // Use server results directly
+              const uiResults = new UIResults(endGameResponse.results, i18n);
               uiResults.create();
               
               // Track if already returning to menu to prevent duplicate calls

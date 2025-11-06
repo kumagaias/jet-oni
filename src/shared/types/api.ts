@@ -31,18 +31,20 @@ export interface JoinGameRequest {
 }
 
 export interface UpdatePlayerStateRequest {
+  gameId?: string;
   playerId: string;
-  position: { x: number; y: number; z: number };
-  velocity: { x: number; y: number; z: number };
-  rotation: { yaw: number; pitch: number };
-  fuel: number;
-  isOni: boolean;
-  isDashing: boolean;
-  isJetpacking: boolean;
-  isOnSurface: boolean;
-  beaconCooldown: number;
-  survivedTime: number;
-  wasTagged: boolean;
+  position?: { x: number; y: number; z: number };
+  velocity?: { x: number; y: number; z: number };
+  rotation?: { yaw: number; pitch: number };
+  fuel?: number;
+  isOni?: boolean;
+  isDashing?: boolean;
+  isJetpacking?: boolean;
+  isOnSurface?: boolean;
+  beaconCooldown?: number;
+  survivedTime?: number;
+  wasTagged?: boolean;
+  tagCount?: number;
 }
 
 export interface EndGameRequest {
@@ -122,7 +124,7 @@ export interface GameListItem {
 
 export interface GameResults {
   players: PlayerResult[];
-  winner?: PlayerResult;
+  teamWinner: 'runners' | 'oni';
 }
 
 export interface PlayerResult {

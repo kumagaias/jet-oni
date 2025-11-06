@@ -229,6 +229,7 @@ router.post(
         beaconCooldown,
         survivedTime,
         wasTagged,
+        tagCount,
       } = req.body;
 
       if (!id) {
@@ -247,10 +248,12 @@ router.post(
         return;
       }
 
-      if (!position || !velocity || !rotation) {
+      // Position, velocity, and rotation are optional for game-end updates
+      // Only validate if they are provided
+      if (position && (!position.x && position.x !== 0 || !position.y && position.y !== 0 || !position.z && position.z !== 0)) {
         res.status(400).json({
           success: false,
-          error: 'Position, velocity, and rotation are required',
+          error: 'Invalid position data',
         });
         return;
       }
@@ -267,6 +270,7 @@ router.post(
         beaconCooldown,
         survivedTime,
         wasTagged,
+        tagCount,
       });
 
       if (!result.success) {

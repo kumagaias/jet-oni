@@ -1,17 +1,17 @@
-import { GameResults } from '../game/game-results';
 import { I18n } from '../i18n/i18n';
+import type { GameResults as ServerGameResults, PlayerResult } from '../../shared/types/api';
 
 /**
  * UIResults manages the game results screen
  */
 export class UIResults {
   private container: HTMLElement | null = null;
-  private gameResults: GameResults;
+  private results: ServerGameResults;
   private i18n: I18n;
   private onBackToMenu: (() => void) | null = null;
 
-  constructor(gameResults: GameResults, i18n: I18n) {
-    this.gameResults = gameResults;
+  constructor(results: ServerGameResults, i18n: I18n) {
+    this.results = results;
     this.i18n = i18n;
   }
 
@@ -46,15 +46,11 @@ export class UIResults {
       return;
     }
 
-    const sortedPlayers = this.gameResults.getSortedPlayers();
+    // Use server-provided team winner
+    const runnersWin = this.results.teamWinner === 'runners';
     
-    // Get players who survived as runners (never tagged AND not ONI at end)
-    const survivedRunners = sortedPlayers.filter(p => !p.wasTagged && !p.isOni);
-    
-    // Get ONI players (only original ONI - not tagged, sorted by tag count)
-    const oniPlayers = sortedPlayers
-      .filter(p => p.isOni && !p.wasTagged) // Only original ONI (not tagged)
-      .sort((a, b) => b.tagCount - a.tagCount); // Sort by tag count
+    // Players are already sorted by server
+    const sortedPlayers = this.results.players;
 
     // Clear previous content
     this.container.innerHTML = '';
@@ -86,9 +82,6 @@ export class UIResults {
       font-size: 28px;
     `;
     panel.appendChild(title);
-
-    // Determine winner: Runners win if anyone survived as runner, otherwise ONI wins
-    const runnersWin = survivedRunners.length > 0;
     
     // Victory image
     const victoryImage = document.createElement('img');
@@ -130,12 +123,8 @@ export class UIResults {
 
     panel.appendChild(winnerBox);
 
-    // Show player list based on who won
-    // Runners win: Show all runners who survived (sorted by survive time)
-    // ONI win: Show only ONI players (sorted by tag count)
-    const playersToShow = runnersWin 
-      ? survivedRunners.sort((a, b) => b.survivedTime - a.survivedTime)
-      : oniPlayers;
+    // Show all players (already sorted by server)
+    const playersToShow = sortedPlayers;
     
     // Create container for player list (no fixed height, will scroll with panel)
     const playerListContainer = document.createElement('div');

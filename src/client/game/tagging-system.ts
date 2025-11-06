@@ -146,10 +146,13 @@ export class TaggingSystem {
       // Increment local player tag count
       this.gameState.setLocalPlayerTagCount((localPlayer.tagCount || 0) + 1);
     } else {
-      // Increment remote player tag count
-      const player = this.gameState.getRemotePlayer(playerId);
+      // Increment remote/AI player tag count
+      const player = this.gameState.getPlayer(playerId);
       if (player) {
-        player.tagCount = (player.tagCount || 0) + 1;
+        this.gameState.updateRemotePlayer({
+          ...player,
+          tagCount: (player.tagCount || 0) + 1,
+        });
       }
     }
   }
@@ -174,14 +177,21 @@ export class TaggingSystem {
         this.beaconSystem.onBecameOni();
       }
     } else {
-      // Convert remote player to oni
-      const player = this.gameState.getRemotePlayer(playerId);
+      // Convert remote/AI player to oni
+      // Use updateRemotePlayer to ensure the player state is properly updated
+      const player = this.gameState.getPlayer(playerId);
       if (player) {
-        player.isOni = true;
-        player.wasTagged = true;
-        player.survivedTime = survivedTime;
-        player.isDashing = false;
-        // Note: Remote player beacon cooldown is managed on their client
+        // Update the player state with new ONI status
+        this.gameState.updateRemotePlayer({
+          ...player,
+          isOni: true,
+          wasTagged: true,
+          survivedTime: survivedTime,
+          isDashing: false,
+        });
+        console.log(`[Tag] Converted ${player.username} (AI: ${player.isAI}) to ONI`);
+      } else {
+        console.warn(`[Tag] Failed to convert player ${playerId} to ONI - player not found`);
       }
     }
   }

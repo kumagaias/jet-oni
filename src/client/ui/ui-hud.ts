@@ -290,15 +290,22 @@ export class UIHud {
     const runnerCount = this.gameState.countRunnerPlayers();
     const totalCount = this.gameState.getAllPlayers().length;
 
-    // Debug log when count seems wrong
-    if (oniCount + runnerCount !== totalCount) {
-      console.warn(`[DEBUG] Player count mismatch! ONI: ${oniCount}, Runners: ${runnerCount}, Total: ${totalCount}`);
-      console.warn(`[DEBUG] All players:`, this.gameState.getAllPlayers().map(p => ({
-        id: p.id,
-        username: p.username,
-        isOni: p.isOni,
-        isAI: p.isAI
-      })));
+    // Always log player count for debugging
+    console.warn(`[HUD] ONI: ${oniCount}, Runners: ${runnerCount}, Total: ${totalCount}`);
+    console.warn(`[HUD] All players:`, this.gameState.getAllPlayers().map(p => ({
+      id: p.id,
+      username: p.username,
+      isOni: p.isOni,
+      isAI: p.isAI
+    })));
+    
+    // Check for duplicate player IDs
+    const playerIds = this.gameState.getAllPlayers().map(p => p.id);
+    const uniqueIds = new Set(playerIds);
+    if (playerIds.length !== uniqueIds.size) {
+      console.error(`[HUD] Duplicate player IDs detected!`);
+      const duplicates = playerIds.filter((id, index) => playerIds.indexOf(id) !== index);
+      console.error(`[HUD] Duplicate IDs:`, duplicates);
     }
 
     this.playerCountElement.textContent = this.i18n.t('hud.playerCount', {

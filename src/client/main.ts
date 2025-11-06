@@ -365,7 +365,7 @@ async function initGame(): Promise<void> {
       // Track previous ONI state to detect changes
       let wasOni = gameState.getLocalPlayer().isOni;
       let gameHasStarted = false;
-      let gameStartTime = 0;
+      let gameStartTime = 0; // Track game start time for timer sync
       let lastTimerSync = 0; // Track last timer sync time
       
       // Setup game loop
@@ -537,11 +537,6 @@ async function initGame(): Promise<void> {
           // Update AI controller (host only)
           if (isHost) {
             aiController.update(deltaTime);
-            
-            // Debug: Log AI update (throttled)
-            if (Math.random() < 0.01) {
-              console.log(`[AI Debug] AI controller updated, aiPlayerModels size: ${aiPlayerModels.size}`);
-            }
           }
           
           // Update tag system (check for tags between players)
@@ -555,13 +550,6 @@ async function initGame(): Promise<void> {
         
         // Apply physics to AI players and update models (host only)
         if (isHost) {
-          // Debug: Log AI physics loop (throttled)
-          if (Math.random() < 0.01) {
-            const allPlayers = gameState.getAllPlayers();
-            const aiPlayers = allPlayers.filter(p => p.isAI);
-            console.log(`[AI Debug] AI physics loop, aiPlayerModels size: ${aiPlayerModels.size}, AI in GameState: ${aiPlayers.length}`);
-          }
-          
           for (const [aiId, aiModel] of aiPlayerModels) {
             const aiPlayer = gameState.getPlayer(aiId);
             if (!aiPlayer) {
@@ -930,6 +918,9 @@ async function initGame(): Promise<void> {
         }
       });
       
+      // Track if game has started to filter out old AI players
+      let gameHasStartedFlag = false;
+      
       // Register callback for remote player updates
       realtimeSyncManager.onRemotePlayerUpdate((remotePlayers) => {
         // Skip if no remote players (avoid clearing game state during connection)
@@ -943,6 +934,13 @@ async function initGame(): Promise<void> {
           
           // Skip AI players if we're the host (host manages AI locally)
           if (isHost && isAIPlayer) {
+            continue;
+          }
+          
+          // Skip old lobby AI players (ai-0, ai-1, etc.) after game has started
+          // These are temporary lobby AIs that should not appear in the actual game
+          if (gameHasStartedFlag && remotePlayer.id.startsWith('ai-')) {
+            // Silently ignore old lobby AI players
             continue;
           }
           
@@ -1173,16 +1171,16 @@ async function initGame(): Promise<void> {
         }
         aiPlayerModels.clear();
         
-        // Clear all remote players from game state
-        const allPlayers = gameState.getAllPlayers();
-        for (const player of allPlayers) {
-          // Remove all players except local player
-          if (player.id !== gameState.getLocalPlayer().id) {
-            gameState.removePlayer(player.id);
-          }
+        // Reset AI controller (host only)
+        if (isHost) {
+          aiController.reset();
         }
         
-        console.log(`[Game Start] aiPlayerModels size after: ${aiPlayerModels.size}`);
+        // Clear all remote players from game state
+        gameState.clearRemotePlayers();
+        
+        // Set flag to filter out old lobby AI players
+        gameHasStartedFlag = true;
         
         // Regenerate city with gameId as seed for consistent map across all players
         if (customEvent.detail?.gameId) {
@@ -1243,6 +1241,7 @@ async function initGame(): Promise<void> {
         if (currentGameId) {
           try {
             const serverGameState = await gameApiClient.getGameState(currentGameId);
+            console.log(`[Game Start] Server game state: ${serverGameState.players.length} players`, serverGameState.players.map(p => ({ id: p.id, username: p.username, isAI: p.isAI, isOni: p.isOni })));
             const localPlayer = gameState.getLocalPlayer();
             
             // Find the server player that matches the local player's username
@@ -1261,8 +1260,11 @@ async function initGame(): Promise<void> {
             
             // Update local game state with server players
             const updatedLocalPlayerId = matchingServerPlayer?.id || localPlayer.id;
+            console.log(`[Game Start] Processing ${serverGameState.players.length} players from server, local player ID: ${updatedLocalPlayerId}`);
+            
             for (const player of serverGameState.players) {
               if (player.id !== updatedLocalPlayerId) {
+                console.log(`[Game Start] Adding player: ${player.id}, isAI: ${player.isAI}, isHost: ${isHost}`);
                 // Set random spawn position for each player (spread across entire map)
                 const spawnX = (Math.random() - 0.5) * 360; // Random X between -180 and 180
                 const spawnZ = (Math.random() - 0.5) * 360; // Random Z between -180 and 180
@@ -1306,6 +1308,10 @@ async function initGame(): Promise<void> {
           } catch (error) {
             console.error('Failed to fetch game state from server:', error);
           }
+          
+          // Log final player count after server sync
+          const finalPlayers = gameState.getAllPlayers();
+          console.log(`[Game Start] Final player count: ${finalPlayers.length}`, finalPlayers.map(p => ({ id: p.id, isAI: p.isAI })));
         }
         
         gameState.setGamePhase('playing');

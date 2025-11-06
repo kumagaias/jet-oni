@@ -292,12 +292,12 @@ export class GameState {
         rotation: this.localPlayer.rotation,
         fuel: this.localPlayer.fuel,
         survivedTime: this.localPlayer.survivedTime,
-        wasTagged: false,
-        tagCount: 0,
+        wasTagged: this.localPlayer.wasTagged,
+        tagCount: this.localPlayer.tagCount || 0,
         isOnSurface: this.localPlayer.isOnSurface,
         isDashing: this.localPlayer.isDashing,
         isJetpacking: this.localPlayer.isJetpacking,
-        beaconCooldown: 0,
+        beaconCooldown: this.localPlayer.beaconCooldown,
       };
     }
     return this.remotePlayers.get(playerId);
@@ -387,12 +387,12 @@ export class GameState {
       rotation: this.localPlayer.rotation,
       fuel: this.localPlayer.fuel,
       survivedTime: this.localPlayer.survivedTime,
-      wasTagged: false,
-      tagCount: 0,
+      wasTagged: this.localPlayer.wasTagged,
+      tagCount: this.localPlayer.tagCount || 0,
       isOnSurface: this.localPlayer.isOnSurface,
       isDashing: this.localPlayer.isDashing,
       isJetpacking: this.localPlayer.isJetpacking,
-      beaconCooldown: 0,
+      beaconCooldown: this.localPlayer.beaconCooldown,
     };
 
     return [localAsPlayer, ...this.getRemotePlayers()];

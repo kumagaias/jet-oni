@@ -293,6 +293,14 @@ export class UIHud {
     // Debug log only when count seems wrong
     if (oniCount + runnerCount !== totalCount) {
       console.warn(`[HUD] Player count mismatch! ONI: ${oniCount}, Runners: ${runnerCount}, Total: ${totalCount}`);
+      const allPlayers = this.gameState.getAllPlayers();
+      const playerIds = allPlayers.map(p => p.id);
+      const uniqueIds = new Set(playerIds);
+      if (playerIds.length !== uniqueIds.size) {
+        console.error(`[HUD] Duplicate player IDs detected!`);
+        const duplicates = playerIds.filter((id, index) => playerIds.indexOf(id) !== index);
+        console.error(`[HUD] Duplicate IDs:`, duplicates);
+      }
     }
 
     this.playerCountElement.textContent = this.i18n.t('hud.playerCount', {

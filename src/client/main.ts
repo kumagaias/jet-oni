@@ -1606,7 +1606,7 @@ async function initGame(): Promise<void> {
             console.log('[Game End] Updating player states for', allPlayers.length, 'players');
             
             const updatePromises = allPlayers.map(player => {
-              console.log(`[Game End] Updating ${player.username}: isOni=${player.isOni}, survivedTime=${player.survivedTime}, wasTagged=${player.wasTagged}`);
+              console.log(`[Game End] Updating ${player.username}: isOni=${player.isOni}, survivedTime=${player.survivedTime}, wasTagged=${player.wasTagged}, tagCount=${player.tagCount}`);
               return gameApiClient.updatePlayerState(currentGameId, player.id, {
                 position: player.position,
                 velocity: player.velocity,
@@ -1618,7 +1618,7 @@ async function initGame(): Promise<void> {
                 tagCount: player.tagCount,
               }).catch(error => {
                 console.error(`Failed to update player ${player.username} (${player.id}) state:`, error);
-                console.error(`  Data: isOni=${player.isOni}, survivedTime=${player.survivedTime}, wasTagged=${player.wasTagged}`);
+                console.error(`  Data: isOni=${player.isOni}, survivedTime=${player.survivedTime}, wasTagged=${player.wasTagged}, tagCount=${player.tagCount}`);
               });
             });
             

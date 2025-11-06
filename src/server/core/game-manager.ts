@@ -283,19 +283,23 @@ export class GameManager {
 
     // Validate and sanitize state (only if provided)
     if (state.position && !StateValidator.isValidVector(state.position)) {
-      return { success: false, error: 'Invalid position values' };
+      console.error(`[updatePlayerState] Invalid position for ${playerId}:`, state.position);
+      return { success: false, error: `Invalid position values: ${JSON.stringify(state.position)}` };
     }
 
     if (state.velocity && !StateValidator.isValidVector(state.velocity)) {
-      return { success: false, error: 'Invalid velocity values' };
+      console.error(`[updatePlayerState] Invalid velocity for ${playerId}:`, state.velocity);
+      return { success: false, error: `Invalid velocity values: ${JSON.stringify(state.velocity)}` };
     }
 
     if (state.rotation && !StateValidator.isValidRotation(state.rotation)) {
-      return { success: false, error: 'Invalid rotation values' };
+      console.error(`[updatePlayerState] Invalid rotation for ${playerId}:`, state.rotation);
+      return { success: false, error: `Invalid rotation values: ${JSON.stringify(state.rotation)}` };
     }
 
     if (state.fuel !== undefined && !StateValidator.isValidNumber(state.fuel)) {
-      return { success: false, error: 'Invalid fuel value' };
+      console.error(`[updatePlayerState] Invalid fuel for ${playerId}:`, state.fuel);
+      return { success: false, error: `Invalid fuel value: ${state.fuel}` };
     }
 
     // Apply validation and clamping (only if provided)

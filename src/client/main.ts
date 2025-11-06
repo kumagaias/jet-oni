@@ -868,14 +868,10 @@ async function initGame(): Promise<void> {
       
       // Register callback for player disconnection
       realtimeSyncManager.onPlayerDisconnect(async (playerId) => {
-        // If we have a current game, notify server to replace with AI
-        if (currentGameId) {
-          try {
-            await gameApiClient.replacePlayerWithAI(currentGameId, playerId);
-          } catch (error) {
-            console.error(`Failed to replace player ${playerId} with AI:`, error);
-          }
-        }
+        // Note: We don't replace disconnected players with AI
+        // Disconnected players remain in the game state
+        // Their last known position and state are preserved
+        console.log(`[Disconnect] Player ${playerId} disconnected`);
       });
       
 

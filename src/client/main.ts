@@ -1605,8 +1605,9 @@ async function initGame(): Promise<void> {
             const allPlayers = gameState.getAllPlayers();
             console.log('[Game End] Updating player states for', allPlayers.length, 'players');
             
-            const updatePromises = allPlayers.map(player => 
-              gameApiClient.updatePlayerState(currentGameId, player.id, {
+            const updatePromises = allPlayers.map(player => {
+              console.log(`[Game End] Updating ${player.username}: isOni=${player.isOni}, survivedTime=${player.survivedTime}, wasTagged=${player.wasTagged}`);
+              return gameApiClient.updatePlayerState(currentGameId, player.id, {
                 position: player.position,
                 velocity: player.velocity,
                 rotation: player.rotation,
@@ -1616,9 +1617,10 @@ async function initGame(): Promise<void> {
                 wasTagged: player.wasTagged,
                 tagCount: player.tagCount,
               }).catch(error => {
-                console.error(`Failed to update player ${player.id} state:`, error);
-              })
-            );
+                console.error(`Failed to update player ${player.username} (${player.id}) state:`, error);
+                console.error(`  Data: isOni=${player.isOni}, survivedTime=${player.survivedTime}, wasTagged=${player.wasTagged}`);
+              });
+            });
             
             // Wait for all updates to complete
             await Promise.all(updatePromises);

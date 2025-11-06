@@ -270,8 +270,9 @@ export class GameManager {
       gameState.startTime = Date.now();
     }
     
-    if (gameState.status !== 'playing') {
-      return { success: false, error: 'Game is not in playing state' };
+    // Allow updates during playing and ended states (for final state updates before endGame)
+    if (gameState.status !== 'playing' && gameState.status !== 'ended') {
+      return { success: false, error: `Game is not in playing state (current: ${gameState.status})` };
     }
 
     const playerIndex = gameState.players.findIndex((p) => p.id === playerId);

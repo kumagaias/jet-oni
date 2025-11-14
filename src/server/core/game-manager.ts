@@ -180,17 +180,20 @@ export class GameManager {
       const wasInitialOni = initialOniIds.includes(player.id);
       console.log(`[Game End] Player ${player.username} (${player.id}): wasInitialOni=${wasInitialOni}, isOni=${player.isOni}, wasTagged=${player.wasTagged}`);
       
-      // Calculate survival time:
-      // - For players who survived (never tagged): full game duration
-      // - For tagged players: their recorded survival time
+      // Use survival time from player state (sent by client)
+      // Client calculates the correct survivedTime based on game elapsed time
+      // Only fall back to gameDuration if player.survivedTime is not set
       let survivedTime = 0;
       
-      if (!player.wasTagged) {
-        // Player who survived the entire game (including initial ONI)
+      if (player.survivedTime !== undefined && player.survivedTime > 0) {
+        // Use client-provided survivedTime (most accurate)
+        survivedTime = player.survivedTime;
+      } else if (!player.wasTagged) {
+        // Fallback: Player who survived - use game duration
         survivedTime = gameDuration;
       } else {
-        // Player who was tagged - use their recorded survival time
-        survivedTime = player.survivedTime || 0;
+        // Tagged player with no recorded time
+        survivedTime = 0;
       }
       
       return {

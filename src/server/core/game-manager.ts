@@ -298,7 +298,11 @@ export class GameManager {
     // Auto-start game if in lobby and receiving player updates
     if (gameState.status === 'lobby') {
       gameState.status = 'playing';
-      gameState.startTime = Date.now();
+      // Only set startTime if not already set (prevent overwriting during game)
+      if (!gameState.startTime || gameState.startTime === 0) {
+        gameState.startTime = Date.now();
+        console.log(`[GameManager] updatePlayerState: Game started at ${gameState.startTime}`);
+      }
       
       // Save initial ONI player IDs only if not already set
       // (they should have been set by addAIPlayers)

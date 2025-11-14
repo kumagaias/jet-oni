@@ -1020,6 +1020,12 @@ async function initGame(): Promise<void> {
         const taggerName = tagger?.username || 'Someone';
         const taggedName = tagged?.username || 'Someone';
         
+        // Host: Record tagged time for survivedTime calculation
+        if (isHost && tagEvent.taggedId) {
+          taggedTimeMap.set(tagEvent.taggedId, Date.now());
+          console.log(`[Host] Player ${taggedName} tagged at ${Date.now()}`);
+        }
+        
         // Show message to all players with player names
         if (tagEvent.taggedId === localPlayerId) {
           // Local player got tagged
@@ -1099,6 +1105,10 @@ async function initGame(): Promise<void> {
       
       // Track current game ID for sync
       let currentGameId: string | null = null;
+      
+      // Track tagged time for each player (Host only)
+      // Map<playerId, taggedTime> - records when each player was tagged
+      const taggedTimeMap: Map<string, number> = new Map();
       
       // Track last AI sync time per AI player (to throttle Realtime updates)
       const aiLastSyncTime: Map<string, number> = new Map();
@@ -1661,25 +1671,24 @@ async function initGame(): Promise<void> {
             
             // Use the saved elapsed time (not getElapsedTime() which returns 0 after game ends)
             const gameElapsedTime = finalGameElapsedTime;
+            const gameStartTime = Date.now() - (gameElapsedTime * 1000);
             console.log(`[Game End] Using saved elapsed time: ${gameElapsedTime} seconds`);
             
-            // Log all players' current survivedTime before calculation
-            console.log('[Game End] Player survivedTime before calculation:');
-            allPlayers.forEach(player => {
-              console.log(`  ${player.username} (${player.id}): survivedTime=${player.survivedTime}, wasTagged=${player.wasTagged}, isOni=${player.isOni}`);
-            });
-            
             const updatePromises = allPlayers.map(player => {
-              // Calculate survived time based on wasTagged flag:
-              // - If never tagged: full game duration (survived until end)
-              // - If tagged: use their recorded survivedTime (time until they were tagged)
-              let finalSurvivedTime = 0;
-              if (!player.wasTagged) {
-                // Never tagged - survived the entire game
-                finalSurvivedTime = gameElapsedTime;
-              } else {
-                // Was tagged - use recorded time (already set when tagged)
-                finalSurvivedTime = player.survivedTime || 0;
+              // Host: Calculate survivedTime based on tagged time
+              // Non-Host: Don't send survivedTime (let server use existing values)
+              let finalSurvivedTime: number | undefined = undefined;
+              
+              if (isHost) {
+                const taggedTime = taggedTimeMap.get(player.id);
+                if (taggedTime) {
+                  // Player was tagged - calculate time from game start to tagged time
+                  finalSurvivedTime = (taggedTime - gameStartTime) / 1000;
+                } else {
+                  // Player was never tagged - survived the entire game
+                  finalSurvivedTime = gameElapsedTime;
+                }
+                console.log(`[Host] Player ${player.username}: survivedTime=${finalSurvivedTime}, wasTagged=${!!taggedTime}`);
               }
               
               // Validate and sanitize data before sending
@@ -1712,14 +1721,14 @@ async function initGame(): Promise<void> {
                 console.error(`[Game End] Invalid fuel for ${player.id}:`, player.fuel);
               }
               
-              console.log(`[Game End] Updating Player ${player.id}: isOni=${player.isOni}, survivedTime=${finalSurvivedTime}, wasTagged=${player.wasTagged}, tagCount=${player.tagCount}, gameElapsedTime=${gameElapsedTime}`);
+              console.log(`[Game End] Updating Player ${player.id}: isOni=${player.isOni}, survivedTime=${finalSurvivedTime}, wasTagged=${player.wasTagged}, tagCount=${player.tagCount}`);
               return gameApiClient.updatePlayerState(currentGameId, player.id, {
                 position: player.position,
                 velocity: sanitizedVelocity,
                 rotation: player.rotation,
                 fuel: player.fuel,
                 isOni: player.isOni,
-                survivedTime: finalSurvivedTime,
+                survivedTime: finalSurvivedTime, // Only set by Host
                 wasTagged: player.wasTagged,
                 tagCount: player.tagCount,
               }).catch(error => {

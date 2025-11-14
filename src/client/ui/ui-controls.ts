@@ -101,7 +101,7 @@ export class UIControls {
     // Create dash/jetpack button (right)
     this.dashButton = this.createAbilityButton(
       '🚀',
-      'SHIFT',
+      'SPACE',
       'rgba(0, 150, 255, 0.5)',
       '#0096ff',
       () => {

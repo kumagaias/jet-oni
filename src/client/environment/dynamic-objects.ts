@@ -21,13 +21,7 @@ interface PedestrianConfig {
   animationPhase: number;
 }
 
-/**
- * Ladder configuration
- */
-interface LadderConfig {
-  position: THREE.Vector3;
-  height: number;
-}
+
 
 /**
  * DynamicObjects manages animated objects in the city (cars, pedestrians, ladders)
@@ -107,10 +101,10 @@ export class DynamicObjects {
 
       // Rotate car to face direction
       // Car body is BoxGeometry(2, 1, 4) where X=width, Z=depth
-      // By default, Z-axis is forward (depth=4, the long side)
-      // We want X-axis (width=2, the short side) to be forward
-      // So we need to rotate 90 degrees, then align with direction
-      const angle = Math.atan2(direction.x, direction.z) + Math.PI / 2;
+      // Z-axis is forward (depth=4, the long side) - this matches our front light position
+      // Front light is at position.z = 2.15 (positive Z)
+      // So we align the car's +Z axis with the movement direction
+      const angle = Math.atan2(direction.x, direction.z);
       car.rotation.y = angle;
 
       this.cars.add(car);
@@ -157,6 +151,15 @@ export class DynamicObjects {
     const window = new THREE.Mesh(windowGeometry, windowMaterial);
     window.position.y = 1.3;
     carGroup.add(window);
+
+    // Add front indicator (yellow at front)
+    const frontIndicatorGeometry = new THREE.BoxGeometry(1.8, 0.6, 0.3);
+    const frontIndicatorMaterial = new THREE.MeshBasicMaterial({ 
+      color: 0xffff00 // Bright yellow
+    });
+    const frontIndicator = new THREE.Mesh(frontIndicatorGeometry, frontIndicatorMaterial);
+    frontIndicator.position.set(0, 0.7, 2.15); // At front of car (positive Z in local space)
+    carGroup.add(frontIndicator);
 
     // Wheels
     const wheelGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.2, 16);
@@ -311,7 +314,7 @@ export class DynamicObjects {
     // Collect all building meshes
     this.buildings.traverse((object) => {
       if (object instanceof THREE.Mesh && object.geometry instanceof THREE.BoxGeometry) {
-        const params = object.geometry.parameters;
+        const params = object.geometry.parameters as { width: number; height: number; depth: number };
         // Only attach ladders to tall buildings (height > 10)
         if (params.height > 10) {
           buildingMeshes.push(object);
@@ -508,7 +511,7 @@ export class DynamicObjects {
       0x000000, // Black
       0x808080, // Gray
     ];
-    return colors[Math.floor(Math.random() * colors.length)];
+    return colors[Math.floor(Math.random() * colors.length)] ?? 0xff0000;
   }
 
   /**
@@ -525,7 +528,7 @@ export class DynamicObjects {
       0xff9ff3, // Pink
       0x54a0ff, // Light blue
     ];
-    return colors[Math.floor(Math.random() * colors.length)];
+    return colors[Math.floor(Math.random() * colors.length)] ?? 0xff6b6b;
   }
 
   /**

@@ -99,9 +99,11 @@ describe('Game Timer Integration', () => {
         rounds: 1,
       });
       gameState.setGamePhase('playing');
+      // Set game start time to 11 seconds ago to satisfy the 10-second check
+      gameState.setGameStartTime(Date.now() - 11000);
       
       // Wait for 10 seconds to pass (required by areAllPlayersOni logic)
-      await new Promise((resolve) => setTimeout(resolve, 11000));
+      await new Promise((resolve) => setTimeout(resolve, 100));
       
       // Add a remote player and make both oni
       gameState.updateRemotePlayer({
@@ -137,9 +139,11 @@ describe('Game Timer Integration', () => {
         rounds: 1,
       });
       gameState.setGamePhase('playing');
+      // Set game start time to 11 seconds ago to satisfy the 10-second check
+      gameState.setGameStartTime(Date.now() - 11000);
       
       // Wait for 10 seconds to pass (required by areAllPlayersOni logic)
-      await new Promise((resolve) => setTimeout(resolve, 11000));
+      await new Promise((resolve) => setTimeout(resolve, 100));
       
       // Add a remote player and make both oni
       gameState.updateRemotePlayer({

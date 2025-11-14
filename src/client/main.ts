@@ -267,6 +267,36 @@ async function initGame(): Promise<void> {
                                url.includes('localhost') ||
                                url.includes('playtest');
         
+        // F1: Set remaining time to 20 seconds (dev mode only)
+        if (e.key === 'F1') {
+          e.preventDefault();
+          
+          // Only allow in dev subreddit
+          if (!isDevSubreddit) {
+            return;
+          }
+          
+          // Only works during gameplay
+          if (gameState.getGamePhase() !== 'playing') {
+            console.log('[Debug] F1: Game is not playing, cannot set timer');
+            return;
+          }
+          
+          // Get game config to know the round duration
+          const config = gameState.getGameConfig();
+          if (!config) {
+            console.log('[Debug] F1: No game config found');
+            return;
+          }
+          
+          // Calculate new start time so that remaining time is 20 seconds
+          const newStartTime = Date.now() - (config.roundDuration - 20) * 1000;
+          gameState.setGameStartTime(newStartTime);
+          
+          console.log('[Debug] F1: Set remaining time to 20 seconds');
+          toast.show('⏱️ Timer set to 20 seconds!', 'info', 2000);
+        }
+        
         // F2: Toggle debug mode and minimap
         if (e.key === 'F2') {
           e.preventDefault();
@@ -847,6 +877,7 @@ async function initGame(): Promise<void> {
           ${localPlayer.isOni ? `ONI Spawn Items: ${oniSpawnItemsCount}<br>` : ''}
           ${aiPlayers.length > 0 ? `<br><strong>AI Players (${aiPlayers.length}):</strong><br>          ${aiInfo}<br>` : ''}
           <br>
+          <strong>F1:</strong> Set timer to 10s<br>
           <strong>F3:</strong> Toggle ONI/Runner${localPlayer.isOni ? '<br><strong>Collect ONI spawn items to summon AI ONI</strong>' : ''}
         `;
       });
@@ -926,11 +957,16 @@ async function initGame(): Promise<void> {
           }
           model.setIsOni(remotePlayer.isOni);
           
-          // Update model opacity based on cloak state
+          // Update model opacity and visibility based on cloak state
           if (remotePlayer.isCloaked) {
-            model.setOpacity(0.3); // 30% opacity when cloaked
+            model.setOpacity(0.05); // 5% opacity when cloaked (almost invisible)
+            model.setMarkerVisible(false); // Hide triangle marker
+            model.setNameTagVisible(false); // Hide name tag
+            console.log(`[Cloak] Player ${remotePlayer.username} is cloaked - hiding marker`);
           } else {
             model.setOpacity(1.0); // 100% opacity when not cloaked
+            model.setMarkerVisible(true); // Show triangle marker
+            model.setNameTagVisible(true); // Show name tag
           }
           
           // Update game state with remote player data
@@ -1040,8 +1076,11 @@ async function initGame(): Promise<void> {
       let lastGameEndCheck = 0;
       gameEngine.onUpdate((_deltaTime: number) => {
         if (gameState.getGamePhase() === 'playing') {
-          // No beacon cooldown in item-based system
-          uiHud.update(0);
+          // Calculate cloak remaining time
+          const cloakRemaining = Math.max(0, cloakActiveUntil - Date.now());
+          
+          // Update HUD with cloak timer
+          uiHud.update(0, cloakRemaining);
           
           // Check if game should end (only once per second to reduce overhead)
           const now = Date.now();
@@ -1064,10 +1103,6 @@ async function initGame(): Promise<void> {
       // Track last AI sync time per AI player (to throttle Realtime updates)
       const aiLastSyncTime: Map<string, number> = new Map();
       const AI_SYNC_INTERVAL = 500; // Send AI updates every 500ms (2 times per second)
-      
-      // Debug: Track AI sync count
-      let aiSyncCount = 0;
-      let lastAiSyncLog = 0;
       
       // Listen for game start countdown event (when host presses start button)
       window.addEventListener('gameStartCountdown', ((e: Event) => {
@@ -1222,6 +1257,16 @@ async function initGame(): Promise<void> {
             const serverGameState = await gameApiClient.getGameState(currentGameId);
             const localPlayer = gameState.getLocalPlayer();
             
+            // Sync game start time from server only if it's valid
+            // (startTime should be set when game status changes to 'playing')
+            if (serverGameState.startTime && serverGameState.startTime > 0) {
+              gameStartTime = serverGameState.startTime;
+              gameState.setGameStartTime(serverGameState.startTime);
+              console.log(`[Game Start] Synced startTime from server: ${serverGameState.startTime}`);
+            } else {
+              console.log(`[Game Start] Server startTime not set yet, will use client time`);
+            }
+            
             // Find the server player that matches the local player's username
             const matchingServerPlayer = serverGameState.players.find(p => 
               p.username === localPlayer.id || // If local ID is username
@@ -1295,7 +1340,12 @@ async function initGame(): Promise<void> {
         
         gameState.setGamePhase('playing');
         gameHasStarted = true; // Mark that game has started
-        gameStartTime = Date.now(); // Record game start time
+        
+        // If startTime was not set from server, use current time as fallback
+        if (!gameStartTime) {
+          gameStartTime = Date.now();
+          gameState.setGameStartTime(gameStartTime);
+        }
         
         // Reset tag system grace period
         tagSystem.resetGameStartTime();
@@ -1369,15 +1419,13 @@ async function initGame(): Promise<void> {
           }
         }, 1500); // 1.5s delay for better UX
         
-        // Place ONI spawn items on the map
-        const buildings = cityGenerator.getBuildingData();
-        oniSpawnItem.placeItems(buildings);
-        
-        // Place cloak items on the map
-        cloakItem.placeItems(buildings);
-        
-        // If host, broadcast initial item state to all players
+        // Only host places items on the map
         if (isHost) {
+          const buildings = cityGenerator.getBuildingData();
+          oniSpawnItem.placeItems(buildings);
+          cloakItem.placeItems(buildings);
+          
+          // Broadcast initial item state to all players
           setTimeout(() => {
             const itemsState = {
               beacons: [],
@@ -1395,6 +1443,7 @@ async function initGame(): Promise<void> {
             realtimeSyncManager.sendItemsSync(itemsState);
           }, 500); // Small delay to ensure all players are connected
         }
+        // Non-host will receive item positions via itemsSync event
       }) as unknown as EventListener);
       
       // Listen for item collected events from other players
@@ -1555,8 +1604,13 @@ async function initGame(): Promise<void> {
       // Listen for game end event
       window.addEventListener('gameEnd', async () => {
         
-        // Set game phase to ended immediately to stop game loop updates
-        gameState.setGamePhase('ended');
+        // IMPORTANT: Save elapsed time BEFORE changing game phase
+        // because getElapsedTime() returns 0 when game is not playing
+        const finalGameElapsedTime = gameState.getElapsedTime();
+        console.log(`[Game End] Saved final elapsed time: ${finalGameElapsedTime} seconds`);
+        
+        // DON'T set game phase to ended yet - we need to update player states first
+        // gameState.setGamePhase('ended');
         
         // If host, broadcast game-end message to all players
         if (isHost && currentGameId) {
@@ -1605,26 +1659,93 @@ async function initGame(): Promise<void> {
             const allPlayers = gameState.getAllPlayers();
             console.log('[Game End] Updating player states for', allPlayers.length, 'players');
             
+            // Use the saved elapsed time (not getElapsedTime() which returns 0 after game ends)
+            const gameElapsedTime = finalGameElapsedTime;
+            console.log(`[Game End] Using saved elapsed time: ${gameElapsedTime} seconds`);
+            
+            // Log all players' current survivedTime before calculation
+            console.log('[Game End] Player survivedTime before calculation:');
+            allPlayers.forEach(player => {
+              console.log(`  ${player.username} (${player.id}): survivedTime=${player.survivedTime}, wasTagged=${player.wasTagged}, isOni=${player.isOni}`);
+            });
+            
             const updatePromises = allPlayers.map(player => {
-              console.log(`[Game End] Updating ${player.username}: isOni=${player.isOni}, survivedTime=${player.survivedTime}, wasTagged=${player.wasTagged}, tagCount=${player.tagCount}`);
+              // Calculate survived time based on wasTagged flag:
+              // - If never tagged: full game duration (survived until end)
+              // - If tagged: use their recorded survivedTime (time until they were tagged)
+              let finalSurvivedTime = 0;
+              if (!player.wasTagged) {
+                // Never tagged - survived the entire game
+                finalSurvivedTime = gameElapsedTime;
+              } else {
+                // Was tagged - use recorded time (already set when tagged)
+                finalSurvivedTime = player.survivedTime || 0;
+              }
+              
+              // Validate and sanitize data before sending
+              const isValidNumber = (n: number) => typeof n === 'number' && isFinite(n);
+              const isValidVector = (v: { x: number; y: number; z: number }) => 
+                isValidNumber(v.x) && isValidNumber(v.y) && isValidNumber(v.z);
+              const isValidRotation = (r: { yaw: number; pitch: number }) =>
+                isValidNumber(r.yaw) && isValidNumber(r.pitch);
+              
+              // Clamp extremely small values to zero (denormalized numbers)
+              const clampSmallValues = (n: number, threshold = 1e-100) => 
+                Math.abs(n) < threshold ? 0 : n;
+              
+              const sanitizedVelocity = {
+                x: clampSmallValues(player.velocity.x),
+                y: clampSmallValues(player.velocity.y),
+                z: clampSmallValues(player.velocity.z)
+              };
+              
+              if (!isValidVector(player.position)) {
+                console.error(`[Game End] Invalid position for ${player.id}:`, player.position);
+              }
+              if (!isValidVector(sanitizedVelocity)) {
+                console.error(`[Game End] Invalid velocity for ${player.id}:`, sanitizedVelocity);
+              }
+              if (!isValidRotation(player.rotation)) {
+                console.error(`[Game End] Invalid rotation for ${player.id}:`, player.rotation);
+              }
+              if (!isValidNumber(player.fuel)) {
+                console.error(`[Game End] Invalid fuel for ${player.id}:`, player.fuel);
+              }
+              
+              console.log(`[Game End] Updating Player ${player.id}: isOni=${player.isOni}, survivedTime=${finalSurvivedTime}, wasTagged=${player.wasTagged}, tagCount=${player.tagCount}, gameElapsedTime=${gameElapsedTime}`);
               return gameApiClient.updatePlayerState(currentGameId, player.id, {
                 position: player.position,
-                velocity: player.velocity,
+                velocity: sanitizedVelocity,
                 rotation: player.rotation,
                 fuel: player.fuel,
                 isOni: player.isOni,
-                survivedTime: player.survivedTime,
+                survivedTime: finalSurvivedTime,
                 wasTagged: player.wasTagged,
                 tagCount: player.tagCount,
               }).catch(error => {
+                // Ignore "Player not found" errors during game end
+                // This can happen if another client already ended the game
+                if (error.message && error.message.includes('Player not found')) {
+                  console.warn(`[Game End] Player ${player.id} not found (game may have already ended)`);
+                  return;
+                }
+                
                 console.error(`Failed to update player ${player.username} (${player.id}) state:`, error);
-                console.error(`  Data: isOni=${player.isOni}, survivedTime=${player.survivedTime}, wasTagged=${player.wasTagged}, tagCount=${player.tagCount}`);
+                console.error(`  Data: isOni=${player.isOni}, survivedTime=${finalSurvivedTime}, wasTagged=${player.wasTagged}, tagCount=${player.tagCount}`);
+                console.error(`  Position:`, player.position);
+                console.error(`  Velocity (sanitized):`, sanitizedVelocity);
+                console.error(`  Velocity (original):`, player.velocity);
+                console.error(`  Rotation:`, player.rotation);
+                console.error(`  Fuel:`, player.fuel);
               });
             });
             
             // Wait for all updates to complete
             await Promise.all(updatePromises);
             console.log('[Game End] Player states updated');
+            
+            // NOW set game phase to ended (after updating all player states)
+            gameState.setGamePhase('ended');
             
             // Then end the game
             console.log('[Game End] Calling endGame API...');

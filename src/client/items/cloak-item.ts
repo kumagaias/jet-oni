@@ -147,7 +147,7 @@ export class CloakItem {
       emissive: 0x00ff00,
       emissiveIntensity: 0.3,
       transparent: true,
-      opacity: 0.4,
+      opacity: 0.05, // Almost invisible - extremely faint
       metalness: 0.1,
       roughness: 0.8,
     });
@@ -289,9 +289,9 @@ export class CloakItem {
       // Rotate cloak
       item.mesh.rotation.y += rotationSpeed * deltaTime;
 
-      // Pulse glow
+      // Pulse glow (extremely subtle)
       const time = Date.now() * 0.001;
-      const pulse = Math.sin(time * 3) * 0.1 + 0.3;
+      const pulse = Math.sin(time * 3) * 0.02 + 0.05; // Range: 0.03 to 0.07
       
       // Update cloak opacity
       const cloak = item.mesh.children[0];
@@ -300,11 +300,11 @@ export class CloakItem {
         material.opacity = pulse;
       }
 
-      // Update glow opacity
+      // Update glow opacity (barely visible)
       const glow = item.mesh.children[2];
       if (glow instanceof THREE.Mesh) {
         const material = glow.material as THREE.MeshBasicMaterial;
-        material.opacity = pulse * 0.5;
+        material.opacity = pulse * 0.2; // Range: 0.006 to 0.014
       }
 
       // Bob up and down

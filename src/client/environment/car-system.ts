@@ -119,16 +119,8 @@ export class CarSystem {
     window.position.y = 1.4;
     carGroup.add(window);
     
-    // Add front indicator (small box at front of car to show direction)
-    const frontIndicatorGeometry = new THREE.BoxGeometry(0.5, 0.3, 0.2);
-    const frontIndicatorMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 }); // Yellow
-    const frontIndicator = new THREE.Mesh(frontIndicatorGeometry, frontIndicatorMaterial);
-    frontIndicator.position.set(0, 0.5, 2.1); // At front of car (positive Z)
-    carGroup.add(frontIndicator);
-
-    // Set initial rotation based on path and direction
-    // Set initial rotation based on path and direction
-    // Car model is long in Z-axis (front-back)
+    // Set rotation BEFORE adding front indicator
+    // Car model is long in Z-axis (front is +Z direction)
     let rotation = 0;
     
     if (path === 'horizontal') {
@@ -152,10 +144,21 @@ export class CarSystem {
     }
     
     carGroup.rotation.y = rotation;
+    
+    // Add front indicator AFTER rotation (yellow at front)
+    const frontIndicatorGeometry = new THREE.BoxGeometry(1.8, 0.6, 0.3);
+    const frontIndicatorMaterial = new THREE.MeshBasicMaterial({ 
+      color: 0xffff00 // Bright yellow
+    });
+    const frontIndicator = new THREE.Mesh(frontIndicatorGeometry, frontIndicatorMaterial);
+    frontIndicator.position.set(0, 0.7, 2.15); // At front of car (positive Z in local space)
+    carGroup.add(frontIndicator);
     carGroup.position.set(position.x, position.y, position.z);
     this.scene.add(carGroup);
 
-    const speed = 8 + Math.random() * 4; // 8-12 units per second
+    // Speed is always positive, direction determines sign
+    const baseSpeed = 8 + Math.random() * 4; // 8-12 units per second
+    const speed = baseSpeed * direction; // Apply direction to speed
 
     return {
       id: `car-${Date.now()}-${Math.random()}`,
@@ -165,7 +168,7 @@ export class CarSystem {
       mesh: carGroup,
       path,
       pathPosition: path === 'horizontal' ? position.x : position.z,
-      speed: speed * direction,
+      speed,
     };
   }
 
@@ -226,8 +229,11 @@ export class CarSystem {
     while (attempts < maxAttempts) {
       // Choose a random road
       const roadIndex = Math.floor(Math.random() * this.roadPositions.length);
+      // Randomly choose a new path (horizontal or vertical)
+      const newPath: 'horizontal' | 'vertical' = Math.random() > 0.5 ? 'horizontal' : 'vertical';
+      const direction = Math.random() > 0.5 ? 1 : -1;
       
-      if (car.path === 'horizontal') {
+      if (newPath === 'horizontal') {
         const z = this.roadPositions[roadIndex] ?? 0;
         const x = (Math.random() - 0.5) * 300;
         const testPosition = { x, y: 0.5, z };
@@ -235,9 +241,20 @@ export class CarSystem {
         // Check if this position is in water
         if (!this.playerPhysics || !this.playerPhysics.isInWater(testPosition)) {
           // Valid position - respawn here
+          car.path = newPath;
           car.position.x = x;
           car.position.z = z;
           car.pathPosition = x;
+          car.speed = (Math.random() * 0.3 + 0.2) * direction;
+          
+          // Update rotation for horizontal path
+          if (direction > 0) {
+            car.rotation = -Math.PI / 2; // Moving in +X direction
+          } else {
+            car.rotation = Math.PI / 2; // Moving in -X direction
+          }
+          car.mesh.rotation.y = car.rotation;
+          
           car.mesh.position.set(car.position.x, car.position.y, car.position.z);
           return;
         }
@@ -249,9 +266,20 @@ export class CarSystem {
         // Check if this position is in water
         if (!this.playerPhysics || !this.playerPhysics.isInWater(testPosition)) {
           // Valid position - respawn here
+          car.path = newPath;
           car.position.x = x;
           car.position.z = z;
           car.pathPosition = z;
+          car.speed = (Math.random() * 0.3 + 0.2) * direction;
+          
+          // Update rotation for vertical path
+          if (direction > 0) {
+            car.rotation = 0; // Moving in +Z direction
+          } else {
+            car.rotation = Math.PI; // Moving in -Z direction
+          }
+          car.mesh.rotation.y = car.rotation;
+          
           car.mesh.position.set(car.position.x, car.position.y, car.position.z);
           return;
         }

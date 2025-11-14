@@ -242,6 +242,26 @@ export class PlayerModel {
   }
 
   /**
+   * Set marker visibility (triangle above head)
+   */
+  public setMarkerVisible(visible: boolean): void {
+    // Marker is the 7th child (index 6) in the model
+    const marker = this.model.children[6];
+    if (marker) {
+      marker.visible = visible;
+    }
+  }
+
+  /**
+   * Set name tag visibility
+   */
+  public setNameTagVisible(visible: boolean): void {
+    if (this.nameTag) {
+      this.nameTag.visible = visible;
+    }
+  }
+
+  /**
    * Dispose of the model
    */
   public dispose(): void {

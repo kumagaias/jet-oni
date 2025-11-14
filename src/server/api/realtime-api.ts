@@ -62,7 +62,8 @@ router.post(
         });
       }
     } catch (error) {
-      console.error('Error broadcasting message:', error);
+      console.error('[Realtime Broadcast] Unexpected error:', error);
+      console.error('[Realtime Broadcast] Request body:', req.body);
       // Return success even on error to avoid blocking the game
       res.json({
         success: true,

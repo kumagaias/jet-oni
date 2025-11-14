@@ -51,6 +51,7 @@ export interface GameState {
   currentRound: number;
   timeRemaining: number;
   lastHostHeartbeat?: number; // Timestamp of last host activity
+  initialOniIds?: string[]; // IDs of players who were ONI at game start
 }
 
 export interface PlayerStats {

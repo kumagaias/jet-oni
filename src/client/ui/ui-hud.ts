@@ -9,6 +9,7 @@ import { MAX_FUEL } from '../../shared/constants';
 export class UIHud {
   private hudContainer: HTMLElement | null = null;
   private timerElement: HTMLElement | null = null;
+  private countdownElement: HTMLElement | null = null;
   private statusElement: HTMLElement | null = null;
   private playerCountElement: HTMLElement | null = null;
   private fuelContainer: HTMLElement | null = null;
@@ -16,6 +17,7 @@ export class UIHud {
   private fuelBar: HTMLElement | null = null;
   private fuelText: HTMLElement | null = null;
   private beaconElement: HTMLElement | null = null;
+  private cloakTimerElement: HTMLElement | null = null;
   private gameState: GameState;
   private i18n: I18n;
   private gameStartTime: number = 0;
@@ -42,6 +44,7 @@ export class UIHud {
       this.fuelContainer = document.getElementById('hud-fuel-container');
       this.fuelBar = document.getElementById('hud-fuel-bar');
       this.beaconElement = document.getElementById('hud-beacon');
+      this.cloakTimerElement = document.getElementById('hud-cloak-timer');
       this.fuelLabel = this.fuelContainer?.querySelector('div') as HTMLElement;
       this.fuelText = document.getElementById('hud-fuel-text');
       return;
@@ -192,12 +195,43 @@ export class UIHud {
       display: none;
     `;
 
+    // Cloak timer (for cloaked runners only)
+    this.cloakTimerElement = document.createElement('div');
+    this.cloakTimerElement.id = 'hud-cloak-timer';
+    this.cloakTimerElement.style.cssText = `
+      position: absolute;
+      top: 120px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 24px;
+      font-weight: bold;
+      color: #00ff00;
+      text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.8);
+      background-color: rgba(0, 255, 0, 0.2);
+      padding: 12px 24px;
+      border-radius: 12px;
+      border: 2px solid #00ff00;
+      display: none;
+      animation: pulse-cloak 1s ease-in-out infinite;
+    `;
+
+    // Add pulse animation for cloak timer
+    const style = document.createElement('style');
+    style.textContent = `
+      @keyframes pulse-cloak {
+        0%, 100% { opacity: 1; transform: translateX(-50%) scale(1); }
+        50% { opacity: 0.8; transform: translateX(-50%) scale(1.05); }
+      }
+    `;
+    document.head.appendChild(style);
+
     // Append all elements
     this.hudContainer.appendChild(this.timerElement);
     this.hudContainer.appendChild(this.statusElement);
     this.hudContainer.appendChild(this.playerCountElement);
     this.hudContainer.appendChild(this.fuelContainer);
     this.hudContainer.appendChild(this.beaconElement);
+    this.hudContainer.appendChild(this.cloakTimerElement);
     document.body.appendChild(this.hudContainer);
   }
 
@@ -212,8 +246,9 @@ export class UIHud {
   /**
    * Update the HUD display
    * @param beaconCooldown - Remaining beacon cooldown in seconds (0 if ready)
+   * @param cloakRemainingMs - Remaining cloak time in milliseconds (0 if not cloaked)
    */
-  public update(beaconCooldown: number = 0): void {
+  public update(beaconCooldown: number = 0, cloakRemainingMs: number = 0): void {
     if (!this.hudContainer || !this.hudContainer.parentNode) {
       // HUD was removed from DOM, recreate and show it
       this.createHudElements();
@@ -236,6 +271,9 @@ export class UIHud {
 
     // Update beacon status (only for ONI)
     this.updateBeacon(localPlayer.isOni, beaconCooldown);
+
+    // Update cloak timer (only for cloaked runners)
+    this.updateCloakTimer(cloakRemainingMs);
   }
 
   /**
@@ -244,13 +282,13 @@ export class UIHud {
   private updateTimer(): void {
     if (!this.timerElement) return;
 
-    // If game hasn't started yet, show initial duration
+    // Get remaining time from GameState (this respects debug timer changes)
     let remaining: number;
-    if (this.gameStartTime === 0) {
-      remaining = this.gameDuration;
+    if (this.gameState.isPlaying()) {
+      remaining = this.gameState.getRemainingTime();
     } else {
-      const elapsed = (Date.now() - this.gameStartTime) / 1000;
-      remaining = Math.max(0, this.gameDuration - elapsed);
+      // If game hasn't started yet, show initial duration
+      remaining = this.gameDuration;
     }
     
     const minutes = Math.floor(remaining / 60);
@@ -267,6 +305,65 @@ export class UIHud {
     } else {
       this.timerElement.style.color = '#ffffff'; // White
       this.timerElement.style.backgroundColor = 'rgba(0, 0, 0, 0.6)';
+    }
+    
+    // Show countdown for last 10 seconds
+    this.updateCountdown(remaining);
+  }
+  
+  /**
+   * Update countdown display for last 10 seconds
+   */
+  private updateCountdown(remaining: number): void {
+    const seconds = Math.floor(remaining);
+    
+    // Show countdown only for last 10 seconds
+    if (seconds > 0 && seconds <= 10) {
+      // Create countdown element if it doesn't exist
+      if (!this.countdownElement) {
+        this.countdownElement = document.createElement('div');
+        this.countdownElement.style.cssText = `
+          position: fixed;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          font-size: 120px;
+          font-weight: bold;
+          color: #ff0000;
+          text-shadow: 0 0 20px rgba(255, 0, 0, 0.8), 0 0 40px rgba(255, 0, 0, 0.6);
+          z-index: 9998;
+          pointer-events: none;
+          animation: countdown-pulse 1s ease-in-out;
+        `;
+        
+        // Add animation
+        const style = document.createElement('style');
+        style.textContent = `
+          @keyframes countdown-pulse {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            50% { transform: translate(-50%, -50%) scale(1.2); opacity: 1; }
+            100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+          }
+        `;
+        document.head.appendChild(style);
+        
+        document.body.appendChild(this.countdownElement);
+      }
+      
+      // Update countdown number
+      this.countdownElement.textContent = seconds.toString();
+      this.countdownElement.style.display = 'block';
+      
+      // Trigger animation by removing and re-adding animation
+      this.countdownElement.style.animation = 'none';
+      setTimeout(() => {
+        if (this.countdownElement) {
+          this.countdownElement.style.animation = 'countdown-pulse 1s ease-in-out';
+        }
+      }, 10);
+    } else if (this.countdownElement) {
+      // Hide countdown when not in last 10 seconds
+      this.countdownElement.style.display = 'none';
     }
   }
 
@@ -354,6 +451,42 @@ export class UIHud {
     
     // Beacon is now item-based, hide the status element
     this.beaconElement.style.display = 'none';
+  }
+
+  /**
+   * Update cloak timer display (only for cloaked runners)
+   */
+  private updateCloakTimer(cloakRemainingMs: number): void {
+    if (!this.cloakTimerElement) return;
+
+    if (cloakRemainingMs > 0) {
+      // Show cloak timer
+      this.cloakTimerElement.style.display = 'block';
+      
+      // Calculate remaining seconds
+      const remainingSeconds = Math.ceil(cloakRemainingMs / 1000);
+      
+      // Update text
+      this.cloakTimerElement.textContent = `🛡️ CLOAKED: ${remainingSeconds}s`;
+      
+      // Change color based on remaining time
+      if (remainingSeconds <= 10) {
+        this.cloakTimerElement.style.color = '#ff0000';
+        this.cloakTimerElement.style.backgroundColor = 'rgba(255, 0, 0, 0.2)';
+        this.cloakTimerElement.style.borderColor = '#ff0000';
+      } else if (remainingSeconds <= 20) {
+        this.cloakTimerElement.style.color = '#ffaa00';
+        this.cloakTimerElement.style.backgroundColor = 'rgba(255, 170, 0, 0.2)';
+        this.cloakTimerElement.style.borderColor = '#ffaa00';
+      } else {
+        this.cloakTimerElement.style.color = '#00ff00';
+        this.cloakTimerElement.style.backgroundColor = 'rgba(0, 255, 0, 0.2)';
+        this.cloakTimerElement.style.borderColor = '#00ff00';
+      }
+    } else {
+      // Hide cloak timer
+      this.cloakTimerElement.style.display = 'none';
+    }
   }
 
   /**

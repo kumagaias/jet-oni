@@ -84,9 +84,10 @@ export class LadderSystem {
       // Check if player is within detection radius horizontally
       if (horizontalDistance < minDistance) {
         // Check if player is within ladder height range
+        // Extended range to allow detection from rooftop (top + 2 units)
         if (
           playerPosition.y >= ladder.bottomPosition.y - 1 &&
-          playerPosition.y <= ladder.topPosition.y + 1
+          playerPosition.y <= ladder.topPosition.y + 2
         ) {
           minDistance = horizontalDistance;
           nearestLadder = ladder;
@@ -105,10 +106,16 @@ export class LadderSystem {
     ladder: Ladder
   ): { position: Vector3; progress: number } {
     // Calculate initial climb progress based on player height
-    const progress = Math.max(
-      0,
-      Math.min(1, (playerPosition.y - ladder.bottomPosition.y) / ladder.height)
-    );
+    // If player is above the ladder top (on rooftop), start at top (progress = 1)
+    let progress: number;
+    if (playerPosition.y >= ladder.topPosition.y) {
+      progress = 1.0; // Start at top when on rooftop
+    } else {
+      progress = Math.max(
+        0,
+        Math.min(1, (playerPosition.y - ladder.bottomPosition.y) / ladder.height)
+      );
+    }
 
     // Snap player to ladder position
     const position = {
@@ -126,7 +133,8 @@ export class LadderSystem {
   public updateClimbing(
     climbState: LadderClimbState,
     climbInput: number, // -1 for down, 0 for stationary, 1 for up
-    deltaTime: number
+    deltaTime: number,
+    speedMultiplier = 1.0 // Speed multiplier for shift boost
   ): { position: Vector3; progress: number; shouldExit: boolean } {
     if (!climbState.currentLadder) {
       return {
@@ -138,8 +146,8 @@ export class LadderSystem {
 
     const ladder = climbState.currentLadder;
 
-    // Update climb progress
-    const progressDelta = (climbInput * this.climbSpeed * deltaTime) / ladder.height;
+    // Update climb progress with speed multiplier
+    const progressDelta = (climbInput * this.climbSpeed * speedMultiplier * deltaTime) / ladder.height;
     let newProgress = climbState.climbProgress + progressDelta;
 
     // Check if reached top or bottom

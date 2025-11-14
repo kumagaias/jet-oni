@@ -64,10 +64,6 @@ export class GameState {
    */
   public setGamePhase(phase: GameStatus): void {
     this.gamePhase = phase;
-    
-    if (phase === 'playing') {
-      this.gameStartTime = Date.now();
-    }
   }
 
   /**
@@ -480,7 +476,11 @@ export class GameState {
    * Check if time has run out
    */
   public hasTimeRunOut(): boolean {
-    return this.getRemainingTime() <= 0;
+    const remaining = this.getRemainingTime();
+    if (remaining <= 0 && this.isPlaying()) {
+      console.log(`[GameState] Time run out: remaining=${remaining}, elapsed=${this.getElapsedTime()}, startTime=${this.gameStartTime}, config=${JSON.stringify(this.gameConfig)}`);
+    }
+    return remaining <= 0;
   }
 
   /**

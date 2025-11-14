@@ -161,26 +161,37 @@ export class GameManager {
     gameState.endTime = Date.now();
 
     // Calculate game duration
-    const gameStartTime = gameState.startTime || Date.now();
     const gameEndTime = Date.now();
-    const gameDuration = (gameEndTime - gameStartTime) / 1000; // Convert to seconds
+    const gameStartTime = gameState.startTime || gameEndTime; // Fallback to endTime if startTime not set
+    const gameDuration = gameState.startTime > 0 
+      ? (gameEndTime - gameState.startTime) / 1000 
+      : 0; // Convert to seconds
+    
+    console.log(`[Game End] Time calculation: startTime=${gameStartTime}, endTime=${gameEndTime}, duration=${gameDuration}s`);
+    console.log(`[Game End] gameState.startTime was ${gameState.startTime ? 'set' : 'NOT SET'}`);
 
+    // Get initial ONI IDs (players who were ONI at game start)
+    const initialOniIds = gameState.initialOniIds || [];
+    console.log(`[Game End] Initial ONI IDs: ${JSON.stringify(initialOniIds)}`);
+    
     // Calculate results
-    const playerResults: PlayerResult[] = gameState.players.map((player) => {
+    const allPlayerResults: PlayerResult[] = gameState.players.map((player) => {
+      // Check if player was initial ONI
+      const wasInitialOni = initialOniIds.includes(player.id);
+      console.log(`[Game End] Player ${player.username} (${player.id}): wasInitialOni=${wasInitialOni}, isOni=${player.isOni}, wasTagged=${player.wasTagged}`);
+      
       // Calculate survival time:
-      // - For initial ONI (wasTagged=false, isOni=true): 0 seconds
-      // - For runners who survived (wasTagged=false, isOni=false): full game duration
-      // - For tagged players (wasTagged=true): their recorded survival time
+      // - For players who survived (never tagged): full game duration
+      // - For tagged players: their recorded survival time
       let survivedTime = 0;
       
-      if (!player.wasTagged && !player.isOni) {
-        // Runner who survived the entire game
+      if (!player.wasTagged) {
+        // Player who survived the entire game (including initial ONI)
         survivedTime = gameDuration;
-      } else if (player.wasTagged) {
+      } else {
         // Player who was tagged - use their recorded survival time
         survivedTime = player.survivedTime || 0;
       }
-      // else: Initial ONI - survivedTime remains 0
       
       return {
         id: player.id,
@@ -189,6 +200,7 @@ export class GameManager {
         wasTagged: player.wasTagged,
         isAI: player.isAI,
         tagCount: player.tagCount || 0,
+        wasInitialOni, // Add flag to identify initial ONI
       };
     });
 
@@ -200,25 +212,44 @@ export class GameManager {
     // Debug: Log player states
     console.log('[Game End] Player states:');
     gameState.players.forEach((p) => {
-      console.log(`  ${p.username}: isOni=${p.isOni}, wasTagged=${p.wasTagged}, survivedTime=${p.survivedTime}`);
+      const wasInitialOni = initialOniIds.includes(p.id);
+      console.log(`  ${p.username}: isOni=${p.isOni}, wasTagged=${p.wasTagged}, survivedTime=${p.survivedTime}, wasInitialOni=${wasInitialOni}`);
     });
     
-    const survivors = gameState.players.filter((p) => !p.wasTagged && !p.isOni);
+    // Debug: Log calculated results
+    console.log('[Game End] Calculated results (before filtering):');
+    allPlayerResults.forEach((p) => {
+      console.log(`  ${p.username}: survivedTime=${p.survivedTime}, wasTagged=${p.wasTagged}, wasInitialOni=${p.wasInitialOni}`);
+    });
+    
+    // Determine team winner based on initial ONI status
+    const survivors = allPlayerResults.filter((p) => !p.wasTagged && !p.wasInitialOni);
     console.log(`[Game End] Survivors: ${survivors.length}`);
     const teamWinner = survivors.length > 0 ? 'runners' : 'oni';
     console.log(`[Game End] Team winner: ${teamWinner}`);
     
-    // Sort players by rank:
-    // - For Runners Win: Sort by survival time (descending)
-    // - For ONI Win: Sort by tag count (descending), then by survival time (ascending - tagged first)
+    // Filter players to show based on team winner:
+    // - Runners Win: Show only runners who survived (NOT initial ONI and NOT tagged)
+    // - ONI Win: Show only initial ONI (players who were ONI at game start)
+    let playerResults: PlayerResult[];
     if (teamWinner === 'runners') {
+      // Show only runners who survived (exclude initial ONI and tagged players)
+      playerResults = allPlayerResults.filter(p => !p.wasInitialOni && !p.wasTagged);
+      // Sort by survival time (descending)
       playerResults.sort((a, b) => b.survivedTime - a.survivedTime);
+      
+      // Debug: Log filtered results
+      console.log('[Game End] Filtered results (runners only):');
+      playerResults.forEach((p) => {
+        console.log(`  ${p.username}: survivedTime=${p.survivedTime}`);
+      });
     } else {
+      // Show only initial ONI
+      playerResults = allPlayerResults.filter(p => p.wasInitialOni);
+      // Sort by tag count (descending)
       playerResults.sort((a, b) => {
-        // First sort by tag count (descending)
         const tagDiff = (b.tagCount || 0) - (a.tagCount || 0);
         if (tagDiff !== 0) return tagDiff;
-        
         // Then by survival time (ascending - who was ONI longest)
         return a.survivedTime - b.survivedTime;
       });
@@ -268,6 +299,17 @@ export class GameManager {
     if (gameState.status === 'lobby') {
       gameState.status = 'playing';
       gameState.startTime = Date.now();
+      
+      // Save initial ONI player IDs only if not already set
+      // (they should have been set by addAIPlayers)
+      if (!gameState.initialOniIds || gameState.initialOniIds.length === 0) {
+        gameState.initialOniIds = gameState.players
+          .filter(p => p.isOni)
+          .map(p => p.id);
+        console.log(`[GameManager] updatePlayerState: Initial ONI IDs saved: ${gameState.initialOniIds.join(', ')}`);
+      } else {
+        console.log(`[GameManager] updatePlayerState: Initial ONI IDs already set: ${gameState.initialOniIds.join(', ')}`);
+      }
     }
     
     // Allow updates during playing and ended states (for final state updates before endGame)
@@ -326,9 +368,9 @@ export class GameManager {
       isJetpacking: state.isJetpacking ?? existingPlayer.isJetpacking,
       isOnSurface: state.isOnSurface ?? existingPlayer.isOnSurface,
       beaconCooldown: validatedBeaconCooldown ?? existingPlayer.beaconCooldown,
-      survivedTime: state.survivedTime ?? existingPlayer.survivedTime,
-      wasTagged: state.wasTagged ?? existingPlayer.wasTagged,
-      tagCount: state.tagCount ?? existingPlayer.tagCount ?? 0,
+      survivedTime: state.survivedTime !== undefined ? state.survivedTime : existingPlayer.survivedTime,
+      wasTagged: state.wasTagged !== undefined ? state.wasTagged : existingPlayer.wasTagged,
+      tagCount: state.tagCount !== undefined ? state.tagCount : (existingPlayer.tagCount ?? 0),
     };
 
     await this.saveGameState(gameState);
@@ -446,6 +488,12 @@ export class GameManager {
     // - 1 human: random assignment
     // - 2+ humans: at least 1 human must be oni
     this.assignRandomOni(gameState);
+
+    // Save initial ONI IDs after assignment (for game results calculation)
+    gameState.initialOniIds = gameState.players
+      .filter(p => p.isOni)
+      .map(p => p.id);
+    console.log(`[GameManager] addAIPlayers: Initial ONI IDs saved: ${gameState.initialOniIds.join(', ')}`);
 
     try {
       await this.saveGameState(gameState);

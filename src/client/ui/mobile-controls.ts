@@ -90,12 +90,14 @@ export class MobileControls {
     }, 'SPACE');
     container.appendChild(this.jumpButton);
 
-    // Create dash button (bottom right)
-    this.dashButton = this.createButton('SHIFT', 'bottom: 80px; right: 20px;', () => {
+    // Create dash/jetpack button (bottom right)
+    // Note: This button is used for both dash (Runner) and jetpack (ONI)
+    // The label shows "SPACE" because jetpack is the primary use case
+    this.dashButton = this.createButton('SPACE', 'bottom: 80px; right: 20px;', () => {
       this.inputState.dash = true;
     }, () => {
       this.inputState.dash = false;
-    }, 'SHIFT');
+    }, 'SPACE');
     container.appendChild(this.dashButton);
   }
 

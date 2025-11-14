@@ -64,6 +64,16 @@ export class TagSystem {
     if (target.isOni) {
       return false;
     }
+    
+    // Check if this tag was recently performed (prevent duplicate tags)
+    const tagKey = `${tagger.id}-${target.id}`;
+    const now = Date.now();
+    const lastTagTime = this.recentTags.get(tagKey);
+    
+    if (lastTagTime && now - lastTagTime < this.TAG_COOLDOWN) {
+      // Tag is too recent, cannot tag again
+      return false;
+    }
 
     // Check distance
     const distance = this.calculateDistance(tagger.position, target.position);
@@ -201,17 +211,9 @@ export class TagSystem {
    * Perform a tag
    */
   private performTag(taggerId: string, taggedId: string): void {
-    // Check if this player was recently tagged (prevent duplicate tags)
+    // Record this tag (already checked in canTag, but record here for tracking)
     const tagKey = `${taggerId}-${taggedId}`;
     const now = Date.now();
-    const lastTagTime = this.recentTags.get(tagKey);
-    
-    if (lastTagTime && now - lastTagTime < this.TAG_COOLDOWN) {
-      // Tag is too recent, ignore
-      return;
-    }
-    
-    // Record this tag
     this.recentTags.set(tagKey, now);
     
     // Clean up old tags (older than cooldown period)

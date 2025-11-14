@@ -587,7 +587,7 @@ export class UIMenu {
               type="range" 
               id="players-slider" 
               min="6" 
-              max="20" 
+              max="20"
               step="2" 
               value="6"
               style="

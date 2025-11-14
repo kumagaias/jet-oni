@@ -663,6 +663,11 @@ export class RealtimeSyncManager {
     const playersToRemove: string[] = [];
 
     for (const [playerId, player] of this.remotePlayers.entries()) {
+      // Skip AI players - they don't send realtime updates
+      if (player.isAI) {
+        continue;
+      }
+
       const timeSinceUpdate = now - player.lastUpdateTime;
 
       // If player hasn't updated in disconnectTimeout, consider disconnected

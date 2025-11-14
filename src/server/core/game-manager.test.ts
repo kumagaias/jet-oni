@@ -306,7 +306,7 @@ describe('GameManager', () => {
       const results = await gameManager.endGame('test_game');
 
       expect(results).toBeDefined();
-      expect(results?.players).toHaveLength(3);
+      expect(results?.players).toHaveLength(1); // Only Player2 survived (not tagged)
       expect(results?.teamWinner).toBe('runners'); // Player2 survived
       expect(results?.players[0].username).toBe('Player2'); // Top player
       expect(mockRedis.zRem).toHaveBeenCalled();
@@ -363,6 +363,7 @@ describe('GameManager', () => {
         endTime: 0,
         currentRound: 1,
         timeRemaining: 0,
+        initialOniIds: ['p2'], // Oni1 was initial ONI
       };
 
       mockRedis.get.mockResolvedValue(JSON.stringify(mockGameState));
@@ -372,7 +373,8 @@ describe('GameManager', () => {
       const results = await gameManager.endGame('test_game');
 
       expect(results).toBeDefined();
-      expect(results?.players).toHaveLength(2);
+      // Runners Win: Only runners are shown (ONI excluded)
+      expect(results?.players).toHaveLength(1);
       
       // Runner should have survivedTime equal to game duration (around 120 seconds)
       const runner = results?.players.find(p => p.username === 'Runner1');
@@ -380,10 +382,9 @@ describe('GameManager', () => {
       expect(runner?.survivedTime).toBeGreaterThan(119);
       expect(runner?.survivedTime).toBeLessThan(121);
       
-      // ONI should have survivedTime of 0
+      // ONI should not be in results (filtered out for Runners Win)
       const oni = results?.players.find(p => p.username === 'Oni1');
-      expect(oni).toBeDefined();
-      expect(oni?.survivedTime).toBe(0);
+      expect(oni).toBeUndefined();
     });
 
     it('should use recorded survivedTime for tagged players', async () => {
@@ -444,6 +445,7 @@ describe('GameManager', () => {
         endTime: 0,
         currentRound: 1,
         timeRemaining: 0,
+        initialOniIds: ['p3'], // OriginalOni was initial ONI
       };
 
       mockRedis.get.mockResolvedValue(JSON.stringify(mockGameState));
@@ -453,23 +455,22 @@ describe('GameManager', () => {
       const results = await gameManager.endGame('test_game');
 
       expect(results).toBeDefined();
-      expect(results?.players).toHaveLength(3);
+      // Runners Win: Only survivors are shown (exclude initial ONI and tagged players)
+      expect(results?.players).toHaveLength(1);
       
-      // Tagged runner should keep their recorded survivedTime
+      // Tagged runner should NOT be in results (they became ONI)
       const taggedRunner = results?.players.find(p => p.username === 'TaggedRunner');
-      expect(taggedRunner).toBeDefined();
-      expect(taggedRunner?.survivedTime).toBe(60);
+      expect(taggedRunner).toBeUndefined();
       
-      // Survivor should have full game duration
+      // Survivor should have full game duration and be the only one shown
       const survivor = results?.players.find(p => p.username === 'Survivor');
       expect(survivor).toBeDefined();
       expect(survivor?.survivedTime).toBeGreaterThan(179);
       expect(survivor?.survivedTime).toBeLessThan(181);
       
-      // Original ONI should have 0
+      // Original ONI should not be in results (filtered out for Runners Win)
       const oni = results?.players.find(p => p.username === 'OriginalOni');
-      expect(oni).toBeDefined();
-      expect(oni?.survivedTime).toBe(0);
+      expect(oni).toBeUndefined();
       
       // Team winner should be runners (survivor exists)
       expect(results?.teamWinner).toBe('runners');

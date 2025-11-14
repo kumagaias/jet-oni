@@ -134,4 +134,5 @@ export interface PlayerResult {
   wasTagged: boolean;
   isAI: boolean;
   tagCount?: number;
+  wasInitialOni?: boolean; // True if player was ONI at game start
 }

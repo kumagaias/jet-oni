@@ -625,8 +625,11 @@ export class PlayerController {
 
     // Check if trying to start climbing
     if (!this.ladderClimbState.isClimbing) {
-      // Try to start climbing if pressing forward near a ladder
-      if (this.inputState.forward && player.isOnSurface) {
+      // Try to start climbing if pressing forward OR backward near a ladder
+      // Allow starting from rooftop by pressing backward (S key)
+      const tryingToClimb = (this.inputState.forward || this.inputState.backward) && player.isOnSurface;
+      
+      if (tryingToClimb) {
         const nearbyLadder = this.ladderSystem.canStartClimbing(
           player.position,
           player.isOnSurface
@@ -658,11 +661,15 @@ export class PlayerController {
     if (this.inputState.forward) climbInput = 1; // Climb up
     if (this.inputState.backward) climbInput = -1; // Climb down
 
+    // Apply speed boost when shift is pressed
+    const speedMultiplier = this.inputState.sprint ? 2.0 : 1.0;
+
     // Update climbing
     const { position, progress, shouldExit } = this.ladderSystem.updateClimbing(
       this.ladderClimbState,
       climbInput,
-      deltaTime
+      deltaTime,
+      speedMultiplier
     );
 
     this.ladderClimbState.climbProgress = progress;

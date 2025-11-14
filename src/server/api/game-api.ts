@@ -250,14 +250,23 @@ router.post(
 
       // Position, velocity, and rotation are optional for game-end updates
       // Only validate if they are provided
-      if (position && (!position.x && position.x !== 0 || !position.y && position.y !== 0 || !position.z && position.z !== 0)) {
+      if (position && (
+        position.x === undefined || position.x === null ||
+        position.y === undefined || position.y === null ||
+        position.z === undefined || position.z === null
+      )) {
         res.status(400).json({
           success: false,
-          error: 'Invalid position data',
+          error: 'Invalid position data: position must have x, y, z properties',
         });
         return;
       }
 
+      // Log survivedTime when it's being updated
+      if (survivedTime !== undefined) {
+        console.log(`[updatePlayerState API] Player ${playerId}: survivedTime=${survivedTime}, wasTagged=${wasTagged}, isOni=${isOni}`);
+      }
+      
       const result = await gameManager.updatePlayerState(id, playerId, {
         position,
         velocity,
@@ -274,6 +283,8 @@ router.post(
       });
 
       if (!result.success) {
+        console.error(`[updatePlayerState API] Failed for player ${playerId}:`, result.error);
+        console.error(`[updatePlayerState API] Data:`, { position, velocity, rotation, fuel });
         res.status(400).json({
           success: false,
           error: result.error || 'Failed to update player state',

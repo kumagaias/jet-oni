@@ -129,6 +129,11 @@ export class UIMinimap {
 
     // Draw players
     for (const player of players) {
+      // Skip cloaked players (except local player)
+      if (player.isCloaked && player.id !== localPlayer.id) {
+        continue;
+      }
+
       // Convert world position to minimap position
       const x = ((player.position.x / (MAP_SIZE * 2)) + 0.5) * size;
       const y = ((player.position.z / (MAP_SIZE * 2)) + 0.5) * size;

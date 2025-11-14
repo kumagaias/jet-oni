@@ -66,6 +66,8 @@ export class AIController {
   private lastPositions: Map<string, { x: number; y: number; z: number; time: number }> = new Map();
   private stuckThreshold: number = 2.0; // If moved less than 2 units in 2 seconds, consider stuck
   private stuckCheckInterval: number = 2000; // Check every 2 seconds
+  private stuckLocations: Map<string, Array<{ x: number; z: number; time: number }>> = new Map(); // Track stuck locations
+  private unstuckAttempts: Map<string, number> = new Map(); // Track unstuck attempts
 
   constructor(gameState: GameState, config: Partial<AIConfig> = {}) {
     this.gameState = gameState;
@@ -139,27 +141,40 @@ export class AIController {
     const isStuck = this.checkIfStuck(aiPlayer);
     
     if (isStuck) {
-      // If stuck, force a random wander direction with jetpack
-      const randomDirection = {
-        x: (Math.random() - 0.5) * 2,
-        y: 0,
-        z: (Math.random() - 0.5) * 2,
-      };
+      // Get unstuck attempts for this player
+      const attempts = this.unstuckAttempts.get(aiPlayer.id) || 0;
+      this.unstuckAttempts.set(aiPlayer.id, attempts + 1);
       
-      // Normalize direction
-      const length = Math.sqrt(randomDirection.x ** 2 + randomDirection.z ** 2);
-      if (length > 0) {
-        randomDirection.x /= length;
-        randomDirection.z /= length;
+      // Record stuck location to avoid returning to it
+      this.recordStuckLocation(aiPlayer);
+      
+      // Generate escape direction away from stuck locations
+      const escapeDirection = this.generateEscapeDirection(aiPlayer);
+      
+      // Choose unstuck strategy based on attempts
+      let abilityType: 'jetpack' | 'dash' | 'jump' | null = null;
+      
+      if (attempts % 3 === 0) {
+        // Every 3rd attempt: Use jetpack to fly over obstacle
+        abilityType = 'jetpack';
+      } else if (attempts % 3 === 1) {
+        // Every other attempt: Use dash to burst through
+        abilityType = 'dash';
+      } else {
+        // Default: Use jump to hop over
+        abilityType = 'jump';
       }
       
       return {
         behavior: AIBehavior.WANDER,
         targetPlayerId: null,
-        moveDirection: randomDirection,
-        useAbility: aiPlayer.isOni, // Use jetpack if ONI to get unstuck
-        abilityType: aiPlayer.isOni ? 'jetpack' : 'dash',
+        moveDirection: escapeDirection,
+        useAbility: true,
+        abilityType: abilityType,
       };
+    } else {
+      // Not stuck, reset unstuck attempts
+      this.unstuckAttempts.set(aiPlayer.id, 0);
     }
     
     if (aiPlayer.isOni) {
@@ -167,6 +182,85 @@ export class AIController {
     } else {
       return this.makeRunnerDecision(aiPlayer, allPlayers, deltaTime);
     }
+  }
+  
+  /**
+   * Record a stuck location to avoid returning to it
+   */
+  private recordStuckLocation(aiPlayer: Player): void {
+    const now = Date.now();
+    const locations = this.stuckLocations.get(aiPlayer.id) || [];
+    
+    // Add current location
+    locations.push({
+      x: aiPlayer.position.x,
+      z: aiPlayer.position.z,
+      time: now,
+    });
+    
+    // Keep only recent stuck locations (last 10 seconds)
+    const recentLocations = locations.filter(loc => now - loc.time < 10000);
+    this.stuckLocations.set(aiPlayer.id, recentLocations);
+  }
+  
+  /**
+   * Generate escape direction away from stuck locations
+   */
+  private generateEscapeDirection(aiPlayer: Player): Vector3 {
+    const stuckLocs = this.stuckLocations.get(aiPlayer.id) || [];
+    
+    if (stuckLocs.length === 0) {
+      // No stuck history, use random direction
+      const angle = Math.random() * Math.PI * 2;
+      return {
+        x: Math.cos(angle),
+        y: 0,
+        z: Math.sin(angle),
+      };
+    }
+    
+    // Calculate average stuck location
+    let avgX = 0;
+    let avgZ = 0;
+    for (const loc of stuckLocs) {
+      avgX += loc.x;
+      avgZ += loc.z;
+    }
+    avgX /= stuckLocs.length;
+    avgZ /= stuckLocs.length;
+    
+    // Move away from average stuck location
+    let escapeX = aiPlayer.position.x - avgX;
+    let escapeZ = aiPlayer.position.z - avgZ;
+    
+    // If too close to stuck location, use perpendicular direction
+    const distToStuck = Math.sqrt(escapeX * escapeX + escapeZ * escapeZ);
+    if (distToStuck < 1.0) {
+      // Use perpendicular direction
+      const temp = escapeX;
+      escapeX = -escapeZ;
+      escapeZ = temp;
+    }
+    
+    // Normalize
+    const length = Math.sqrt(escapeX * escapeX + escapeZ * escapeZ);
+    if (length > 0) {
+      escapeX /= length;
+      escapeZ /= length;
+    }
+    
+    // Add some randomness to avoid predictable patterns
+    const randomAngle = (Math.random() - 0.5) * Math.PI * 0.5; // ±45 degrees
+    const cos = Math.cos(randomAngle);
+    const sin = Math.sin(randomAngle);
+    const rotatedX = escapeX * cos - escapeZ * sin;
+    const rotatedZ = escapeX * sin + escapeZ * cos;
+    
+    return {
+      x: rotatedX,
+      y: 0,
+      z: rotatedZ,
+    };
   }
   
   /**
@@ -235,14 +329,19 @@ export class AIController {
     const distance = this.calculateDistance(aiPlayer.position, nearestRunner.position);
     
     // Always chase if runner is visible (increased from 100 to always chase)
-    const decision = this.behaviorSystem.chase(aiPlayer, nearestRunner);
+    let decision = this.behaviorSystem.chase(aiPlayer, nearestRunner);
+    
+    // Adjust direction to avoid stuck locations
+    decision = this.adjustDirectionToAvoidStuckLocations(aiPlayer, decision);
     
     // Use jetpack more aggressively when:
     // 1. Target is far (> 30 units)
     // 2. Target is above us (y difference > 5)
     // 3. Random chance for unpredictability
+    // 4. Near a stuck location
     const yDiff = nearestRunner.position.y - aiPlayer.position.y;
-    const shouldUseJetpack = distance > 30 || yDiff > 5 || Math.random() < 0.4;
+    const nearStuckLocation = this.isNearStuckLocation(aiPlayer);
+    const shouldUseJetpack = distance > 30 || yDiff > 5 || Math.random() < 0.4 || nearStuckLocation;
     
     return {
       ...decision,
@@ -259,6 +358,90 @@ export class AIController {
     const dy = pos2.y - pos1.y;
     const dz = pos2.z - pos1.z;
     return Math.sqrt(dx * dx + dy * dy + dz * dz);
+  }
+  
+  /**
+   * Check if AI is near a stuck location
+   */
+  private isNearStuckLocation(aiPlayer: Player): boolean {
+    const stuckLocs = this.stuckLocations.get(aiPlayer.id) || [];
+    const now = Date.now();
+    
+    for (const loc of stuckLocs) {
+      // Only check recent stuck locations (last 5 seconds)
+      if (now - loc.time > 5000) continue;
+      
+      const dx = aiPlayer.position.x - loc.x;
+      const dz = aiPlayer.position.z - loc.z;
+      const distance = Math.sqrt(dx * dx + dz * dz);
+      
+      // Consider "near" if within 5 units
+      if (distance < 5) {
+        return true;
+      }
+    }
+    
+    return false;
+  }
+  
+  /**
+   * Adjust movement direction to avoid stuck locations
+   */
+  private adjustDirectionToAvoidStuckLocations(aiPlayer: Player, decision: AIDecision): AIDecision {
+    const stuckLocs = this.stuckLocations.get(aiPlayer.id) || [];
+    if (stuckLocs.length === 0) {
+      return decision; // No stuck locations to avoid
+    }
+    
+    const now = Date.now();
+    let avoidanceX = 0;
+    let avoidanceZ = 0;
+    let avoidanceCount = 0;
+    
+    // Calculate avoidance vector from recent stuck locations
+    for (const loc of stuckLocs) {
+      // Only avoid recent stuck locations (last 5 seconds)
+      if (now - loc.time > 5000) continue;
+      
+      const dx = aiPlayer.position.x - loc.x;
+      const dz = aiPlayer.position.z - loc.z;
+      const distance = Math.sqrt(dx * dx + dz * dz);
+      
+      // If close to stuck location, add avoidance force
+      if (distance < 10) {
+        // Stronger avoidance when closer
+        const strength = 1.0 - (distance / 10);
+        avoidanceX += (dx / distance) * strength;
+        avoidanceZ += (dz / distance) * strength;
+        avoidanceCount++;
+      }
+    }
+    
+    if (avoidanceCount === 0) {
+      return decision; // Not near any stuck locations
+    }
+    
+    // Average avoidance vector
+    avoidanceX /= avoidanceCount;
+    avoidanceZ /= avoidanceCount;
+    
+    // Blend original direction with avoidance (70% original, 30% avoidance)
+    const blendedX = decision.moveDirection.x * 0.7 + avoidanceX * 0.3;
+    const blendedZ = decision.moveDirection.z * 0.7 + avoidanceZ * 0.3;
+    
+    // Normalize
+    const length = Math.sqrt(blendedX * blendedX + blendedZ * blendedZ);
+    const normalizedX = length > 0 ? blendedX / length : decision.moveDirection.x;
+    const normalizedZ = length > 0 ? blendedZ / length : decision.moveDirection.z;
+    
+    return {
+      ...decision,
+      moveDirection: {
+        x: normalizedX,
+        y: decision.moveDirection.y,
+        z: normalizedZ,
+      },
+    };
   }
 
   /**
@@ -280,7 +463,21 @@ export class AIController {
     
     if (this.behaviorSystem.isWithinFleeDistance(aiPlayer, nearestOni)) {
       // Flee from nearest ONI
-      const decision = this.behaviorSystem.flee(aiPlayer, nearestOni);
+      let decision = this.behaviorSystem.flee(aiPlayer, nearestOni);
+      
+      // Adjust direction to avoid stuck locations
+      decision = this.adjustDirectionToAvoidStuckLocations(aiPlayer, decision);
+      
+      // Use dash more aggressively when near stuck location
+      const nearStuckLocation = this.isNearStuckLocation(aiPlayer);
+      if (nearStuckLocation) {
+        return {
+          ...decision,
+          useAbility: true,
+          abilityType: 'dash',
+        };
+      }
+      
       return this.addAbilityDecision(aiPlayer, decision, 'dash');
     } else {
       // Safe distance, wander

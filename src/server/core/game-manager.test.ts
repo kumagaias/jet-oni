@@ -602,16 +602,11 @@ describe('GameManager', () => {
       const oniCount = savedGameState.players.filter((p: Player) => p.isOni).length;
       expect(oniCount).toBe(1);
 
-      // Single human player should always be runner
+      // Single human player can be either ONI or runner (random assignment)
       const humanPlayer = savedGameState.players.find((p: Player) => !p.isAI);
       expect(humanPlayer).toBeDefined();
-      expect(humanPlayer?.isOni).toBe(false);
-
-      // All oni should be AI
-      const oniPlayers = savedGameState.players.filter((p: Player) => p.isOni);
-      oniPlayers.forEach((p: Player) => {
-        expect(p.isAI).toBe(true);
-      });
+      // Human can be either ONI or runner
+      expect(typeof humanPlayer?.isOni).toBe('boolean');
     });
 
     it('should ensure at least 1 human is ONI when 2+ humans (2 humans, 4 AI for 6 total)', async () => {

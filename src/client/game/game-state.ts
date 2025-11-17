@@ -485,8 +485,7 @@ export class GameState {
 
   /**
    * Check if all players are oni (game over condition)
-   * Note: This only checks local and remote players visible to this client
-   * AI players on server may still be runners
+   * Checks ALL players including local, remote, and AI players
    */
   public areAllPlayersOni(): boolean {
     if (!this.isPlaying()) {
@@ -499,15 +498,17 @@ export class GameState {
       return false;
     }
     
-    // Don't end game if there are less than 2 total players visible
-    // (AI players may exist on server)
-    const totalPlayers = 1 + this.remotePlayers.size;
-    if (totalPlayers < 2) {
-      return false; // Wait for server sync
+    // Get all players (local + remote, including AI)
+    const allPlayers = this.getAllPlayers();
+    
+    // Don't end game if there are less than 2 total players
+    if (allPlayers.length < 2) {
+      return false; // Wait for players to join
     }
     
-    // Check if all visible players are oni
-    return this.countRunnerPlayers() === 0;
+    // Check if all players are oni
+    const runnerCount = allPlayers.filter(p => !p.isOni).length;
+    return runnerCount === 0;
   }
 
   /**

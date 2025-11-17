@@ -38,13 +38,15 @@ export class ToastNotification {
     this.container.id = 'toast-container';
     this.container.style.cssText = `
       position: fixed;
-      top: 80px;
-      right: 20px;
+      top: 120px;
+      left: 50%;
+      transform: translateX(-50%);
       z-index: 10000;
       display: flex;
       flex-direction: column;
       gap: 10px;
       pointer-events: none;
+      align-items: center;
     `;
     document.body.appendChild(this.container);
   }
@@ -143,32 +145,33 @@ export class ToastNotification {
 
     // Base styles
     element.style.cssText = `
-      padding: 12px 20px;
-      border-radius: 8px;
-      font-size: 16px;
-      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
       color: white;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
       animation: slideIn 0.3s ease-out, fadeOut 0.3s ease-in ${toast.duration - 300}ms;
       pointer-events: auto;
-      min-width: 200px;
-      max-width: 400px;
+      min-width: 150px;
+      max-width: 300px;
       text-align: center;
+      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5);
     `;
 
-    // Type-specific colors
+    // Type-specific colors (more transparent)
     switch (toast.type) {
       case 'info':
-        element.style.backgroundColor = 'rgba(59, 130, 246, 0.95)'; // Blue
+        element.style.backgroundColor = 'rgba(59, 130, 246, 0.7)'; // Blue
         break;
       case 'success':
-        element.style.backgroundColor = 'rgba(34, 197, 94, 0.95)'; // Green
+        element.style.backgroundColor = 'rgba(34, 197, 94, 0.7)'; // Green
         break;
       case 'warning':
-        element.style.backgroundColor = 'rgba(251, 146, 60, 0.95)'; // Orange
+        element.style.backgroundColor = 'rgba(251, 146, 60, 0.7)'; // Orange
         break;
       case 'error':
-        element.style.backgroundColor = 'rgba(239, 68, 68, 0.95)'; // Red
+        element.style.backgroundColor = 'rgba(239, 68, 68, 0.7)'; // Red
         break;
     }
 
@@ -189,11 +192,11 @@ export class ToastNotification {
     style.textContent = `
       @keyframes slideIn {
         from {
-          transform: translateX(400px);
+          transform: translateY(-20px);
           opacity: 0;
         }
         to {
-          transform: translateX(0);
+          transform: translateY(0);
           opacity: 1;
         }
       }

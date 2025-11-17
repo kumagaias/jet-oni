@@ -31,8 +31,8 @@ describe('ToastNotification', () => {
     it('should position container correctly', () => {
       const container = document.getElementById('toast-container');
       expect(container?.style.position).toBe('fixed');
-      expect(container?.style.top).toBe('80px');
-      expect(container?.style.right).toBe('20px');
+      expect(container?.style.top).toBe('120px');
+      expect(container?.style.left).toBe('50%');
     });
   });
 

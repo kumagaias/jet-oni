@@ -292,87 +292,93 @@ export class DynamicObjects {
    */
   private generateLadders(): void {
     if (!this.buildings) {
-      console.warn('No buildings provided, generating standalone ladders');
-      // Fallback to standalone ladders
-      const ladderCount = 15;
-      for (let i = 0; i < ladderCount; i++) {
-        const position = new THREE.Vector3(
-          (Math.random() - 0.5) * MAP_SIZE * 1.5,
-          0,
-          (Math.random() - 0.5) * MAP_SIZE * 1.5
-        );
-        const height = 10 + Math.random() * 20;
-        const ladder = this.createLadder(height);
-        ladder.position.copy(position);
-        this.ladders.add(ladder);
-      }
+      console.warn('No buildings provided, skipping ladder generation');
       return;
     }
 
-    const buildingMeshes: THREE.Mesh[] = [];
+    interface BuildingInfo {
+      mesh: THREE.Mesh;
+      group: THREE.Group;
+      params: { width: number; height: number; depth: number };
+    }
 
-    // Collect all building meshes
+    const buildingInfos: BuildingInfo[] = [];
+
+    // Collect all building groups and their main mesh
     this.buildings.traverse((object) => {
-      if (object instanceof THREE.Mesh && object.geometry instanceof THREE.BoxGeometry) {
-        const params = object.geometry.parameters;
-        // Only attach ladders to tall buildings (height > 10)
-        if (params.height > 10) {
-          buildingMeshes.push(object);
+      // Look for Groups that contain building meshes
+      if (object instanceof THREE.Group && object.children.length > 0) {
+        // Find the main building mesh (first BoxGeometry mesh)
+        const mainMesh = object.children.find(
+          (child) => child instanceof THREE.Mesh && child.geometry instanceof THREE.BoxGeometry
+        ) as THREE.Mesh | undefined;
+
+        if (mainMesh && mainMesh.geometry instanceof THREE.BoxGeometry) {
+          const params = mainMesh.geometry.parameters;
+          // Only attach ladders to tall buildings (height > 10)
+          if (params.height > 10) {
+            buildingInfos.push({
+              mesh: mainMesh,
+              group: object,
+              params: params,
+            });
+          }
         }
       }
     });
 
-    if (buildingMeshes.length === 0) {
+    if (buildingInfos.length === 0) {
       console.warn('No suitable buildings found for ladders');
       return;
     }
 
-    // Attach ladders to 20% of buildings
-    for (const building of buildingMeshes) {
+    // Attach ladders to 20% of buildings (one ladder per building)
+    for (const buildingInfo of buildingInfos) {
       // 20% chance to add a ladder to this building
       if (Math.random() > 0.2) {
         continue;
       }
-      
-      // Type guard to ensure we have BoxGeometry
-      if (!(building.geometry instanceof THREE.BoxGeometry)) {
-        continue;
-      }
-      
-      const params = building.geometry.parameters;
-      
-      // Choose a random side (0=front, 1=back, 2=left, 3=right)
-      const side = Math.floor(Math.random() * 4);
+
+      const params = buildingInfo.params;
+      const group = buildingInfo.group;
+
+      // Choose a random corner (0=front-left, 1=front-right, 2=back-left, 3=back-right)
+      // Placing ladders at corners avoids overlap with windows
+      const corner = Math.floor(Math.random() * 4);
       let offsetX = 0;
       let offsetZ = 0;
       let rotation = 0;
-      
-      switch (side) {
-        case 0: // Front (facing +Z)
-          offsetZ = params.depth / 2 + 0.3; // Outside the wall
+
+      switch (corner) {
+        case 0: // Front-left corner (facing +Z, left side)
+          offsetX = -params.width / 2 + 1; // Near left edge
+          offsetZ = params.depth / 2 + 0.3; // Outside the front wall
           rotation = 0;
           break;
-        case 1: // Back (facing -Z)
-          offsetZ = -params.depth / 2 - 0.3; // Outside the wall
+        case 1: // Front-right corner (facing +Z, right side)
+          offsetX = params.width / 2 - 1; // Near right edge
+          offsetZ = params.depth / 2 + 0.3; // Outside the front wall
+          rotation = 0;
+          break;
+        case 2: // Back-left corner (facing -Z, left side)
+          offsetX = -params.width / 2 + 1; // Near left edge
+          offsetZ = -params.depth / 2 - 0.3; // Outside the back wall
           rotation = Math.PI;
           break;
-        case 2: // Left (facing -X)
-          offsetX = -params.width / 2 - 0.3; // Outside the wall
-          rotation = Math.PI / 2;
-          break;
-        case 3: // Right (facing +X)
-          offsetX = params.width / 2 + 0.3; // Outside the wall
-          rotation = -Math.PI / 2;
+        case 3: // Back-right corner (facing -Z, right side)
+          offsetX = params.width / 2 - 1; // Near right edge
+          offsetZ = -params.depth / 2 - 0.3; // Outside the back wall
+          rotation = Math.PI;
           break;
       }
 
       const ladder = this.createLadder(params.height);
       ladder.position.set(
-        building.position.x + offsetX,
+        group.position.x + offsetX,
         0,
-        building.position.z + offsetZ
+        group.position.z + offsetZ
       );
-      
+
       // Rotate ladder 90 degrees to face the wall
       ladder.rotation.y = rotation;
 

@@ -49,6 +49,30 @@ export class UIHud {
       return;
     }
     
+    // Add CSS animations for player cards
+    const animationStyle = document.createElement('style');
+    animationStyle.textContent = `
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateX(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+    `;
+    document.head.appendChild(animationStyle);
+
     // Main HUD container
     this.hudContainer = document.createElement('div');
     this.hudContainer.id = 'hud-container';
@@ -380,81 +404,199 @@ export class UIHud {
   private updatePlayerCount(): void {
     if (!this.playerCountElement) return;
 
-    // Clear existing cards
-    this.playerCountElement.innerHTML = '';
-
-    // Get all runners (non-ONI players)
+    // Get all players
     const allPlayers = this.gameState.getAllPlayers();
     const runners = allPlayers.filter(p => !p.isOni);
 
-    // Create a card for each runner
-    runners.forEach(runner => {
-      const card = document.createElement('div');
-      card.style.cssText = `
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        background-color: rgba(0, 150, 255, 0.8);
-        padding: 8px 12px;
-        border-radius: 8px;
-        min-width: 150px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-        transition: transform 0.2s ease;
-      `;
-
-      // Runner icon
-      const icon = document.createElement('div');
-      icon.style.cssText = `
-        width: 32px;
-        height: 32px;
-        background-color: #4CAF50;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 18px;
-        font-weight: bold;
+    // Update or create header showing runner count
+    let header = this.playerCountElement.querySelector('[data-header="true"]') as HTMLElement;
+    if (!header) {
+      header = document.createElement('div');
+      header.dataset.header = 'true';
+      header.style.cssText = `
+        background-color: rgba(0, 0, 0, 0.7);
+        padding: 3px 8px;
+        border-radius: 4px;
         color: white;
-        flex-shrink: 0;
-      `;
-      icon.textContent = '🏃';
-
-      // Player name
-      const name = document.createElement('div');
-      name.style.cssText = `
-        color: white;
-        font-size: 14px;
+        font-size: 10px;
         font-weight: bold;
+        text-align: center;
+        margin-bottom: 4px;
         text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        flex: 1;
       `;
-      // Use username if available, otherwise use ID
-      const displayName = runner.username || runner.id;
-      // Shorten AI names
-      const shortName = displayName.startsWith('AI_') 
-        ? displayName 
-        : displayName.length > 12 
-          ? displayName.substring(0, 12) + '...' 
-          : displayName;
-      name.textContent = shortName;
+      this.playerCountElement.insertBefore(header, this.playerCountElement.firstChild);
+    }
+    header.textContent = this.i18n.t('hud.runnersRemaining', { count: runners.length.toString() });
 
-      card.appendChild(icon);
-      card.appendChild(name);
-      this.playerCountElement.appendChild(card);
+    // Get existing cards (excluding header)
+    const existingCards = Array.from(this.playerCountElement.children).filter(
+      child => !(child as HTMLElement).dataset.header
+    ) as HTMLElement[];
+    const existingPlayerIds = new Set(existingCards.map(card => card.dataset.playerId));
+
+    // Remove cards for players who are ONI (with animation for newly tagged)
+    existingCards.forEach(card => {
+      const playerId = card.dataset.playerId;
+      const player = allPlayers.find(p => p.id === playerId);
+      
+      // If player is ONI (either became ONI or was ONI from start), remove card
+      if (player && player.isOni && !card.dataset.removing) {
+        card.dataset.removing = 'true';
+        
+        // Check if player was just tagged (wasTagged flag)
+        const wasJustTagged = player.wasTagged;
+        
+        if (wasJustTagged) {
+          // Show X mark animation for newly tagged players
+          const xMark = document.createElement('div');
+          xMark.style.cssText = `
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(255, 0, 0, 0.9);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            color: white;
+            font-weight: bold;
+            border-radius: 6px;
+            animation: fadeIn 0.2s ease-out;
+          `;
+          xMark.textContent = '✕';
+          card.style.position = 'relative';
+          card.appendChild(xMark);
+          
+          // Fade out and remove after delay
+          setTimeout(() => {
+            card.style.transition = 'opacity 0.3s ease-out, transform 0.3s ease-out';
+            card.style.opacity = '0';
+            card.style.transform = 'scale(0.8)';
+            setTimeout(() => {
+              if (card.parentElement) {
+                card.parentElement.removeChild(card);
+              }
+            }, 300);
+          }, 500);
+        } else {
+          // Remove immediately for initial ONI (no animation)
+          if (card.parentElement) {
+            card.parentElement.removeChild(card);
+          }
+        }
+      }
+      
+      // Also remove cards for players who no longer exist
+      if (!player && !card.dataset.removing) {
+        card.dataset.removing = 'true';
+        if (card.parentElement) {
+          card.parentElement.removeChild(card);
+        }
+      }
     });
 
+    // Add cards for new runners (max 6 cards)
+    const MAX_CARDS = 6;
+    const runnersToShow = runners.slice(0, MAX_CARDS);
+    const remainingCount = runners.length - MAX_CARDS;
+
+    runnersToShow.forEach(runner => {
+      if (!existingPlayerIds.has(runner.id)) {
+        const card = document.createElement('div');
+        card.dataset.playerId = runner.id;
+        card.style.cssText = `
+          position: relative;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          background-color: rgba(0, 150, 255, 0.9);
+          padding: 4px 8px;
+          border-radius: 6px;
+          min-width: 100px;
+          box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+          transition: opacity 0.3s ease-out, transform 0.3s ease-out;
+          animation: slideIn 0.3s ease-out;
+        `;
+
+        // Runner icon (smaller)
+        const icon = document.createElement('div');
+        icon.style.cssText = `
+          width: 20px;
+          height: 20px;
+          background-color: #4CAF50;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 12px;
+          color: white;
+          flex-shrink: 0;
+        `;
+        icon.textContent = '🏃';
+
+        // Player name (smaller)
+        const name = document.createElement('div');
+        name.style.cssText = `
+          color: white;
+          font-size: 11px;
+          font-weight: bold;
+          text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          flex: 1;
+        `;
+        // Use username if available, otherwise use ID
+        const displayName = runner.username || runner.id;
+        // Shorten names more aggressively
+        const shortName = displayName.startsWith('AI_') 
+          ? displayName.replace('AI_', 'AI') 
+          : displayName.length > 8 
+            ? displayName.substring(0, 8) + '...' 
+            : displayName;
+        name.textContent = shortName;
+
+        card.appendChild(icon);
+        card.appendChild(name);
+        this.playerCountElement.appendChild(card);
+      }
+    });
+
+    // Show "and X others" message if there are more than MAX_CARDS runners
+    let othersMessage = this.playerCountElement.querySelector('[data-others="true"]') as HTMLElement;
+    if (remainingCount > 0) {
+      if (!othersMessage) {
+        othersMessage = document.createElement('div');
+        othersMessage.dataset.others = 'true';
+        othersMessage.style.cssText = `
+          background-color: rgba(0, 0, 0, 0.6);
+          padding: 3px 8px;
+          border-radius: 4px;
+          color: rgba(255, 255, 255, 0.8);
+          font-size: 9px;
+          text-align: center;
+          margin-top: 2px;
+          font-style: italic;
+        `;
+        this.playerCountElement.appendChild(othersMessage);
+      }
+      othersMessage.textContent = this.i18n.t('hud.andOthers', { count: remainingCount.toString() });
+      othersMessage.style.display = 'block';
+    } else if (othersMessage) {
+      othersMessage.style.display = 'none';
+    }
+
     // If no runners, show "All ONI" message
-    if (runners.length === 0) {
+    if (runners.length === 0 && existingCards.filter(c => !c.dataset.removing).length === 0) {
       const message = document.createElement('div');
       message.style.cssText = `
-        background-color: rgba(255, 0, 0, 0.8);
-        padding: 10px 15px;
-        border-radius: 8px;
+        background-color: rgba(255, 0, 0, 0.9);
+        padding: 6px 10px;
+        border-radius: 6px;
         color: white;
-        font-size: 14px;
+        font-size: 12px;
         font-weight: bold;
         text-align: center;
         text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);

@@ -1092,13 +1092,14 @@ async function initGame(): Promise<void> {
           // Update HUD with cloak timer
           uiHud.update(0, cloakRemaining);
           
-          // Check if game should end (only once per second to reduce overhead)
+          // Check if game should end (only host checks, once per second to reduce overhead)
+          // Non-host clients will receive game-end message from host via Realtime
           const now = Date.now();
-          if (now - lastGameEndCheck > 1000) {
+          if (isHost && now - lastGameEndCheck > 1000) {
             lastGameEndCheck = now;
             if (gameState.shouldGameEnd()) {
-              // If host, broadcast game-end to all players
-              if (isHost && currentGameId && realtimeSyncManager.isConnected()) {
+              // Broadcast game-end to all players
+              if (currentGameId && realtimeSyncManager.isConnected()) {
                 realtimeSyncManager.sendGameEnd();
               }
               window.dispatchEvent(new Event('gameEnd'));
@@ -1676,22 +1677,23 @@ async function initGame(): Promise<void> {
           try {
             console.log('[Game End] Starting game end process...');
             
-            // First, update all player states to server (including survivedTime)
-            const allPlayers = gameState.getAllPlayers();
-            console.log('[Game End] Updating player states for', allPlayers.length, 'players');
-            
-            // Use the saved elapsed time (not getElapsedTime() which returns 0 after game ends)
-            const gameElapsedTime = finalGameElapsedTime;
-            const gameStartTime = Date.now() - (gameElapsedTime * 1000);
-            console.log(`[Game End] Using saved elapsed time: ${gameElapsedTime} seconds`);
-            
-            const updatePromises = allPlayers.map(player => {
-              // Host: Calculate survivedTime based on tagged time
-              // Non-Host: Don't send survivedTime (let server use existing values)
-              let finalSurvivedTime: number | undefined = undefined;
+            // CRITICAL FIX: Only host updates all player states to prevent race conditions
+            // Non-host clients only update their own player state
+            if (isHost) {
+              // Host: Update all player states (including survivedTime)
+              const allPlayers = gameState.getAllPlayers();
+              console.log('[Game End] [HOST] Updating player states for', allPlayers.length, 'players');
               
-              if (isHost) {
+              // Use the saved elapsed time (not getElapsedTime() which returns 0 after game ends)
+              const gameElapsedTime = finalGameElapsedTime;
+              const gameStartTime = Date.now() - (gameElapsedTime * 1000);
+              console.log(`[Game End] [HOST] Using saved elapsed time: ${gameElapsedTime} seconds`);
+              
+              const updatePromises = allPlayers.map(player => {
+                // Calculate survivedTime based on tagged time
                 const taggedTime = taggedTimeMap.get(player.id);
+                let finalSurvivedTime: number;
+                
                 if (taggedTime) {
                   // Player was tagged - calculate time from game start to tagged time
                   finalSurvivedTime = (taggedTime - gameStartTime) / 1000;
@@ -1699,8 +1701,60 @@ async function initGame(): Promise<void> {
                   // Player was never tagged - survived the entire game
                   finalSurvivedTime = gameElapsedTime;
                 }
-                console.log(`[Host] Player ${player.username}: survivedTime=${finalSurvivedTime}, wasTagged=${!!taggedTime}`);
-              }
+                console.log(`[Game End] [HOST] Player ${player.username}: survivedTime=${finalSurvivedTime}, wasTagged=${!!taggedTime}`);
+                
+                // Validate and sanitize data before sending
+                const isValidNumber = (n: number) => typeof n === 'number' && isFinite(n);
+                const isValidVector = (v: { x: number; y: number; z: number }) => 
+                  isValidNumber(v.x) && isValidNumber(v.y) && isValidNumber(v.z);
+                const isValidRotation = (r: { yaw: number; pitch: number }) =>
+                  isValidNumber(r.yaw) && isValidNumber(r.pitch);
+                
+                // Clamp extremely small values to zero (denormalized numbers)
+                const clampSmallValues = (n: number, threshold = 1e-100) => 
+                  Math.abs(n) < threshold ? 0 : n;
+                
+                const sanitizedVelocity = {
+                  x: clampSmallValues(player.velocity.x),
+                  y: clampSmallValues(player.velocity.y),
+                  z: clampSmallValues(player.velocity.z)
+                };
+                
+                if (!isValidVector(player.position)) {
+                  console.error(`[Game End] [HOST] Invalid position for ${player.id}:`, player.position);
+                }
+                if (!isValidVector(sanitizedVelocity)) {
+                  console.error(`[Game End] [HOST] Invalid velocity for ${player.id}:`, sanitizedVelocity);
+                }
+                if (!isValidRotation(player.rotation)) {
+                  console.error(`[Game End] [HOST] Invalid rotation for ${player.id}:`, player.rotation);
+                }
+                if (!isValidNumber(player.fuel)) {
+                  console.error(`[Game End] [HOST] Invalid fuel for ${player.id}:`, player.fuel);
+                }
+                
+                console.log(`[Game End] [HOST] Updating Player ${player.id}: isOni=${player.isOni}, survivedTime=${finalSurvivedTime}, wasTagged=${player.wasTagged}, tagCount=${player.tagCount}`);
+                return gameApiClient.updatePlayerState(currentGameId, player.id, {
+                  position: player.position,
+                  velocity: sanitizedVelocity,
+                  rotation: player.rotation,
+                  fuel: player.fuel,
+                  isOni: player.isOni,
+                  survivedTime: finalSurvivedTime,
+                  wasTagged: player.wasTagged,
+                  tagCount: player.tagCount,
+                }).catch(error => {
+                  console.error(`[Game End] [HOST] Failed to update player ${player.username} (${player.id}) state:`, error);
+                });
+              });
+              
+              // Wait for all updates to complete
+              await Promise.all(updatePromises);
+              console.log('[Game End] [HOST] Player states updated');
+            } else {
+              // Non-host: Only update own player state
+              const localPlayer = gameState.getLocalPlayer();
+              console.log('[Game End] [NON-HOST] Updating only local player state:', localPlayer.id);
               
               // Validate and sanitize data before sending
               const isValidNumber = (n: number) => typeof n === 'number' && isFinite(n);
@@ -1714,69 +1768,64 @@ async function initGame(): Promise<void> {
                 Math.abs(n) < threshold ? 0 : n;
               
               const sanitizedVelocity = {
-                x: clampSmallValues(player.velocity.x),
-                y: clampSmallValues(player.velocity.y),
-                z: clampSmallValues(player.velocity.z)
+                x: clampSmallValues(localPlayer.velocity.x),
+                y: clampSmallValues(localPlayer.velocity.y),
+                z: clampSmallValues(localPlayer.velocity.z)
               };
               
-              if (!isValidVector(player.position)) {
-                console.error(`[Game End] Invalid position for ${player.id}:`, player.position);
+              if (!isValidVector(localPlayer.position)) {
+                console.error(`[Game End] [NON-HOST] Invalid position:`, localPlayer.position);
               }
               if (!isValidVector(sanitizedVelocity)) {
-                console.error(`[Game End] Invalid velocity for ${player.id}:`, sanitizedVelocity);
+                console.error(`[Game End] [NON-HOST] Invalid velocity:`, sanitizedVelocity);
               }
-              if (!isValidRotation(player.rotation)) {
-                console.error(`[Game End] Invalid rotation for ${player.id}:`, player.rotation);
+              if (!isValidRotation(localPlayer.rotation)) {
+                console.error(`[Game End] [NON-HOST] Invalid rotation:`, localPlayer.rotation);
               }
-              if (!isValidNumber(player.fuel)) {
-                console.error(`[Game End] Invalid fuel for ${player.id}:`, player.fuel);
+              if (!isValidNumber(localPlayer.fuel)) {
+                console.error(`[Game End] [NON-HOST] Invalid fuel:`, localPlayer.fuel);
               }
               
-              console.log(`[Game End] Updating Player ${player.id}: isOni=${player.isOni}, survivedTime=${finalSurvivedTime}, wasTagged=${player.wasTagged}, tagCount=${player.tagCount}`);
-              return gameApiClient.updatePlayerState(currentGameId, player.id, {
-                position: player.position,
+              console.log(`[Game End] [NON-HOST] Updating local player: isOni=${localPlayer.isOni}, wasTagged=${localPlayer.wasTagged}, tagCount=${localPlayer.tagCount}`);
+              await gameApiClient.updatePlayerState(currentGameId, localPlayer.id, {
+                position: localPlayer.position,
                 velocity: sanitizedVelocity,
-                rotation: player.rotation,
-                fuel: player.fuel,
-                isOni: player.isOni,
-                survivedTime: finalSurvivedTime, // Only set by Host
-                wasTagged: player.wasTagged,
-                tagCount: player.tagCount,
+                rotation: localPlayer.rotation,
+                fuel: localPlayer.fuel,
+                isOni: localPlayer.isOni,
+                wasTagged: localPlayer.wasTagged,
+                tagCount: localPlayer.tagCount,
               }).catch(error => {
-                // Ignore "Player not found" errors during game end
-                // This can happen if another client already ended the game
-                if (error.message && error.message.includes('Player not found')) {
-                  console.warn(`[Game End] Player ${player.id} not found (game may have already ended)`);
-                  return;
-                }
-                
-                console.error(`Failed to update player ${player.username} (${player.id}) state:`, error);
-                console.error(`  Data: isOni=${player.isOni}, survivedTime=${finalSurvivedTime}, wasTagged=${player.wasTagged}, tagCount=${player.tagCount}`);
-                console.error(`  Position:`, player.position);
-                console.error(`  Velocity (sanitized):`, sanitizedVelocity);
-                console.error(`  Velocity (original):`, player.velocity);
-                console.error(`  Rotation:`, player.rotation);
-                console.error(`  Fuel:`, player.fuel);
+                console.error(`[Game End] [NON-HOST] Failed to update local player state:`, error);
               });
-            });
-            
-            // Wait for all updates to complete
-            await Promise.all(updatePromises);
-            console.log('[Game End] Player states updated');
+              console.log('[Game End] [NON-HOST] Local player state updated');
+            }
             
             // NOW set game phase to ended (after updating all player states)
             gameState.setGamePhase('ended');
             
-            // Then end the game
-            console.log('[Game End] Calling endGame API...');
-            const endGameResponse = await gameApiClient.endGame(currentGameId);
-            console.log('[Game End] endGame response:', endGameResponse);
+            // Only host calls endGame API to prevent race conditions
+            let endGameResponse;
+            if (isHost) {
+              // Host: Call endGame API to calculate results
+              console.log('[Game End] [HOST] Calling endGame API...');
+              endGameResponse = await gameApiClient.endGame(currentGameId);
+              console.log('[Game End] [HOST] endGame response:', endGameResponse);
+            } else {
+              // Non-host: Wait a bit for host to calculate results, then fetch them
+              console.log('[Game End] [NON-HOST] Waiting for host to calculate results...');
+              await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+              
+              console.log('[Game End] [NON-HOST] Fetching game results...');
+              endGameResponse = await gameApiClient.endGame(currentGameId);
+              console.log('[Game End] [NON-HOST] endGame response:', endGameResponse);
+            }
             
             // Keep game finished message visible until results screen is ready
             // Don't remove it here - will be removed when showing results
             
             // Show results screen with game results
-            if (endGameResponse.success && endGameResponse.results) {
+            if (endGameResponse && endGameResponse.success && endGameResponse.results) {
               console.log('[Game End] Showing results screen...');
               const { UIResults } = await import('./ui/ui-results');
               

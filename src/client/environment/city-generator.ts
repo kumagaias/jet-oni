@@ -329,7 +329,10 @@ export class CityGenerator {
   /**
    * Create a single building
    */
-  private createBuilding(config: BuildingConfig): THREE.Mesh {
+  private createBuilding(config: BuildingConfig): THREE.Group {
+    const buildingGroup = new THREE.Group();
+
+    // Main building body
     const geometry = new THREE.BoxGeometry(config.width, config.height, config.depth);
     const material = new THREE.MeshStandardMaterial({
       color: config.color,
@@ -340,8 +343,79 @@ export class CityGenerator {
     const building = new THREE.Mesh(geometry, material);
     building.castShadow = true;
     building.receiveShadow = true;
+    buildingGroup.add(building);
 
-    return building;
+    // Add windows to building
+    this.addWindowsToBuilding(buildingGroup, config.width, config.height, config.depth);
+
+    return buildingGroup;
+  }
+
+  /**
+   * Add windows to a building
+   */
+  private addWindowsToBuilding(buildingGroup: THREE.Group, width: number, height: number, depth: number): void {
+    const windowWidth = 1.5;
+    const windowHeight = 2;
+    const windowDepth = 0.1;
+    const windowSpacing = 3;
+
+    const windowMaterial = new THREE.MeshStandardMaterial({
+      color: 0x87ceeb, // Sky blue
+      emissive: 0x87ceeb,
+      emissiveIntensity: 0.3,
+      roughness: 0.3,
+      metalness: 0.1,
+    });
+
+    // Calculate number of windows per side
+    const windowsX = Math.floor((width - windowSpacing) / windowSpacing);
+    const windowsZ = Math.floor((depth - windowSpacing) / windowSpacing);
+    
+    // Calculate number of floors (windows vertically)
+    const floors = Math.max(1, Math.floor((height - 4) / 4)); // Start 2m from bottom, 4m per floor
+
+    // Add windows to each face
+    for (let face = 0; face < 4; face++) {
+      const isXFace = face % 2 === 0;
+      const faceWidth = isXFace ? width : depth;
+      const windowsOnFace = isXFace ? windowsX : windowsZ;
+
+      for (let floor = 0; floor < floors; floor++) {
+        for (let col = 0; col < windowsOnFace; col++) {
+          // Skip some windows randomly for variation
+          if (this.rng.next() > 0.7) continue;
+
+          const windowGeometry = new THREE.PlaneGeometry(windowWidth, windowHeight);
+          const window = new THREE.Mesh(windowGeometry, windowMaterial);
+
+          // Position window on building face
+          const localX = (col - (windowsOnFace - 1) / 2) * windowSpacing;
+          // Center windows vertically on the wall
+          const localY = -height / 2 + 2 + (floor + 0.5) * (height - 4) / floors;
+
+          switch (face) {
+            case 0: // Front face (+Z)
+              window.position.set(localX, localY, depth / 2 + windowDepth);
+              break;
+            case 1: // Right face (+X)
+              window.position.set(width / 2 + windowDepth, localY, localX);
+              window.rotation.y = -Math.PI / 2;
+              break;
+            case 2: // Back face (-Z)
+              window.position.set(-localX, localY, -depth / 2 - windowDepth);
+              window.rotation.y = Math.PI;
+              break;
+            case 3: // Left face (-X)
+              window.position.set(-width / 2 - windowDepth, localY, -localX);
+              window.rotation.y = Math.PI / 2;
+              break;
+          }
+
+          buildingGroup.add(window);
+        }
+      }
+    }
   }
 
   /**

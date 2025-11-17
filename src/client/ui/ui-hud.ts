@@ -98,20 +98,19 @@ export class UIHud {
     `;
     this.timerElement.textContent = '5:00';
 
-    // Player count display (top right)
+    // Player cards container (top right) - shows runner cards
     this.playerCountElement = document.createElement('div');
     this.playerCountElement.id = 'hud-player-count';
     this.playerCountElement.style.cssText = `
       position: absolute;
       top: 20px;
       right: 20px;
-      font-size: 18px;
-      font-weight: bold;
-      color: #ffffff;
-      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
-      background-color: rgba(0, 0, 0, 0.5);
-      padding: 10px 15px;
-      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: calc(100vh - 40px);
+      overflow-y: auto;
+      padding: 5px;
     `;
 
     // Fuel gauge container - vertical on right side
@@ -376,32 +375,93 @@ export class UIHud {
   }
 
   /**
-   * Update player count display
+   * Update player count display - shows runner cards
    */
   private updatePlayerCount(): void {
     if (!this.playerCountElement) return;
 
-    const oniCount = this.gameState.countOniPlayers();
-    const runnerCount = this.gameState.countRunnerPlayers();
-    const totalCount = this.gameState.getAllPlayers().length;
+    // Clear existing cards
+    this.playerCountElement.innerHTML = '';
 
-    // Debug log only when count seems wrong
-    if (oniCount + runnerCount !== totalCount) {
-      console.warn(`[HUD] Player count mismatch! ONI: ${oniCount}, Runners: ${runnerCount}, Total: ${totalCount}`);
-      const allPlayers = this.gameState.getAllPlayers();
-      const playerIds = allPlayers.map(p => p.id);
-      const uniqueIds = new Set(playerIds);
-      if (playerIds.length !== uniqueIds.size) {
-        console.error(`[HUD] Duplicate player IDs detected!`);
-        const duplicates = playerIds.filter((id, index) => playerIds.indexOf(id) !== index);
-        console.error(`[HUD] Duplicate IDs:`, duplicates);
-      }
-    }
+    // Get all runners (non-ONI players)
+    const allPlayers = this.gameState.getAllPlayers();
+    const runners = allPlayers.filter(p => !p.isOni);
 
-    this.playerCountElement.textContent = this.i18n.t('hud.playerCount', {
-      oni: oniCount.toString(),
-      runners: runnerCount.toString(),
+    // Create a card for each runner
+    runners.forEach(runner => {
+      const card = document.createElement('div');
+      card.style.cssText = `
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background-color: rgba(0, 150, 255, 0.8);
+        padding: 8px 12px;
+        border-radius: 8px;
+        min-width: 150px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        transition: transform 0.2s ease;
+      `;
+
+      // Runner icon
+      const icon = document.createElement('div');
+      icon.style.cssText = `
+        width: 32px;
+        height: 32px;
+        background-color: #4CAF50;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 18px;
+        font-weight: bold;
+        color: white;
+        flex-shrink: 0;
+      `;
+      icon.textContent = '🏃';
+
+      // Player name
+      const name = document.createElement('div');
+      name.style.cssText = `
+        color: white;
+        font-size: 14px;
+        font-weight: bold;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        flex: 1;
+      `;
+      // Use username if available, otherwise use ID
+      const displayName = runner.username || runner.id;
+      // Shorten AI names
+      const shortName = displayName.startsWith('AI_') 
+        ? displayName 
+        : displayName.length > 12 
+          ? displayName.substring(0, 12) + '...' 
+          : displayName;
+      name.textContent = shortName;
+
+      card.appendChild(icon);
+      card.appendChild(name);
+      this.playerCountElement.appendChild(card);
     });
+
+    // If no runners, show "All ONI" message
+    if (runners.length === 0) {
+      const message = document.createElement('div');
+      message.style.cssText = `
+        background-color: rgba(255, 0, 0, 0.8);
+        padding: 10px 15px;
+        border-radius: 8px;
+        color: white;
+        font-size: 14px;
+        font-weight: bold;
+        text-align: center;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+      `;
+      message.textContent = this.i18n.t('hud.allOni');
+      this.playerCountElement.appendChild(message);
+    }
   }
 
   /**

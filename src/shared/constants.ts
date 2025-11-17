@@ -2,13 +2,14 @@
 
 // Player movement speeds (units per second)
 export const PLAYER_SPEED = 10;
-export const ONI_SPEED_MULTIPLIER = 1.5;
-export const DASH_SPEED = 20;
+export const ONI_SPEED_MULTIPLIER = 2.0; // ONI is 2x faster than runner
+export const DASH_SPEED = 30; // 3x normal speed
 
 // Fuel system
 export const MAX_FUEL = 100;
 export const JETPACK_FUEL_CONSUMPTION = 30; // per second
-export const DASH_FUEL_CONSUMPTION = 25; // per second
+export const DASH_FUEL_COST = 30; // fuel cost per dash activation
+export const DASH_DURATION = 2; // seconds - how long dash lasts
 export const ONI_FUEL_RECOVERY = 20; // per second on surface
 export const RUNNER_FUEL_RECOVERY = 20; // per second on surface while stationary
 

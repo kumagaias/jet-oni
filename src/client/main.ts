@@ -18,6 +18,7 @@ import { PlayerCamera, CameraMode } from './player/player-camera';
 import { BeaconVisual } from './effects/beacon-visual';
 import { VisualIndicators } from './effects/visual-indicators';
 import { ParticleSystem } from './effects/particle-system';
+import { ScreenFade } from './effects/screen-fade';
 import { OniSpawnItem } from './items/oni-spawn-item';
 import { CloakItem } from './items/cloak-item';
 import { CarSystem } from './environment/car-system';
@@ -1064,6 +1065,9 @@ async function initGame(): Promise<void> {
       // Initialize countdown UI
       const uiCountdown = new UICountdown(i18n);
       
+      // Initialize screen fade effect
+      const screenFade = new ScreenFade();
+      
       // Initialize minimap (dev mode only)
       const uiMinimap = new UIMinimap(gameState);
       uiMinimap.create();
@@ -1159,14 +1163,21 @@ async function initGame(): Promise<void> {
         
         // Start countdown (10 seconds) with timestamp synchronization
         const startTimestamp = customEvent.detail?.startTimestamp || Date.now();
-        uiCountdown.start(10, () => {
-          // Countdown complete - trigger actual game start
+        uiCountdown.start(10, async () => {
+          // Start fade to black before game starts
+          // This hides player spawn positions and initial movement
+          const fadePromise = screenFade.fadeSequence(300, 800, 500);
+          
+          // Trigger actual game start immediately (during fade)
           window.dispatchEvent(new CustomEvent('gameStart', {
             detail: {
               config: gameState.getGameConfig(),
               gameId: currentGameId,
             },
           }));
+          
+          // Wait for fade to complete
+          await fadePromise;
         }, startTimestamp);
       }) as EventListener);
       

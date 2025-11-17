@@ -71,6 +71,7 @@ export const jp: Translations = {
       runner: 'あなたは逃げる側です',
     },
     playerCount: '鬼: {oni} | 逃げる側: {runners}',
+    allOni: '全員鬼！',
     beacon: 'ビーコン',
     beaconReady: 'ビーコン使用可能',
     beaconCooldown: 'ビーコン: {seconds}秒',

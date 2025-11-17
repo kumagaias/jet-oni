@@ -78,16 +78,15 @@ describe('UIHud', () => {
   });
 
   describe('player count display', () => {
-    it('should display correct player counts', () => {
+    it('should display "All ONI" message when no runners', () => {
       gameState.setLocalPlayerIsOni(true);
       uiHud.update();
 
       const playerCount = document.getElementById('hud-player-count');
-      expect(playerCount?.textContent).toContain('ONI: 1');
-      expect(playerCount?.textContent).toContain('Runners: 0');
+      expect(playerCount?.textContent).toContain('All ONI!');
     });
 
-    it('should update when players change', () => {
+    it('should display runner cards when runners exist', () => {
       gameState.setLocalPlayerIsOni(false);
       gameState.updateRemotePlayer({
         id: 'player2',
@@ -108,8 +107,9 @@ describe('UIHud', () => {
       uiHud.update();
 
       const playerCount = document.getElementById('hud-player-count');
-      expect(playerCount?.textContent).toContain('ONI: 1');
-      expect(playerCount?.textContent).toContain('Runners: 1');
+      // Should show runner card with icon and name
+      expect(playerCount?.textContent).toContain('🏃');
+      expect(playerCount?.textContent).toContain('You');
     });
   });
 

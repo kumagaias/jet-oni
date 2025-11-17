@@ -336,12 +336,14 @@ export class AIController {
     
     // Use jetpack more aggressively when:
     // 1. Target is far (> 30 units)
-    // 2. Target is above us (y difference > 5)
-    // 3. Random chance for unpredictability
-    // 4. Near a stuck location
+    // 2. Target is above us (y difference > 2) - lowered threshold to chase airborne runners
+    // 3. Target is jetpacking (actively flying)
+    // 4. Random chance for unpredictability
+    // 5. Near a stuck location
     const yDiff = nearestRunner.position.y - aiPlayer.position.y;
     const nearStuckLocation = this.isNearStuckLocation(aiPlayer);
-    const shouldUseJetpack = distance > 30 || yDiff > 5 || Math.random() < 0.4 || nearStuckLocation;
+    const targetIsAirborne = nearestRunner.isJetpacking || yDiff > 2;
+    const shouldUseJetpack = distance > 30 || targetIsAirborne || Math.random() < 0.4 || nearStuckLocation;
     
     return {
       ...decision,

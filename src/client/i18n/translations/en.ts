@@ -71,6 +71,7 @@ export const en: Translations = {
       runner: 'You are RUNNER',
     },
     playerCount: 'ONI: {oni} | Runners: {runners}',
+    allOni: 'All ONI!',
     beacon: 'Beacon',
     beaconReady: 'Beacon Ready',
     beaconCooldown: 'Beacon: {seconds}s',

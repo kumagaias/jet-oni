@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { GameManager } from './game-manager';
-import { GameConfig, GameState } from '../../shared/types/game';
+import { GameConfig, GameState, Player } from '../../shared/types/game';
 
 // Mock Redis
 vi.mock('@devvit/web/server', () => ({
@@ -11,21 +11,21 @@ vi.mock('@devvit/web/server', () => ({
     expire: vi.fn(),
     zAdd: vi.fn(),
     zRem: vi.fn(),
-    zRange: vi.fn().mockResolvedValue([]),
+    zRange: vi.fn(),
     sAdd: vi.fn(),
     sRem: vi.fn(),
     sMembers: vi.fn(),
   },
 }));
 
+// Get reference to mocked redis after module is mocked
+const mockRedis = vi.mocked((await import('@devvit/web/server')).redis);
+
 describe('GameManager', () => {
   let gameManager: GameManager;
-  let mockRedis: typeof import('@devvit/web/server').redis;
 
-  beforeEach(async () => {
+  beforeEach(() => {
     gameManager = new GameManager();
-    const { redis } = await import('@devvit/web/server');
-    mockRedis = redis;
     vi.clearAllMocks();
   });
 
@@ -58,16 +58,18 @@ describe('GameManager', () => {
         rounds: 1,
       };
 
-      let savedGameState: { players: Array<{ isOni: boolean; isAI?: boolean }> };
-      mockRedis.set.mockImplementation((key: string, data: string) => {
-        savedGameState = JSON.parse(data) as { players: Array<{ isOni: boolean; isAI?: boolean }> };
-        return Promise.resolve(undefined);
+      let savedGameState: GameState | undefined;
+      mockRedis.set.mockImplementation((_key: string, data: string) => {
+        savedGameState = JSON.parse(data) as GameState;
+        return Promise.resolve('OK');
       });
       mockRedis.zAdd.mockResolvedValue(1);
 
       await gameManager.createGame(config);
 
       expect(savedGameState).toBeDefined();
+      if (!savedGameState) throw new Error('savedGameState is undefined');
+      
       expect(savedGameState.status).toBe('lobby');
       expect(savedGameState.config).toEqual(config);
       expect(savedGameState.players).toHaveLength(1); // Host player is automatically added
@@ -103,8 +105,9 @@ describe('GameManager', () => {
       expect(result.success).toBe(true);
       expect(result.playerId).toBeDefined();
       expect(result.gameState).toBeDefined();
-      expect(result.gameState?.players).toHaveLength(1);
-      expect(result.gameState?.players[0].username).toBe(username);
+      if (!result.gameState) throw new Error('gameState is undefined');
+      expect(result.gameState.players).toHaveLength(1);
+      expect(result.gameState.players[0]?.username).toBe(username);
     });
 
     it('should return error if game not found', async () => {
@@ -175,10 +178,11 @@ describe('GameManager', () => {
             isAI: false,
             position: { x: 0, y: 0, z: 0 },
             velocity: { x: 0, y: 0, z: 0 },
-        rotation: { yaw: 0, pitch: 0 },
+            rotation: { yaw: 0, pitch: 0 },
             fuel: 100,
             survivedTime: 0,
             wasTagged: false,
+            tagCount: 0,
             isOnSurface: true,
             isDashing: false,
             isJetpacking: false,
@@ -191,20 +195,22 @@ describe('GameManager', () => {
         timeRemaining: 180,
       };
 
-      let savedGameState: GameState | null = null;
+      let savedGameState: GameState | undefined;
       mockRedis.get.mockResolvedValue(JSON.stringify(mockGameState));
-      mockRedis.set.mockImplementation((key: string, data: string) => {
+      mockRedis.set.mockImplementation((_key: string, data: string) => {
         savedGameState = JSON.parse(data) as GameState;
-        return Promise.resolve(undefined);
+        return Promise.resolve('OK');
       });
 
       const result = await gameManager.joinGame('test_game', 'Player2');
 
       expect(result.success).toBe(true);
-      expect(savedGameState?.players).toHaveLength(2);
+      if (!savedGameState) throw new Error('savedGameState is undefined');
+      
+      expect(savedGameState.players).toHaveLength(2);
 
       // One player should be oni
-      const oniCount = savedGameState?.players.filter((p) => p.isOni).length;
+      const oniCount = savedGameState.players.filter((p: Player) => p.isOni).length;
       expect(oniCount).toBe(1);
     });
   });
@@ -313,9 +319,10 @@ describe('GameManager', () => {
       const results = await gameManager.endGame('test_game');
 
       expect(results).toBeDefined();
-      expect(results?.players).toHaveLength(1); // Only Player2 survived (not tagged)
-      expect(results?.teamWinner).toBe('runners'); // Player2 survived
-      expect(results?.players[0].username).toBe('Player2'); // Top player
+      if (!results) throw new Error('results is undefined');
+      expect(results.players).toHaveLength(1); // Only Player2 survived (not tagged)
+      expect(results.teamWinner).toBe('runners'); // Player2 survived
+      expect(results.players[0]?.username).toBe('Player2'); // Top player
       expect(mockRedis.zRem).toHaveBeenCalled();
     });
 
@@ -462,27 +469,29 @@ describe('GameManager', () => {
       const results = await gameManager.endGame('test_game');
 
       expect(results).toBeDefined();
+      if (!results) throw new Error('results is undefined');
+      
       // Runners Win: Only survivors are shown (exclude initial ONI and tagged players)
-      expect(results?.players).toHaveLength(1);
+      expect(results.players).toHaveLength(1);
       
       // Tagged runner should NOT be in results (they became ONI)
-      const taggedRunner = results?.players.find(p => p.username === 'TaggedRunner');
+      const taggedRunner = results.players.find(p => p.username === 'TaggedRunner');
       expect(taggedRunner).toBeUndefined();
       
       // Survivor should have full game duration and be the only one shown
-      const survivor = results?.players.find(p => p.username === 'Survivor');
+      const survivor = results.players.find(p => p.username === 'Survivor');
       expect(survivor).toBeDefined();
       expect(survivor?.survivedTime).toBeGreaterThan(179);
       expect(survivor?.survivedTime).toBeLessThan(181);
       
       // Original ONI should not be in results (filtered out for Runners Win)
-      const oni = results?.players.find(p => p.username === 'OriginalOni');
+      const oni = results.players.find(p => p.username === 'OriginalOni');
       expect(oni).toBeUndefined();
       
       // Team winner should be runners (survivor exists)
-      expect(results?.teamWinner).toBe('runners');
+      expect(results.teamWinner).toBe('runners');
       // Top player should be the survivor (longest survival time)
-      expect(results?.players[0].username).toBe('Survivor');
+      expect(results.players[0]?.username).toBe('Survivor');
     });
   });
 
@@ -524,11 +533,13 @@ describe('GameManager', () => {
 
       // Only lobby games that are not full should be returned
       expect(games).toHaveLength(1);
-      expect(games[0].gameId).toBe('game1');
-      expect(games[0].hostUsername).toBe('Host1');
-      expect(games[0].currentPlayers).toBe(1);
-      expect(games[0].totalPlayers).toBe(6);
-      expect(games[0].status).toBe('lobby');
+      const game = games[0];
+      if (!game) throw new Error('game is undefined');
+      expect(game.gameId).toBe('game1');
+      expect(game.hostUsername).toBe('Host1');
+      expect(game.currentPlayers).toBe(1);
+      expect(game.totalPlayers).toBe(6);
+      expect(game.status).toBe('lobby');
     });
 
     it('should return empty array if no active games', async () => {
@@ -555,9 +566,11 @@ describe('GameManager', () => {
             isAI: false,
             position: { x: 0, y: 0, z: 0 },
             velocity: { x: 0, y: 0, z: 0 },
+            rotation: { yaw: 0, pitch: 0 },
             fuel: 100,
             survivedTime: 0,
             wasTagged: false,
+            tagCount: 0,
             isOnSurface: true,
             isDashing: false,
             isJetpacking: false,
@@ -570,22 +583,35 @@ describe('GameManager', () => {
         timeRemaining: 180,
       };
 
-      let savedGameState: GameState | null = null;
+      let savedGameState: GameState | undefined;
       mockRedis.get.mockResolvedValue(JSON.stringify(mockGameState));
-      mockRedis.set.mockImplementation((key: string, data: string) => {
+      mockRedis.set.mockImplementation((_key: string, data: string) => {
         savedGameState = JSON.parse(data) as GameState;
-        return Promise.resolve(undefined);
+        return Promise.resolve('OK');
       });
 
       await gameManager.addAIPlayers('test_game');
 
-      expect(savedGameState?.players).toHaveLength(4);
-      const aiPlayers = savedGameState?.players.filter((p) => p.isAI);
+      if (!savedGameState) throw new Error('savedGameState is undefined');
+      
+      expect(savedGameState.players).toHaveLength(4);
+      const aiPlayers = savedGameState.players.filter((p: Player) => p.isAI);
       expect(aiPlayers).toHaveLength(3);
 
       // Should have assigned oni
-      const oniCount = savedGameState?.players.filter((p) => p.isOni).length;
+      const oniCount = savedGameState.players.filter((p: Player) => p.isOni).length;
       expect(oniCount).toBe(1);
+
+      // Single human player should always be runner
+      const humanPlayer = savedGameState.players.find((p: Player) => !p.isAI);
+      expect(humanPlayer).toBeDefined();
+      expect(humanPlayer?.isOni).toBe(false);
+
+      // All oni should be AI
+      const oniPlayers = savedGameState.players.filter((p: Player) => p.isOni);
+      oniPlayers.forEach((p: Player) => {
+        expect(p.isAI).toBe(true);
+      });
     });
 
     it('should ensure at least 1 human is ONI when 2+ humans (2 humans, 4 AI for 6 total)', async () => {
@@ -636,40 +662,42 @@ describe('GameManager', () => {
         timeRemaining: 180,
       };
 
-      let savedGameState: GameState | null = null;
+      let savedGameState: GameState | undefined;
       mockRedis.get.mockResolvedValue(JSON.stringify(mockGameState));
-      mockRedis.set.mockImplementation((key: string, data: string) => {
+      mockRedis.set.mockImplementation((_key: string, data: string) => {
         savedGameState = JSON.parse(data) as GameState;
-        return Promise.resolve(undefined);
+        return Promise.resolve('OK');
       });
 
       await gameManager.addAIPlayers('test_game');
 
+      if (!savedGameState) throw new Error('savedGameState is undefined');
+
       // Should have 6 total players (2 human + 4 AI)
-      expect(savedGameState?.players).toHaveLength(6);
+      expect(savedGameState.players).toHaveLength(6);
       
       // Should have 4 AI players
-      const aiPlayers = savedGameState?.players.filter((p) => p.isAI);
+      const aiPlayers = savedGameState.players.filter((p: Player) => p.isAI);
       expect(aiPlayers).toHaveLength(4);
 
       // Should have 2 human players
-      const humanPlayers = savedGameState?.players.filter((p) => !p.isAI);
+      const humanPlayers = savedGameState.players.filter((p: Player) => !p.isAI);
       expect(humanPlayers).toHaveLength(2);
 
       // Total ONI count should be 2 (6 players / 3 = 2)
-      const oniCount = savedGameState?.players.filter((p) => p.isOni).length;
+      const oniCount = savedGameState.players.filter((p: Player) => p.isOni).length;
       expect(oniCount).toBe(2);
 
       // At least 1 human should be ONI
-      const humanOniCount = savedGameState?.players.filter((p) => !p.isAI && p.isOni).length;
+      const humanOniCount = savedGameState.players.filter((p: Player) => !p.isAI && p.isOni).length;
       expect(humanOniCount).toBeGreaterThanOrEqual(1);
 
       // At least 1 human should be Runner
-      const humanRunnerCount = savedGameState?.players.filter((p) => !p.isAI && !p.isOni).length;
+      const humanRunnerCount = savedGameState.players.filter((p: Player) => !p.isAI && !p.isOni).length;
       expect(humanRunnerCount).toBeGreaterThanOrEqual(1);
 
       // Should have 4 runners total
-      const runnerCount = savedGameState?.players.filter((p) => !p.isOni).length;
+      const runnerCount = savedGameState.players.filter((p: Player) => !p.isOni).length;
       expect(runnerCount).toBe(4);
     });
 

@@ -187,12 +187,21 @@ export class GameManager {
     const allPlayerResults: PlayerResult[] = gameState.players.map((player) => {
       // Check if player was initial ONI
       const wasInitialOni = initialOniIds.includes(player.id);
-      console.log(`[Game End] Player ${player.username} (${player.id}): wasInitialOni=${wasInitialOni}, isOni=${player.isOni}, wasTagged=${player.wasTagged}`);
+      
+      // Fix wasTagged flag if inconsistent
+      // If player is ONI but was not initial ONI, they must have been tagged
+      let wasTagged = player.wasTagged;
+      if (player.isOni && !wasInitialOni && !wasTagged) {
+        console.log(`[Game End] Fixing wasTagged for ${player.username}: isOni=true, wasInitialOni=false, but wasTagged=false`);
+        wasTagged = true;
+      }
+      
+      console.log(`[Game End] Player ${player.username} (${player.id}): wasInitialOni=${wasInitialOni}, isOni=${player.isOni}, wasTagged=${wasTagged}`);
       
       // Calculate survival time based on player status
       let survivedTime = 0;
       
-      if (player.wasTagged) {
+      if (wasTagged) {
         // Player was tagged - use client-provided time if available
         // Client should have recorded the time when they were tagged
         if (player.survivedTime !== undefined && player.survivedTime > 0) {
@@ -211,7 +220,7 @@ export class GameManager {
         id: player.id,
         username: player.username,
         survivedTime,
-        wasTagged: player.wasTagged,
+        wasTagged,
         isAI: player.isAI,
         tagCount: player.tagCount || 0,
         wasInitialOni, // Add flag to identify initial ONI
@@ -236,26 +245,27 @@ export class GameManager {
       console.log(`  ${p.username}: survivedTime=${p.survivedTime}, wasTagged=${p.wasTagged}, wasInitialOni=${p.wasInitialOni}`);
     });
     
-    // Determine team winner based on initial ONI status
-    const survivors = allPlayerResults.filter((p) => !p.wasTagged && !p.wasInitialOni);
-    console.log(`[Game End] Survivors: ${survivors.length}`);
-    const teamWinner = survivors.length > 0 ? 'runners' : 'oni';
+    // Determine team winner based on current ONI status
+    // Runners win if at least one player is still a runner (not ONI) at game end
+    // ONI wins if all players became ONI
+    const runnersAtEnd = gameState.players.filter((p) => !p.isOni);
+    console.log(`[Game End] Runners at end: ${runnersAtEnd.length}`);
+    const teamWinner = runnersAtEnd.length > 0 ? 'runners' : 'oni';
     console.log(`[Game End] Team winner: ${teamWinner}`);
     
     // Filter players to show based on team winner:
-    // - Runners Win: Show only runners who survived (NOT initial ONI and NOT tagged and NOT currently ONI)
+    // - Runners Win: Show only players who are still runners at game end (not ONI)
     // - ONI Win: Show only initial ONI (players who were ONI at game start)
     let playerResults: PlayerResult[];
     if (teamWinner === 'runners') {
-      // Show only runners who survived (exclude initial ONI, tagged players, and players who became ONI)
-      // Check both wasTagged flag AND current isOni status from gameState
+      // Show only players who are still runners at game end
       playerResults = allPlayerResults.filter(p => {
         const player = gameState.players.find(gp => gp.id === p.id);
         const isCurrentlyOni = player?.isOni || false;
-        const shouldInclude = !p.wasInitialOni && !p.wasTagged && !isCurrentlyOni;
+        const shouldInclude = !isCurrentlyOni;
         
         if (!shouldInclude) {
-          console.log(`[Game End] Excluding ${p.username}: wasInitialOni=${p.wasInitialOni}, wasTagged=${p.wasTagged}, isCurrentlyOni=${isCurrentlyOni}`);
+          console.log(`[Game End] Excluding ${p.username}: isCurrentlyOni=${isCurrentlyOni}`);
         }
         
         return shouldInclude;

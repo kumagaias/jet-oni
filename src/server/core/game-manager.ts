@@ -157,14 +157,17 @@ export class GameManager {
       return null;
     }
 
-    // If game already ended and results are cached, return cached results
-    if (gameState.status === 'ended' && gameState.cachedResults) {
-      console.log('[Game End] Returning cached results');
-      return gameState.cachedResults;
+    // Always recalculate results from latest gameState to ensure accuracy
+    // Don't use cached results as player states may have been updated after caching
+    const wasAlreadyEnded = gameState.status === 'ended';
+    
+    if (!wasAlreadyEnded) {
+      gameState.status = 'ended';
+      gameState.endTime = Date.now();
+    } else {
+      // Game already ended, but recalculate with latest player states
+      console.log('[Game End] Game already ended, recalculating with latest player states');
     }
-
-    gameState.status = 'ended';
-    gameState.endTime = Date.now();
 
     // Calculate game duration
     const gameEndTime = Date.now();
@@ -282,14 +285,13 @@ export class GameManager {
       teamWinner,
     };
 
-    // Cache results in game state to ensure consistency across multiple endGame calls
-    gameState.cachedResults = results;
-    console.log('[Game End] Caching results for future calls');
-
+    // Save game state (but don't cache results to allow recalculation with latest data)
     await this.saveGameState(gameState);
 
-    // Remove from active games list
-    await RedisStorage.removeActiveGame(gameId);
+    // Remove from active games list only if this is the first time ending
+    if (!wasAlreadyEnded) {
+      await RedisStorage.removeActiveGame(gameId);
+    }
 
     return results;
   }

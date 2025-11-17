@@ -52,6 +52,18 @@ export interface GameState {
   timeRemaining: number;
   lastHostHeartbeat?: number; // Timestamp of last host activity
   initialOniIds?: string[]; // IDs of players who were ONI at game start
+  cachedResults?: {
+    players: Array<{
+      id: string;
+      username: string;
+      survivedTime: number;
+      wasTagged: boolean;
+      isAI: boolean;
+      tagCount?: number;
+      wasInitialOni?: boolean;
+    }>;
+    teamWinner: 'runners' | 'oni';
+  }; // Cached results to ensure consistency across multiple endGame calls
 }
 
 export interface PlayerStats {

@@ -1,5 +1,5 @@
 import { I18n } from '../i18n/i18n';
-import type { GameResults as ServerGameResults, PlayerResult } from '../../shared/types/api';
+import type { GameResults as ServerGameResults } from '../../shared/types/api';
 
 /**
  * UIResults manages the game results screen
@@ -132,11 +132,11 @@ export class UIResults {
       margin-bottom: 10px;
     `;
     
-    // Player list header
+    // Player list header (without Time column)
     const listHeader = document.createElement('div');
     listHeader.style.cssText = `
       display: grid;
-      grid-template-columns: 50px 1fr 100px;
+      grid-template-columns: 50px minmax(0, 1fr);
       gap: 10px;
       padding: 10px;
       border-bottom: 2px solid #4a90e2;
@@ -154,13 +154,9 @@ export class UIResults {
     playerHeader.textContent = this.i18n.t('results.player');
     listHeader.appendChild(playerHeader);
 
-    const timeHeader = document.createElement('div');
-    timeHeader.textContent = runnersWin ? this.i18n.t('results.time') : 'Tags';
-    listHeader.appendChild(timeHeader);
-
     playerListContainer.appendChild(listHeader);
 
-    // Player list
+    // Player list (without Time column)
     playersToShow.forEach((player, index) => {
       const playerRow = document.createElement('div');
       const isLocalPlayer = player.id === localPlayerId;
@@ -168,13 +164,14 @@ export class UIResults {
 
       playerRow.style.cssText = `
         display: grid;
-        grid-template-columns: 50px 1fr 100px;
+        grid-template-columns: 50px minmax(0, 1fr);
         gap: 10px;
         padding: 12px 10px;
         border-radius: 5px;
         margin-bottom: 5px;
         background: ${isLocalPlayer ? 'rgba(74, 144, 226, 0.3)' : 'rgba(255, 255, 255, 0.05)'};
         ${isTopPlayer ? 'border: 2px solid gold;' : ''}
+        align-items: center;
       `;
 
       // Rank
@@ -195,9 +192,11 @@ export class UIResults {
       name.style.cssText = `
         color: #ffffff;
         overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        font-size: 16px;
+        word-wrap: break-word;
+        word-break: break-word;
+        line-height: 1.3;
+        font-size: 14px;
+        max-width: 100%;
       `;
       // Remove "Player " prefix from human player names, keep "AI_" prefix for AI players
       let displayName = player.username;
@@ -207,23 +206,14 @@ export class UIResults {
         // If it's a generated ID like "player_1234567890_abc", show a shortened version
         displayName = displayName.substring(7, 20); // Show part of the ID
       }
+      
+      // Add "(You)" for local player
+      if (isLocalPlayer) {
+        displayName += ' (You)';
+      }
+      
       name.textContent = displayName;
       playerRow.appendChild(name);
-
-      // Survival time or tag count
-      const stat = document.createElement('div');
-      stat.style.cssText = `
-        color: #aaaaaa;
-        font-size: 14px;
-      `;
-      if (runnersWin) {
-        // Show survival time for runners
-        stat.textContent = this.formatTime(player.survivedTime);
-      } else {
-        // Show tag count for ONI
-        stat.textContent = `${player.tagCount} tags`;
-      }
-      playerRow.appendChild(stat);
 
       playerListContainer.appendChild(playerRow);
     });

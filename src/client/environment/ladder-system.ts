@@ -27,7 +27,7 @@ export interface LadderClimbState {
  */
 export class LadderSystem {
   private ladders: Ladder[] = [];
-  private climbSpeed = 3; // units per second
+  private climbSpeed = 4.5; // units per second (1.5x faster)
   private detectionRadius = 1.5; // distance to detect ladder
 
   /**

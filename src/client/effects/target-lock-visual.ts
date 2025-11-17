@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Player } from '../../shared/types/game';
 
-const DETECTION_RANGE = 500; // 500 units detection range
+const DETECTION_RANGE = 50; // 50 units detection range (10x TAG_DISTANCE)
 const LOCK_ON_COLOR = 0xff0000; // Red
 const LOCK_ON_OPACITY = 0.8;
 const LOCK_ON_COOLDOWN = 3000; // 3 seconds in milliseconds (reduced for better gameplay)

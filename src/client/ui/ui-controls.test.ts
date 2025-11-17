@@ -96,7 +96,7 @@ describe('UIControls', () => {
       controls.show();
       
       const container = document.getElementById('ability-controls');
-      const dashButton = container?.children[1] as HTMLElement; // Second button is dash/jetpack
+      const dashButton = container?.children[0] as HTMLElement; // First button is dash/jetpack
       
       // Simulate touch start
       const touchEvent = new TouchEvent('touchstart', {
@@ -117,7 +117,7 @@ describe('UIControls', () => {
       controls.show();
       
       const container = document.getElementById('ability-controls');
-      const dashButton = container?.children[1] as HTMLElement; // Second button is dash/jetpack
+      const dashButton = container?.children[0] as HTMLElement; // First button is dash/jetpack
       
       // Simulate touch start then end
       const touchStart = new TouchEvent('touchstart', {
@@ -150,8 +150,9 @@ describe('UIControls', () => {
       controls.update(gameState);
       
       const container = document.getElementById('ability-controls');
-      const dashButton = container?.children[1] as HTMLElement; // Second button is dash/jetpack
-      const icon = dashButton?.children[0] as HTMLElement;
+      // For runner: jetpack button (0) is hidden, jump button (1) is shown, runner dash button (2) is shown
+      const runnerDashButton = container?.children[2] as HTMLElement;
+      const icon = runnerDashButton?.children[0] as HTMLElement;
       
       expect(icon?.textContent).toBe('🏃‍➡️');
     });
@@ -167,8 +168,9 @@ describe('UIControls', () => {
       controls.update(gameState);
       
       const container = document.getElementById('ability-controls');
-      const dashButton = container?.children[1] as HTMLElement; // Second button is dash/jetpack
-      const icon = dashButton?.children[0] as HTMLElement;
+      // For oni: jetpack button (0) is shown, jump button (1) is hidden, runner dash button (2) is hidden
+      const jetpackButton = container?.children[0] as HTMLElement;
+      const icon = jetpackButton?.children[0] as HTMLElement;
       
       expect(icon?.textContent).toBe('🚀');
     });
@@ -189,10 +191,11 @@ describe('UIControls', () => {
       controls.update(gameState);
       
       const container = document.getElementById('ability-controls');
-      const dashButton = container?.children[1] as HTMLElement; // Second button is dash/jetpack
+      // For runner with no fuel: runner dash button (2) should be disabled
+      const runnerDashButton = container?.children[2] as HTMLElement;
       
-      expect(dashButton?.classList.contains('disabled')).toBe(true);
-      expect(dashButton?.style.opacity).toBe('0.5');
+      expect(runnerDashButton?.classList.contains('disabled')).toBe(true);
+      expect(runnerDashButton?.style.opacity).toBe('0.5');
     });
   });
 

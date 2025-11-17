@@ -314,7 +314,7 @@ export class DynamicObjects {
     // Collect all building meshes
     this.buildings.traverse((object) => {
       if (object instanceof THREE.Mesh && object.geometry instanceof THREE.BoxGeometry) {
-        const params = object.geometry.parameters as { width: number; height: number; depth: number };
+        const params = object.geometry.parameters;
         // Only attach ladders to tall buildings (height > 10)
         if (params.height > 10) {
           buildingMeshes.push(object);
@@ -333,7 +333,13 @@ export class DynamicObjects {
       if (Math.random() > 0.2) {
         continue;
       }
-      const params = building.geometry.parameters as { width: number; height: number; depth: number };
+      
+      // Type guard to ensure we have BoxGeometry
+      if (!(building.geometry instanceof THREE.BoxGeometry)) {
+        continue;
+      }
+      
+      const params = building.geometry.parameters;
       
       // Choose a random side (0=front, 1=back, 2=left, 3=right)
       const side = Math.floor(Math.random() * 4);

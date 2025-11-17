@@ -256,9 +256,11 @@ export class UIMenu {
                 color: ${isCurrentPlayer ? '#ff8800' : '#aaa'};
                 font-size: 13px;
                 font-weight: ${isCurrentPlayer ? 'bold' : 'normal'};
-                overflow: hidden;
-                text-overflow: ellipsis;
-                white-space: nowrap;
+                overflow-wrap: break-word;
+                word-wrap: break-word;
+                word-break: break-word;
+                line-height: 1.3;
+                flex: 1;
               ">
                 ${player.username}${isCurrentPlayer ? ` (${this.i18n.t('lobby.you')})` : ''}
               </span>
@@ -631,6 +633,7 @@ export class UIMenu {
               max="7" 
               step="2" 
               value="3"
+              data-dev-min="1"
               style="
                 width: 100%;
                 height: 6px;
@@ -641,7 +644,7 @@ export class UIMenu {
               "
             />
             <div style="display: flex; justify-content: space-between; margin-top: 5px;">
-              <span style="color: #666; font-size: 10px;">3 min</span>
+              <span id="duration-min-label" style="color: #666; font-size: 10px;">3 min</span>
               <span style="color: #666; font-size: 10px;">7 min</span>
             </div>
           </div>
@@ -775,8 +778,26 @@ export class UIMenu {
     // Duration slider
     const durationSlider = document.getElementById('duration-slider') as HTMLInputElement;
     const durationValue = document.getElementById('duration-value');
+    const durationMinLabel = document.getElementById('duration-min-label');
     
     if (durationSlider && durationValue) {
+      // Check if in dev subreddit
+      const url = window.location.href.toLowerCase();
+      const isDevSubreddit = url.includes('jet_oni_dev') || 
+                             url.includes('localhost') ||
+                             url.includes('playtest');
+      
+      // Set min value based on environment
+      if (isDevSubreddit) {
+        durationSlider.min = '1';
+        durationSlider.value = '1';
+        selectedOptions.duration = 1;
+        durationValue.textContent = '1 min';
+        if (durationMinLabel) {
+          durationMinLabel.textContent = '1 min';
+        }
+      }
+      
       // Update gradient background
       const updateDurationSliderBackground = () => {
         const min = parseInt(durationSlider.min);

@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { Vector3 } from '../../shared/types/game';
 import { DynamicObject } from './collision-system';
-import { WATER_SINK_DEPTH } from '../../shared/constants';
+
 import { PlayerPhysics } from '../player/player-physics';
 
 /**

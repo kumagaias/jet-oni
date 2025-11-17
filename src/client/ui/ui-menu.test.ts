@@ -167,7 +167,8 @@ describe('UIMenu', () => {
 
       const durationSlider = document.getElementById('duration-slider') as HTMLInputElement;
       expect(durationSlider).toBeTruthy();
-      expect(durationSlider.min).toBe('3');
+      // In dev environment, min is 1 (from data-dev-min attribute)
+      expect(durationSlider.min).toBe('1');
       expect(durationSlider.max).toBe('7');
       expect(durationSlider.step).toBe('2');
     });

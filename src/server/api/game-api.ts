@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { reddit } from '@devvit/web/server';
+import { reddit, context } from '@devvit/web/server';
 import { GameManager } from '../core/game-manager';
 import {
   CreateGameRequest,
@@ -46,12 +46,35 @@ router.post(
         return;
       }
 
-      if (!config.roundDuration || config.roundDuration < 180 || config.roundDuration > 420 || (config.roundDuration / 60) % 2 !== 1) {
-        res.status(400).json({
-          success: false,
-          error: 'Round duration must be 3, 5, or 7 minutes (180, 300, or 420 seconds)',
-        });
-        return;
+      // Check if in dev subreddit (safely handle test environment where context may not exist)
+      let isDevSubreddit = false;
+      try {
+        const subredditName = context.subredditName?.toLowerCase() || '';
+        isDevSubreddit = subredditName.includes('jet_oni_dev');
+      } catch (error) {
+        // Context not available (e.g., in test environment), default to production rules
+        isDevSubreddit = false;
+      }
+
+      // Allow 1 minute (60 seconds) in dev subreddit, otherwise require 3, 5, or 7 minutes
+      if (isDevSubreddit) {
+        // Dev subreddit: allow 1, 3, 5, or 7 minutes
+        if (!config.roundDuration || ![60, 180, 300, 420].includes(config.roundDuration)) {
+          res.status(400).json({
+            success: false,
+            error: 'Round duration must be 1, 3, 5, or 7 minutes (60, 180, 300, or 420 seconds)',
+          });
+          return;
+        }
+      } else {
+        // Production: require 3, 5, or 7 minutes
+        if (!config.roundDuration || config.roundDuration < 180 || config.roundDuration > 420 || (config.roundDuration / 60) % 2 !== 1) {
+          res.status(400).json({
+            success: false,
+            error: 'Round duration must be 3, 5, or 7 minutes (180, 300, or 420 seconds)',
+          });
+          return;
+        }
       }
 
       if (!config.rounds || ![1, 3, 5].includes(config.rounds)) {

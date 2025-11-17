@@ -20,7 +20,6 @@ export class UIHud {
   private cloakTimerElement: HTMLElement | null = null;
   private gameState: GameState;
   private i18n: I18n;
-  private gameStartTime: number = 0;
   private gameDuration: number = 300; // 5 minutes default
 
   constructor(gameState: GameState, i18n: I18n) {
@@ -239,7 +238,6 @@ export class UIHud {
    * Start the game timer
    */
   public startTimer(durationSeconds: number = 300): void {
-    this.gameStartTime = Date.now();
     this.gameDuration = durationSeconds;
   }
 
@@ -370,7 +368,7 @@ export class UIHud {
   /**
    * Update status display (ONI/RUNNER)
    */
-  private updateStatus(isOni: boolean): void {
+  private updateStatus(_isOni: boolean): void {
     if (!this.statusElement) return;
 
     // Hide status element (not needed)
@@ -446,7 +444,7 @@ export class UIHud {
   /**
    * Update beacon status display (now item-based, so hide this element)
    */
-  private updateBeacon(isOni: boolean, cooldown: number): void {
+  private updateBeacon(_isOni: boolean, _cooldown: number): void {
     if (!this.beaconElement) return;
     
     // Beacon is now item-based, hide the status element

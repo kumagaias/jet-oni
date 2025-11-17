@@ -22,6 +22,7 @@ export class UIControls {
   private container: HTMLElement | null = null;
   private dashButton: HTMLElement | null = null;
   private jumpButton: HTMLElement | null = null;
+  private runnerDashButton: HTMLElement | null = null;
   private buttonState: ControlButtonState;
   private isMobile: boolean;
 
@@ -83,7 +84,26 @@ export class UIControls {
     `;
     document.body.appendChild(this.container);
 
-    // Create jump button (left of dash)
+    // Create dash/jetpack button (left) - ONI uses this for jetpack
+    this.dashButton = this.createAbilityButton(
+      '🚀',
+      'SPACE',
+      'rgba(255, 100, 0, 0.5)',
+      '#ff6400',
+      () => {
+        this.buttonState.dash = true;
+        this.buttonState.jetpack = true;
+      },
+      () => {
+        this.buttonState.dash = false;
+        this.buttonState.jetpack = false;
+      },
+      'SPACE'
+    );
+    this.dashButton.style.display = 'none'; // Hidden by default, shown when ONI
+    this.container.appendChild(this.dashButton);
+
+    // Create jump button (middle) - Runner uses this for jump
     this.jumpButton = this.createAbilityButton(
       '⬆️',
       'SPACE',
@@ -94,26 +114,28 @@ export class UIControls {
       },
       () => {
         this.buttonState.jump = false;
-      }
+      },
+      'SPACE'
     );
+    this.jumpButton.style.display = 'none'; // Hidden by default, shown when Runner
     this.container.appendChild(this.jumpButton);
 
-    // Create dash/jetpack button (right)
-    this.dashButton = this.createAbilityButton(
-      '🚀',
-      'SPACE',
+    // Create runner dash button (right) - Runner uses this for dash
+    this.runnerDashButton = this.createAbilityButton(
+      '🏃‍➡️',
+      'SHIFT',
       'rgba(0, 150, 255, 0.5)',
       '#0096ff',
       () => {
         this.buttonState.dash = true;
-        this.buttonState.jetpack = true;
       },
       () => {
         this.buttonState.dash = false;
-        this.buttonState.jetpack = false;
-      }
+      },
+      'SHIFT'
     );
-    this.container.appendChild(this.dashButton);
+    this.runnerDashButton.style.display = 'none'; // Hidden by default, shown when Runner
+    this.container.appendChild(this.runnerDashButton);
     
     // Create D-pad for movement
     this.createDPad();
@@ -273,7 +295,8 @@ export class UIControls {
     backgroundColor: string,
     borderColor: string,
     onPress: () => void,
-    onRelease: () => void
+    onRelease: () => void,
+    keyLabelOverride?: string
   ): HTMLElement {
     const button = document.createElement('div');
     button.style.cssText = `
@@ -308,7 +331,7 @@ export class UIControls {
     
     // Key label
     const key = document.createElement('div');
-    key.textContent = keyLabel;
+    key.textContent = keyLabelOverride || keyLabel;
     key.style.cssText = `
       font-size: 9px;
       opacity: 0.6;
@@ -384,54 +407,52 @@ export class UIControls {
     const localPlayer = gameState.getLocalPlayer();
     if (!localPlayer) return;
 
-    // Show/hide jump button based on role
-    if (this.jumpButton) {
-      if (localPlayer.isOni) {
-        // ONI doesn't need jump button (only jetpack)
-        this.jumpButton.style.display = 'none';
-      } else {
-        // Runner needs jump button
-        this.jumpButton.style.display = 'flex';
-      }
-    }
-
-    // Update dash/jetpack button
-    if (this.dashButton) {
-      // Update icon (first child)
-      const icon = this.dashButton.children[0] as HTMLElement;
-      if (icon) {
-        if (localPlayer.isOni) {
-          // Oni mode - rocket for jetpack
-          icon.textContent = '🚀';
-          this.updateButtonColor(this.dashButton, 'rgba(255, 100, 0, 0.5)', '#ff6400');
+    // Update buttons based on role
+    if (localPlayer.isOni) {
+      // ONI mode: Show jetpack button (left), hide jump and runner dash buttons
+      if (this.dashButton) {
+        this.dashButton.style.display = 'flex';
+        
+        // Disable if no fuel
+        if (localPlayer.fuel <= 0) {
+          this.setButtonDisabled(this.dashButton, true);
         } else {
-          // Runner mode - running person for dash
-          icon.textContent = '🏃‍➡️';
-          this.updateButtonColor(this.dashButton, 'rgba(0, 150, 255, 0.5)', '#0096ff');
+          this.setButtonDisabled(this.dashButton, false);
         }
       }
-
-      // Disable if no fuel
-      if (localPlayer.fuel <= 0) {
-        this.setButtonDisabled(this.dashButton, true);
-      } else {
-        this.setButtonDisabled(this.dashButton, false);
+      
+      if (this.jumpButton) {
+        this.jumpButton.style.display = 'none';
+      }
+      
+      if (this.runnerDashButton) {
+        this.runnerDashButton.style.display = 'none';
+      }
+    } else {
+      // Runner mode: Hide jetpack button, show jump and dash buttons
+      if (this.dashButton) {
+        this.dashButton.style.display = 'none';
+      }
+      
+      if (this.jumpButton) {
+        this.jumpButton.style.display = 'flex';
+        
+        // Jump button is always enabled for runners
+        this.setButtonDisabled(this.jumpButton, false);
+      }
+      
+      if (this.runnerDashButton) {
+        this.runnerDashButton.style.display = 'flex';
+        
+        // Disable if no fuel
+        if (localPlayer.fuel <= 0) {
+          this.setButtonDisabled(this.runnerDashButton, true);
+        } else {
+          this.setButtonDisabled(this.runnerDashButton, false);
+        }
       }
     }
 
-  }
-
-  /**
-   * Update button color
-   */
-  private updateButtonColor(button: HTMLElement, bgColor: string, borderColor: string): void {
-    button.dataset.bgColor = bgColor;
-    button.dataset.borderColor = borderColor;
-    
-    if (!button.classList.contains('disabled')) {
-      button.style.background = bgColor;
-      button.style.borderColor = borderColor;
-    }
   }
 
   /**
@@ -507,5 +528,6 @@ export class UIControls {
     }
     this.dashButton = null;
     this.jumpButton = null;
+    this.runnerDashButton = null;
   }
 }

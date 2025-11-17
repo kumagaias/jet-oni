@@ -157,6 +157,12 @@ export class GameManager {
       return null;
     }
 
+    // If game already ended and results are cached, return cached results
+    if (gameState.status === 'ended' && gameState.cachedResults) {
+      console.log('[Game End] Returning cached results');
+      return gameState.cachedResults;
+    }
+
     gameState.status = 'ended';
     gameState.endTime = Date.now();
 
@@ -180,20 +186,22 @@ export class GameManager {
       const wasInitialOni = initialOniIds.includes(player.id);
       console.log(`[Game End] Player ${player.username} (${player.id}): wasInitialOni=${wasInitialOni}, isOni=${player.isOni}, wasTagged=${player.wasTagged}`);
       
-      // Use survival time from player state (sent by client)
-      // Client calculates the correct survivedTime based on game elapsed time
-      // Only fall back to gameDuration if player.survivedTime is not set
+      // Calculate survival time based on player status
       let survivedTime = 0;
       
-      if (player.survivedTime !== undefined && player.survivedTime > 0) {
-        // Use client-provided survivedTime (most accurate)
-        survivedTime = player.survivedTime;
-      } else if (!player.wasTagged) {
-        // Fallback: Player who survived - use game duration
-        survivedTime = gameDuration;
+      if (player.wasTagged) {
+        // Player was tagged - use client-provided time if available
+        // Client should have recorded the time when they were tagged
+        if (player.survivedTime !== undefined && player.survivedTime > 0) {
+          survivedTime = player.survivedTime;
+        } else {
+          // Fallback: assume they were tagged at the end
+          survivedTime = gameDuration;
+        }
       } else {
-        // Tagged player with no recorded time
-        survivedTime = 0;
+        // Player survived the entire game (never tagged)
+        // This includes both runners who survived and initial ONI
+        survivedTime = gameDuration;
       }
       
       return {
@@ -232,12 +240,23 @@ export class GameManager {
     console.log(`[Game End] Team winner: ${teamWinner}`);
     
     // Filter players to show based on team winner:
-    // - Runners Win: Show only runners who survived (NOT initial ONI and NOT tagged)
+    // - Runners Win: Show only runners who survived (NOT initial ONI and NOT tagged and NOT currently ONI)
     // - ONI Win: Show only initial ONI (players who were ONI at game start)
     let playerResults: PlayerResult[];
     if (teamWinner === 'runners') {
-      // Show only runners who survived (exclude initial ONI and tagged players)
-      playerResults = allPlayerResults.filter(p => !p.wasInitialOni && !p.wasTagged);
+      // Show only runners who survived (exclude initial ONI, tagged players, and players who became ONI)
+      // Check both wasTagged flag AND current isOni status from gameState
+      playerResults = allPlayerResults.filter(p => {
+        const player = gameState.players.find(gp => gp.id === p.id);
+        const isCurrentlyOni = player?.isOni || false;
+        const shouldInclude = !p.wasInitialOni && !p.wasTagged && !isCurrentlyOni;
+        
+        if (!shouldInclude) {
+          console.log(`[Game End] Excluding ${p.username}: wasInitialOni=${p.wasInitialOni}, wasTagged=${p.wasTagged}, isCurrentlyOni=${isCurrentlyOni}`);
+        }
+        
+        return shouldInclude;
+      });
       // Sort by survival time (descending)
       playerResults.sort((a, b) => b.survivedTime - a.survivedTime);
       
@@ -262,6 +281,10 @@ export class GameManager {
       players: playerResults,
       teamWinner,
     };
+
+    // Cache results in game state to ensure consistency across multiple endGame calls
+    gameState.cachedResults = results;
+    console.log('[Game End] Caching results for future calls');
 
     await this.saveGameState(gameState);
 

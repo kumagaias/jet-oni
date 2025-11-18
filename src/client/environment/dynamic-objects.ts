@@ -152,14 +152,16 @@ export class DynamicObjects {
     window.position.y = 1.3;
     carGroup.add(window);
 
-    // Add front indicator (yellow at front)
-    const frontIndicatorGeometry = new THREE.BoxGeometry(1.8, 0.6, 0.3);
-    const frontIndicatorMaterial = new THREE.MeshBasicMaterial({ 
-      color: 0xffff00 // Bright yellow
+    // Add front headlights (more natural yellow-white)
+    const headlightGeometry = new THREE.BoxGeometry(1.8, 0.4, 0.2);
+    const headlightMaterial = new THREE.MeshBasicMaterial({ 
+      color: 0xfff4e0, // Warm white (more natural)
+      transparent: true,
+      opacity: 0.8
     });
-    const frontIndicator = new THREE.Mesh(frontIndicatorGeometry, frontIndicatorMaterial);
-    frontIndicator.position.set(0, 0.7, 2.15); // At front of car (positive Z in local space)
-    carGroup.add(frontIndicator);
+    const headlights = new THREE.Mesh(headlightGeometry, headlightMaterial);
+    headlights.position.set(0, 0.6, 2.1); // At front of car (positive Z in local space)
+    carGroup.add(headlights);
 
     // Wheels
     const wheelGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.2, 16);

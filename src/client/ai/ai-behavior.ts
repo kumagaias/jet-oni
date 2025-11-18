@@ -17,6 +17,9 @@ export class AIBehaviorSystem {
   private config: BehaviorConfig;
   private wanderDirections: Map<string, Vector3> = new Map();
   private wanderTimers: Map<string, number> = new Map();
+  private lastPositions: Map<string, Vector3> = new Map();
+  private stuckTimers: Map<string, number> = new Map();
+  private unstuckDirections: Map<string, Vector3> = new Map();
 
   constructor(config: BehaviorConfig) {
     this.config = config;
@@ -27,9 +30,20 @@ export class AIBehaviorSystem {
    */
   public chase(
     aiPlayer: Player,
-    target: Player
+    target: Player,
+    deltaTime: number = 0.016
   ): AIDecision {
-    const direction = this.calculateDirection(aiPlayer.position, target.position);
+    // Check if AI is stuck (not moving)
+    const isStuck = this.checkIfStuck(aiPlayer, deltaTime);
+    
+    let direction: Vector3;
+    if (isStuck) {
+      // If stuck, use unstuck direction (perpendicular to target)
+      direction = this.getUnstuckDirection(aiPlayer, target);
+    } else {
+      // Normal chase behavior
+      direction = this.calculateDirection(aiPlayer.position, target.position);
+    }
     
     return {
       behavior: AIBehavior.CHASE,
@@ -228,11 +242,87 @@ export class AIBehaviorSystem {
   }
 
   /**
+   * Check if AI is stuck (not moving for a while)
+   */
+  private checkIfStuck(aiPlayer: Player, deltaTime: number): boolean {
+    const lastPos = this.lastPositions.get(aiPlayer.id);
+    const stuckTimer = this.stuckTimers.get(aiPlayer.id) || 0;
+    
+    if (!lastPos) {
+      // First time, record position
+      this.lastPositions.set(aiPlayer.id, { ...aiPlayer.position });
+      this.stuckTimers.set(aiPlayer.id, 0);
+      return false;
+    }
+    
+    // Calculate distance moved
+    const distance = this.calculateDistance(lastPos, aiPlayer.position);
+    
+    // If moved very little (< 0.5 units), increment stuck timer
+    if (distance < 0.5) {
+      const newTimer = stuckTimer + deltaTime;
+      this.stuckTimers.set(aiPlayer.id, newTimer);
+      
+      // If stuck for more than 2 seconds, consider stuck
+      if (newTimer > 2.0) {
+        return true;
+      }
+    } else {
+      // Moving normally, reset stuck timer
+      this.stuckTimers.set(aiPlayer.id, 0);
+      this.lastPositions.set(aiPlayer.id, { ...aiPlayer.position });
+    }
+    
+    return false;
+  }
+
+  /**
+   * Get unstuck direction (perpendicular to target direction)
+   */
+  private getUnstuckDirection(aiPlayer: Player, target: Player): Vector3 {
+    // Check if we already have an unstuck direction
+    let unstuckDir = this.unstuckDirections.get(aiPlayer.id);
+    
+    if (!unstuckDir) {
+      // Generate new unstuck direction (perpendicular to target)
+      const toTarget = this.calculateDirection(aiPlayer.position, target.position);
+      
+      // Rotate 90 degrees (perpendicular)
+      const perpendicular = {
+        x: -toTarget.z,
+        y: 0,
+        z: toTarget.x,
+      };
+      
+      // Randomly choose left or right
+      const sign = Math.random() < 0.5 ? 1 : -1;
+      unstuckDir = {
+        x: perpendicular.x * sign,
+        y: 0,
+        z: perpendicular.z * sign,
+      };
+      
+      this.unstuckDirections.set(aiPlayer.id, unstuckDir);
+      
+      // Clear unstuck direction after 2 seconds
+      setTimeout(() => {
+        this.unstuckDirections.delete(aiPlayer.id);
+        this.stuckTimers.set(aiPlayer.id, 0);
+      }, 2000);
+    }
+    
+    return unstuckDir;
+  }
+
+  /**
    * Reset behavior state for a player
    */
   public resetPlayer(playerId: string): void {
     this.wanderDirections.delete(playerId);
     this.wanderTimers.delete(playerId);
+    this.lastPositions.delete(playerId);
+    this.stuckTimers.delete(playerId);
+    this.unstuckDirections.delete(playerId);
   }
 
   /**
@@ -241,6 +331,9 @@ export class AIBehaviorSystem {
   public reset(): void {
     this.wanderDirections.clear();
     this.wanderTimers.clear();
+    this.lastPositions.clear();
+    this.stuckTimers.clear();
+    this.unstuckDirections.clear();
   }
 
   /**

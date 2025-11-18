@@ -14,6 +14,7 @@ export interface GameConfig {
   totalPlayers: number;
   roundDuration: number; // seconds
   rounds: number;
+  timeOfDay?: 'day' | 'night'; // Time of day setting (optional, defaults to 'day')
 }
 
 export interface Rotation {

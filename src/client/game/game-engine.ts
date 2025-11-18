@@ -65,10 +65,12 @@ export class GameEngine {
   private setupLighting(): void {
     // Ambient light for overall illumination
     const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    ambientLight.name = 'ambientLight';
     this.scene.add(ambientLight);
 
     // Directional light (sun) for shadows
     const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.name = 'directionalLight';
     directionalLight.position.set(50, 100, 50);
     directionalLight.castShadow = true;
 
@@ -86,7 +88,59 @@ export class GameEngine {
 
     // Hemisphere light for natural sky/ground lighting
     const hemisphereLight = new THREE.HemisphereLight(0x87ceeb, 0x545454, 0.4);
+    hemisphereLight.name = 'hemisphereLight';
     this.scene.add(hemisphereLight);
+  }
+
+  /**
+   * Set time of day (day or night)
+   */
+  public setTimeOfDay(timeOfDay: 'day' | 'night'): void {
+    const ambientLight = this.scene.getObjectByName('ambientLight') as THREE.AmbientLight;
+    const directionalLight = this.scene.getObjectByName('directionalLight') as THREE.DirectionalLight;
+    const hemisphereLight = this.scene.getObjectByName('hemisphereLight') as THREE.HemisphereLight;
+
+    if (timeOfDay === 'night') {
+      // Night mode: darker ambient, moonlight, dark blue sky
+      if (ambientLight) {
+        ambientLight.intensity = 0.2;
+        ambientLight.color.setHex(0x4a5f8f); // Blue-ish ambient
+      }
+      if (directionalLight) {
+        directionalLight.intensity = 0.3;
+        directionalLight.color.setHex(0x9db4d4); // Moonlight color
+        directionalLight.position.set(-50, 100, -50); // Moon position
+      }
+      if (hemisphereLight) {
+        hemisphereLight.intensity = 0.2;
+        hemisphereLight.color.setHex(0x1a1a2e); // Dark sky
+        hemisphereLight.groundColor.setHex(0x0f0f1e); // Dark ground
+      }
+      
+      // Change scene background and fog to night
+      this.scene.background = new THREE.Color(0x0a0a1a);
+      this.scene.fog = new THREE.Fog(0x0a0a1a, 30, MAP_SIZE * 1.2);
+    } else {
+      // Day mode: bright ambient, sunlight, sky blue
+      if (ambientLight) {
+        ambientLight.intensity = 0.6;
+        ambientLight.color.setHex(0xffffff);
+      }
+      if (directionalLight) {
+        directionalLight.intensity = 0.8;
+        directionalLight.color.setHex(0xffffff);
+        directionalLight.position.set(50, 100, 50); // Sun position
+      }
+      if (hemisphereLight) {
+        hemisphereLight.intensity = 0.4;
+        hemisphereLight.color.setHex(0x87ceeb); // Sky blue
+        hemisphereLight.groundColor.setHex(0x545454); // Ground color
+      }
+      
+      // Change scene background and fog to day
+      this.scene.background = new THREE.Color(0x87ceeb);
+      this.scene.fog = new THREE.Fog(0x87ceeb, 50, MAP_SIZE * 1.5);
+    }
   }
 
   /**

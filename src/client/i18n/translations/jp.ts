@@ -26,6 +26,7 @@ export const jp: Translations = {
     minutes: '{value}分',
     confirm: 'ゲーム開始',
     playerCount: '{count}人',
+    timeOfDay: '時間帯',
   },
 
   // ゲームリスト
@@ -139,6 +140,7 @@ export const jp: Translations = {
     caught: '捕まった',
     rank: '順位',
     player: 'プレイヤー',
+    survivors: '生存者',
     time: '時間',
     status: 'ステータス',
     backToMenu: 'メニューに戻る',

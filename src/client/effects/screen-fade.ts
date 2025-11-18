@@ -56,21 +56,35 @@ export class ScreenFade {
   }
 
   /**
-   * Fade to black
+   * Fade to black (public method)
    */
-  private async fadeOut(duration: number): Promise<void> {
+  public async fadeToBlack(duration: number = 500): Promise<void> {
     this.overlay.style.transition = `opacity ${duration}ms ease-in-out`;
     this.overlay.style.opacity = '1';
     await this.wait(duration);
   }
 
   /**
-   * Fade from black
+   * Fade from black (public method)
    */
-  private async fadeIn(duration: number): Promise<void> {
+  public async fadeFromBlack(duration: number = 500): Promise<void> {
     this.overlay.style.transition = `opacity ${duration}ms ease-in-out`;
     this.overlay.style.opacity = '0';
     await this.wait(duration);
+  }
+
+  /**
+   * Fade to black (private method for fadeSequence)
+   */
+  private async fadeOut(duration: number): Promise<void> {
+    await this.fadeToBlack(duration);
+  }
+
+  /**
+   * Fade from black (private method for fadeSequence)
+   */
+  private async fadeIn(duration: number): Promise<void> {
+    await this.fadeFromBlack(duration);
   }
 
   /**

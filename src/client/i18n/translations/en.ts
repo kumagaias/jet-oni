@@ -26,6 +26,7 @@ export const en: Translations = {
     minutes: '{value} min',
     confirm: 'Start Game',
     playerCount: '{count} Players',
+    timeOfDay: 'Time of Day',
   },
 
   // Game list
@@ -139,6 +140,7 @@ export const en: Translations = {
     caught: 'Caught',
     rank: 'Rank',
     player: 'Player',
+    survivors: 'Survivors',
     time: 'Time',
     status: 'Status',
     backToMenu: 'Back to Menu',

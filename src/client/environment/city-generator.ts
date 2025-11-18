@@ -91,6 +91,10 @@ export class CityGenerator {
     this.generateDomeLandmark();
     cityGroup.add(this.buildings); // Dome is part of buildings group
 
+    // Generate arch landmark
+    this.generateArchLandmark();
+    cityGroup.add(this.buildings); // Arch is part of buildings group
+
     // Generate traffic lights at intersections
     this.generateTrafficLights();
     cityGroup.add(this.trafficLights);
@@ -756,6 +760,92 @@ export class CityGenerator {
     });
 
     this.markAreaOccupied(position.x, position.z, domeRadius * 2, domeRadius * 2, 'landmark');
+  }
+
+  /**
+   * Generate an arch landmark (gateway monument)
+   */
+  private generateArchLandmark(): void {
+    const archWidth = 30;
+    const archHeight = 50;
+    const archDepth = 10;
+    const pillarWidth = 8;
+
+    // Try to place in another area
+    const position = this.findUnoccupiedPosition(archWidth, archDepth, 100);
+    if (!position) return;
+
+    const archGroup = new THREE.Group();
+
+    // Material for arch
+    const archMaterial = new THREE.MeshStandardMaterial({
+      color: 0xcd7f32, // Bronze
+      roughness: 0.5,
+      metalness: 0.6,
+    });
+
+    // Left pillar
+    const leftPillarGeometry = new THREE.BoxGeometry(pillarWidth, archHeight, archDepth);
+    const leftPillar = new THREE.Mesh(leftPillarGeometry, archMaterial);
+    leftPillar.position.set(-archWidth / 2 + pillarWidth / 2, archHeight / 2, 0);
+    leftPillar.castShadow = true;
+    leftPillar.receiveShadow = true;
+    archGroup.add(leftPillar);
+
+    // Right pillar
+    const rightPillar = new THREE.Mesh(leftPillarGeometry, archMaterial);
+    rightPillar.position.set(archWidth / 2 - pillarWidth / 2, archHeight / 2, 0);
+    rightPillar.castShadow = true;
+    rightPillar.receiveShadow = true;
+    archGroup.add(rightPillar);
+
+    // Top arch (curved)
+    const archTopGeometry = new THREE.TorusGeometry(
+      (archWidth - pillarWidth) / 2,
+      pillarWidth / 2,
+      16,
+      32,
+      Math.PI
+    );
+    const archTop = new THREE.Mesh(archTopGeometry, archMaterial);
+    archTop.position.set(0, archHeight, 0);
+    archTop.rotation.x = Math.PI / 2;
+    archTop.castShadow = true;
+    archGroup.add(archTop);
+
+    // Decorative elements
+    for (let i = 0; i < 5; i++) {
+      const decorGeometry = new THREE.SphereGeometry(1.5, 16, 16);
+      const decorMaterial = new THREE.MeshStandardMaterial({
+        color: 0xffd700, // Gold
+        roughness: 0.3,
+        metalness: 0.9,
+      });
+      const decor = new THREE.Mesh(decorGeometry, decorMaterial);
+      const angle = (Math.PI / 6) * (i + 1);
+      const radius = (archWidth - pillarWidth) / 2;
+      decor.position.set(
+        Math.cos(angle + Math.PI) * radius,
+        archHeight + Math.sin(angle) * radius,
+        0
+      );
+      decor.castShadow = true;
+      archGroup.add(decor);
+    }
+
+    archGroup.position.set(position.x, 0, position.z);
+    this.buildings.add(archGroup);
+
+    // Register for collision detection
+    this.buildingData.push({
+      position: { x: position.x, y: archHeight / 2, z: position.z },
+      width: archWidth,
+      height: archHeight,
+      depth: archDepth,
+      shape: 'box',
+    });
+
+    this.markAreaOccupied(position.x, position.z, archWidth, archDepth, 'landmark');
   }
 
   /**

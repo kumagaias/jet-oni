@@ -7,11 +7,19 @@ export class UICountdown {
   private container: HTMLElement | null = null;
   private countdownValue: number = 3;
   private onComplete?: () => void;
+  private onCountdownChange?: (value: number) => void;
   private intervalId: number | null = null;
   private i18n: I18n;
 
   constructor(i18n: I18n) {
     this.i18n = i18n;
+  }
+
+  /**
+   * Set callback for countdown value changes
+   */
+  public setOnCountdownChange(callback: (value: number) => void): void {
+    this.onCountdownChange = callback;
   }
 
   /**
@@ -83,9 +91,10 @@ export class UICountdown {
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      background: transparent;
+      background: rgba(0, 0, 0, 0);
       z-index: 9999;
       pointer-events: none;
+      transition: background 0.5s ease-out;
     `;
 
     const countdownText = document.createElement('div');
@@ -155,6 +164,23 @@ export class UICountdown {
         countdownText.style.animation = 'zoomPulse 1s ease-out';
       }, 10);
     }
+    
+    // Gradually darken background as countdown approaches 0
+    if (this.container) {
+      // Start darkening from countdown 2 (not 10)
+      // 2 -> 0: opacity 0 -> 0.8
+      const maxOpacity = 0.8;
+      let opacity = 0;
+      if (this.countdownValue <= 2) {
+        opacity = maxOpacity * (1 - this.countdownValue / 2);
+      }
+      this.container.style.background = `rgba(0, 0, 0, ${opacity})`;
+    }
+    
+    // Notify countdown change
+    if (this.onCountdownChange) {
+      this.onCountdownChange(this.countdownValue);
+    }
   }
 
   /**
@@ -165,6 +191,11 @@ export class UICountdown {
     if (this.intervalId !== null) {
       clearInterval(this.intervalId);
       this.intervalId = null;
+    }
+
+    // Darken background to full black
+    if (this.container) {
+      this.container.style.background = 'rgba(0, 0, 0, 1)';
     }
 
     // Show "Game Start!!" message
@@ -180,13 +211,13 @@ export class UICountdown {
       `;
     }
 
-    // Hide after 300ms and call onComplete
+    // Hide after 800ms and call onComplete
     setTimeout(() => {
       this.hide();
       if (this.onComplete) {
         this.onComplete();
       }
-    }, 300); // Reduced to 300ms for faster transition
+    }, 800); // Increased to 800ms to show "Game Start!!" message longer
   }
 
   /**

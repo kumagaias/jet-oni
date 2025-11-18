@@ -132,88 +132,152 @@ export class UIResults {
       margin-bottom: 10px;
     `;
     
-    // Player list header (without Time column)
+    // Player list header
     const listHeader = document.createElement('div');
-    listHeader.style.cssText = `
-      display: grid;
-      grid-template-columns: 50px minmax(0, 1fr);
-      gap: 10px;
-      padding: 10px;
-      border-bottom: 2px solid #4a90e2;
-      margin-bottom: 10px;
-      color: #4a90e2;
-      font-weight: bold;
-      font-size: 14px;
-    `;
+    
+    if (runnersWin) {
+      // Runners Win: Show only "Survivors" header (no rank)
+      listHeader.style.cssText = `
+        display: block;
+        padding: 10px;
+        border-bottom: 2px solid #4a90e2;
+        margin-bottom: 10px;
+        color: #4a90e2;
+        font-weight: bold;
+        font-size: 14px;
+      `;
+      
+      const survivorsHeader = document.createElement('div');
+      survivorsHeader.textContent = this.i18n.t('results.survivors');
+      listHeader.appendChild(survivorsHeader);
+    } else {
+      // ONI Win: Show "Rank" and "Player" headers
+      listHeader.style.cssText = `
+        display: grid;
+        grid-template-columns: 50px minmax(0, 1fr);
+        gap: 10px;
+        padding: 10px;
+        border-bottom: 2px solid #4a90e2;
+        margin-bottom: 10px;
+        color: #4a90e2;
+        font-weight: bold;
+        font-size: 14px;
+      `;
 
-    const rankHeader = document.createElement('div');
-    rankHeader.textContent = this.i18n.t('results.rank');
-    listHeader.appendChild(rankHeader);
+      const rankHeader = document.createElement('div');
+      rankHeader.textContent = this.i18n.t('results.rank');
+      listHeader.appendChild(rankHeader);
 
-    const playerHeader = document.createElement('div');
-    playerHeader.textContent = this.i18n.t('results.player');
-    listHeader.appendChild(playerHeader);
+      const playerHeader = document.createElement('div');
+      playerHeader.textContent = this.i18n.t('results.player');
+      listHeader.appendChild(playerHeader);
+    }
 
     playerListContainer.appendChild(listHeader);
 
-    // Player list (without Time column)
+    // Player list
     playersToShow.forEach((player, index) => {
       const playerRow = document.createElement('div');
       const isLocalPlayer = player.id === localPlayerId;
       const isTopPlayer = index === 0;
 
-      playerRow.style.cssText = `
-        display: grid;
-        grid-template-columns: 50px minmax(0, 1fr);
-        gap: 10px;
-        padding: 12px 10px;
-        border-radius: 5px;
-        margin-bottom: 5px;
-        background: ${isLocalPlayer ? 'rgba(74, 144, 226, 0.3)' : 'rgba(255, 255, 255, 0.05)'};
-        ${isTopPlayer ? 'border: 2px solid gold;' : ''}
-        align-items: center;
-      `;
+      if (runnersWin) {
+        // Runners Win: Simple list without rank
+        playerRow.style.cssText = `
+          display: block;
+          padding: 12px 10px;
+          border-radius: 5px;
+          margin-bottom: 5px;
+          background: ${isLocalPlayer ? 'rgba(74, 144, 226, 0.3)' : 'rgba(255, 255, 255, 0.05)'};
+        `;
 
-      // Rank
-      const rank = document.createElement('div');
-      rank.style.cssText = `
-        color: ${isTopPlayer ? 'gold' : '#ffffff'};
-        font-weight: ${isTopPlayer ? 'bold' : 'normal'};
-        font-size: ${isTopPlayer ? '20px' : '16px'};
-      `;
-      rank.textContent = `${index + 1}`;
-      if (isTopPlayer) {
-        rank.textContent += ' 👑';
-      }
-      playerRow.appendChild(rank);
+        // Player name only
+        const name = document.createElement('div');
+        name.style.cssText = `
+          color: #ffffff;
+          overflow: hidden;
+          word-wrap: break-word;
+          word-break: break-word;
+          line-height: 1.3;
+          font-size: 14px;
+          max-width: 100%;
+        `;
+        // Remove "Player " prefix from human player names, keep "AI_" prefix for AI players
+        let displayName = player.username;
+        if (!player.isAI && displayName.startsWith('Player ')) {
+          displayName = displayName.substring(7); // Remove "Player " (7 characters)
+        } else if (!player.isAI && displayName.startsWith('player_')) {
+          // If it's a generated ID like "player_1234567890_abc", show a shortened version
+          displayName = displayName.substring(7, 20); // Show part of the ID
+        }
+        
+        // Add crown for top player (winner)
+        if (isTopPlayer) {
+          displayName = '👑 ' + displayName;
+        }
+        
+        // Add "(You)" for local player
+        if (isLocalPlayer) {
+          displayName += ' (You)';
+        }
+        
+        name.textContent = displayName;
+        playerRow.appendChild(name);
+      } else {
+        // ONI Win: Show rank and player
+        playerRow.style.cssText = `
+          display: grid;
+          grid-template-columns: 50px minmax(0, 1fr);
+          gap: 10px;
+          padding: 12px 10px;
+          border-radius: 5px;
+          margin-bottom: 5px;
+          background: ${isLocalPlayer ? 'rgba(74, 144, 226, 0.3)' : 'rgba(255, 255, 255, 0.05)'};
+          ${isTopPlayer ? 'border: 2px solid gold;' : ''}
+          align-items: center;
+        `;
 
-      // Player name
-      const name = document.createElement('div');
-      name.style.cssText = `
-        color: #ffffff;
-        overflow: hidden;
-        word-wrap: break-word;
-        word-break: break-word;
-        line-height: 1.3;
-        font-size: 14px;
-        max-width: 100%;
-      `;
-      // Remove "Player " prefix from human player names, keep "AI_" prefix for AI players
-      let displayName = player.username;
-      if (!player.isAI && displayName.startsWith('Player ')) {
-        displayName = displayName.substring(7); // Remove "Player " (7 characters)
-      } else if (!player.isAI && displayName.startsWith('player_')) {
-        // If it's a generated ID like "player_1234567890_abc", show a shortened version
-        displayName = displayName.substring(7, 20); // Show part of the ID
+        // Rank
+        const rank = document.createElement('div');
+        rank.style.cssText = `
+          color: ${isTopPlayer ? 'gold' : '#ffffff'};
+          font-weight: ${isTopPlayer ? 'bold' : 'normal'};
+          font-size: ${isTopPlayer ? '20px' : '16px'};
+        `;
+        rank.textContent = `${index + 1}`;
+        if (isTopPlayer) {
+          rank.textContent += ' 👑';
+        }
+        playerRow.appendChild(rank);
+
+        // Player name
+        const name = document.createElement('div');
+        name.style.cssText = `
+          color: #ffffff;
+          overflow: hidden;
+          word-wrap: break-word;
+          word-break: break-word;
+          line-height: 1.3;
+          font-size: 14px;
+          max-width: 100%;
+        `;
+        // Remove "Player " prefix from human player names, keep "AI_" prefix for AI players
+        let displayName = player.username;
+        if (!player.isAI && displayName.startsWith('Player ')) {
+          displayName = displayName.substring(7); // Remove "Player " (7 characters)
+        } else if (!player.isAI && displayName.startsWith('player_')) {
+          // If it's a generated ID like "player_1234567890_abc", show a shortened version
+          displayName = displayName.substring(7, 20); // Show part of the ID
+        }
+        
+        // Add "(You)" for local player
+        if (isLocalPlayer) {
+          displayName += ' (You)';
+        }
+        
+        name.textContent = displayName;
+        playerRow.appendChild(name);
       }
-      
-      // Add "(You)" for local player
-      if (isLocalPlayer) {
-        displayName += ' (You)';
-      }
-      
-      name.textContent = displayName;
-      playerRow.appendChild(name);
 
       playerListContainer.appendChild(playerRow);
     });

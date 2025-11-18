@@ -194,9 +194,9 @@ export class TagSystem {
       }
     }
 
-    // Check AI oni tagging AI runners
+    // Check AI oni tagging all runners (including human players)
     const oniPlayers = allPlayers.filter(p => p.isOni && p.isAI);
-    const runnerPlayers = allPlayers.filter(p => !p.isOni && p.isAI);
+    const runnerPlayers = allPlayers.filter(p => !p.isOni); // All runners (AI + human)
 
     for (const oni of oniPlayers) {
       for (const runner of runnerPlayers) {

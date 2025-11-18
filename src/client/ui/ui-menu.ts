@@ -648,6 +648,53 @@ export class UIMenu {
               <span style="color: #666; font-size: 10px;">7 min</span>
             </div>
           </div>
+          
+          <!-- Time of Day Toggle -->
+          <div style="margin-bottom: 10px; margin-top: 25px;">
+            <p style="color: #aaa; font-size: 11px; margin-bottom: 10px;">${this.i18n.t('settings.timeOfDay') || 'TIME OF DAY'}</p>
+            <div style="display: flex; gap: 10px;">
+              <button id="time-day" class="time-toggle active" style="
+                flex: 1;
+                padding: 12px;
+                font-size: 13px;
+                cursor: pointer;
+                font-family: monospace;
+                border: 2px solid #ff8800;
+                background: #ff8800;
+                color: #000;
+                font-weight: bold;
+                border-radius: 4px;
+                transition: all 0.2s;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 4px;
+              ">
+                <span style="font-size: 24px;">☀️</span>
+                <span>DAY</span>
+              </button>
+              <button id="time-night" class="time-toggle" style="
+                flex: 1;
+                padding: 12px;
+                font-size: 13px;
+                cursor: pointer;
+                font-family: monospace;
+                border: 2px solid #666;
+                background: #222;
+                color: #aaa;
+                font-weight: bold;
+                border-radius: 4px;
+                transition: all 0.2s;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                gap: 4px;
+              ">
+                <span style="font-size: 24px;">🌙</span>
+                <span>NIGHT</span>
+              </button>
+            </div>
+          </div>
         </div>
         
         <style>
@@ -682,6 +729,16 @@ export class UIMenu {
           input[type="range"]::-moz-range-thumb:hover {
             background: #ffa500;
             transform: scale(1.1);
+          }
+          
+          .time-toggle:hover {
+            opacity: 0.8;
+          }
+          
+          .time-toggle.active {
+            border-color: #ff8800 !important;
+            background: #ff8800 !important;
+            color: #000 !important;
           }
         </style>
         
@@ -745,6 +802,7 @@ export class UIMenu {
     const selectedOptions = {
       players: 6,
       duration: 3,
+      timeOfDay: 'day' as 'day' | 'night',
     };
     
     // Players slider
@@ -817,6 +875,46 @@ export class UIMenu {
       });
     }
     
+    // Time of day toggle
+    const timeDayBtn = document.getElementById('time-day');
+    const timeNightBtn = document.getElementById('time-night');
+    
+    if (timeDayBtn && timeNightBtn) {
+      timeDayBtn.addEventListener('click', () => {
+        selectedOptions.timeOfDay = 'day';
+        timeDayBtn.classList.add('active');
+        timeNightBtn.classList.remove('active');
+        timeDayBtn.style.borderColor = '#ff8800';
+        timeDayBtn.style.background = '#ff8800';
+        timeDayBtn.style.color = '#000';
+        timeNightBtn.style.borderColor = '#666';
+        timeNightBtn.style.background = '#222';
+        timeNightBtn.style.color = '#aaa';
+        
+        // Dispatch event to update lobby scene lighting
+        window.dispatchEvent(new CustomEvent('timeOfDayChange', {
+          detail: { timeOfDay: 'day' }
+        }));
+      });
+      
+      timeNightBtn.addEventListener('click', () => {
+        selectedOptions.timeOfDay = 'night';
+        timeNightBtn.classList.add('active');
+        timeDayBtn.classList.remove('active');
+        timeNightBtn.style.borderColor = '#ff8800';
+        timeNightBtn.style.background = '#ff8800';
+        timeNightBtn.style.color = '#000';
+        timeDayBtn.style.borderColor = '#666';
+        timeDayBtn.style.background = '#222';
+        timeDayBtn.style.color = '#aaa';
+        
+        // Dispatch event to update lobby scene lighting
+        window.dispatchEvent(new CustomEvent('timeOfDayChange', {
+          detail: { timeOfDay: 'night' }
+        }));
+      });
+    }
+    
     // Start game button - create game via API
     document.getElementById('btn-start-game')?.addEventListener('click', async () => {
       const startButton = document.getElementById('btn-start-game') as HTMLButtonElement;
@@ -832,6 +930,7 @@ export class UIMenu {
           totalPlayers: selectedOptions.players,
           roundDuration: selectedOptions.duration * 60, // Convert minutes to seconds
           rounds: 1, // Fixed to 1 round
+          timeOfDay: selectedOptions.timeOfDay,
         };
         
         // Call API to create game

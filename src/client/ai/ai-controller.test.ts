@@ -18,7 +18,7 @@ describe('AIController', () => {
       expect(config.chaseDistance).toBe(100);
       expect(config.fleeDistance).toBe(50);
       expect(config.wanderChangeInterval).toBe(3);
-      expect(config.abilityUseChance).toBe(0.6);
+      expect(config.abilityUseChance).toBe(0.8);
       expect(config.abilityUseCooldown).toBe(1.5);
     });
 

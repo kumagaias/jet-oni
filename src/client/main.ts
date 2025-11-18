@@ -406,7 +406,7 @@ async function initGame(): Promise<void> {
         
         // Always show red overlay when ONI (fixed to screen, not affected by player movement)
         if (localPlayer.isOni) {
-          oniOverlay.style.backgroundColor = 'rgba(255, 0, 0, 0.2)';
+          oniOverlay.style.backgroundColor = 'rgba(255, 0, 0, 0.05)';
         } else {
           oniOverlay.style.backgroundColor = 'transparent';
         }
@@ -529,7 +529,7 @@ async function initGame(): Promise<void> {
           }
           
           // Update tag system (check for tags between players)
-          tagSystem.update(deltaTime);
+          tagSystem.update();
         }
         
         // Apply physics to AI players and update models (host only)
@@ -1013,6 +1013,9 @@ async function initGame(): Promise<void> {
       const toast = new ToastNotification(i18n);
       toast.init();
       
+      // Initialize screen fade effect (early, so it's accessible in all event handlers)
+      const screenFade = new ScreenFade();
+      
       // Set up tag event handler to show toast notifications
       tagSystem.onTag((tagEvent) => {
         const localPlayerId = gameState.getLocalPlayer().id;
@@ -1065,8 +1068,16 @@ async function initGame(): Promise<void> {
       // Initialize countdown UI
       const uiCountdown = new UICountdown(i18n);
       
-      // Initialize screen fade effect
-      const screenFade = new ScreenFade();
+      // Set countdown change callback to apply night mode at countdown 3
+      uiCountdown.setOnCountdownChange((value: number) => {
+        // When countdown reaches 3, apply time of day setting
+        if (value === 3) {
+          const gameConfig = gameState.getGameConfig();
+          if (gameConfig?.timeOfDay === 'night') {
+            gameEngine.setTimeOfDay('night');
+          }
+        }
+      });
       
       // Initialize minimap (dev mode only)
       const uiMinimap = new UIMinimap(gameState);
@@ -1123,6 +1134,19 @@ async function initGame(): Promise<void> {
       window.addEventListener('gameStartCountdown', ((e: Event) => {
         const customEvent = e as CustomEvent;
         
+        // Reset game state for new game
+        gameStarted = false;
+        gameHasStarted = false;
+        gameStartTime = 0;
+        lastGameEndCheck = 0;
+        wasOni = false;
+        
+        // Clear tagged time map
+        taggedTimeMap.clear();
+        
+        // Clear AI sync time map
+        aiLastSyncTime.clear();
+        
         // If this is the host (no startTimestamp in detail), broadcast game-start to all players
         if (!customEvent.detail?.startTimestamp && isHost) {
           const config = customEvent.detail?.config || gameState.getGameConfig();
@@ -1165,11 +1189,7 @@ async function initGame(): Promise<void> {
         // Start countdown (10 seconds) with timestamp synchronization
         const startTimestamp = customEvent.detail?.startTimestamp || Date.now();
         uiCountdown.start(10, async () => {
-          // Start fade to black before game starts
-          // This hides player spawn positions and initial movement
-          const fadePromise = screenFade.fadeSequence(300, 800, 500);
-          
-          // Trigger actual game start immediately (during fade)
+          // Countdown already fades to black, so just trigger game start
           window.dispatchEvent(new CustomEvent('gameStart', {
             detail: {
               config: gameState.getGameConfig(),
@@ -1177,8 +1197,9 @@ async function initGame(): Promise<void> {
             },
           }));
           
-          // Wait for fade to complete
-          await fadePromise;
+          // Wait a bit for game start to process, then fade from black
+          await new Promise(resolve => setTimeout(resolve, 500));
+          await screenFade.fadeFromBlack(500);
         }, startTimestamp);
       }) as EventListener);
       
@@ -1251,7 +1272,6 @@ async function initGame(): Promise<void> {
           
           // Update ladder system
           ladderSystem.registerLadders(dynamicObjects.getLadders());
-          
         }
         
         // Show canvas and resume game engine
@@ -1301,6 +1321,10 @@ async function initGame(): Promise<void> {
               
               // Update local player ONI status from server
               gameState.setLocalPlayerIsOni(matchingServerPlayer.isOni);
+              
+              console.log(`[Game Start] Synced local player from server: id=${matchingServerPlayer.id}, isOni=${matchingServerPlayer.isOni}`);
+            } else {
+              console.warn(`[Game Start] Could not find matching server player for local player: ${localPlayer.id}`);
             }
             
             // Update local game state with server players
@@ -1308,10 +1332,38 @@ async function initGame(): Promise<void> {
             
             for (const player of serverGameState.players) {
               if (player.id !== updatedLocalPlayerId) {
-                // Set random spawn position for each player (spread across entire map)
-                const spawnX = (Math.random() - 0.5) * 360; // Random X between -180 and 180
-                const spawnZ = (Math.random() - 0.5) * 360; // Random Z between -180 and 180
-                const spawnPosition = { x: spawnX, y: 2, z: spawnZ };
+                // Set random spawn position for each player (avoid buildings)
+                const buildings = cityGenerator.getBuildingData();
+                const findSafeSpawnPosition = () => {
+                  const maxAttempts = 50;
+                  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                    const spawnX = (Math.random() - 0.5) * 360;
+                    const spawnZ = (Math.random() - 0.5) * 360;
+                    
+                    let insideBuilding = false;
+                    for (const building of buildings) {
+                      const halfWidth = building.width / 2;
+                      const halfDepth = building.depth / 2;
+                      
+                      if (
+                        spawnX >= building.x - halfWidth &&
+                        spawnX <= building.x + halfWidth &&
+                        spawnZ >= building.z - halfDepth &&
+                        spawnZ <= building.z + halfDepth
+                      ) {
+                        insideBuilding = true;
+                        break;
+                      }
+                    }
+                    
+                    if (!insideBuilding) {
+                      return { x: spawnX, y: 2, z: spawnZ };
+                    }
+                  }
+                  return { x: 0, y: 2, z: 0 };
+                };
+                
+                const spawnPosition = findSafeSpawnPosition();
                 
                 // Update player with spawn position
                 const playerWithSpawn = {
@@ -1377,12 +1429,48 @@ async function initGame(): Promise<void> {
         uiHud.update(0); // Force initial update to show correct player counts
         uiControls.show();
         
-        // Set random spawn position for local player (spread across entire map)
-        const spawnX = (Math.random() - 0.5) * 360; // Random X between -180 and 180
-        const spawnZ = (Math.random() - 0.5) * 360; // Random Z between -180 and 180
+        // Set random spawn position for local player (avoid buildings)
+        const buildings = cityGenerator.getBuildingData();
+        const findSafeSpawnPosition = () => {
+          const maxAttempts = 50;
+          for (let attempt = 0; attempt < maxAttempts; attempt++) {
+            const spawnX = (Math.random() - 0.5) * 360; // Random X between -180 and 180
+            const spawnZ = (Math.random() - 0.5) * 360; // Random Z between -180 and 180
+            
+            // Check if position is inside any building
+            let insideBuilding = false;
+            for (const building of buildings) {
+              const halfWidth = building.width / 2;
+              const halfDepth = building.depth / 2;
+              
+              if (
+                spawnX >= building.x - halfWidth &&
+                spawnX <= building.x + halfWidth &&
+                spawnZ >= building.z - halfDepth &&
+                spawnZ <= building.z + halfDepth
+              ) {
+                insideBuilding = true;
+                break;
+              }
+            }
+            
+            if (!insideBuilding) {
+              return { x: spawnX, y: 2, z: spawnZ };
+            }
+          }
+          
+          // Fallback: spawn at origin if no safe position found
+          return { x: 0, y: 2, z: 0 };
+        };
+        
+        // Set random spawn position for local player (preserve ONI status)
         const localPlayer = gameState.getLocalPlayer();
-        localPlayer.position = { x: spawnX, y: 2, z: spawnZ };
-        localPlayer.velocity = { x: 0, y: 0, z: 0 };
+        const spawnPosition = findSafeSpawnPosition();
+        gameState.setLocalPlayerPosition(spawnPosition);
+        gameState.setLocalPlayerVelocity({ x: 0, y: 0, z: 0 });
+        
+        // Log local player state after spawn
+        console.log(`[Game Start] Local player after spawn: id=${localPlayer.id}, isOni=${localPlayer.isOni}, position=(${spawnPosition.x}, ${spawnPosition.y}, ${spawnPosition.z})`);
         
         // Start Realtime synchronization if not already connected
         if (customEvent.detail?.gameId) {
@@ -1418,6 +1506,7 @@ async function initGame(): Promise<void> {
         
         // Use ONI assignment from server (already set when syncing with server)
         // Check if local player is ONI and show appropriate message
+        // Wait for fade sequence to complete (300ms + 800ms + 500ms = 1600ms)
         setTimeout(() => {
           const localPlayer = gameState.getLocalPlayer();
           
@@ -1425,10 +1514,10 @@ async function initGame(): Promise<void> {
             // Update wasOni to prevent "Became ONI" message
             wasOni = true;
             
-            // Show ONI role message
+            // Show ONI role message (after fade completes)
             toast.show(i18n.t('game.assignedOni'), 'warning', 5000);
           } else {
-            // Show Runner role message
+            // Show Runner role message (after fade completes)
             toast.show(i18n.t('game.assignedRunner'), 'info', 5000);
           }
           
@@ -1439,7 +1528,7 @@ async function initGame(): Promise<void> {
               aiModel.setIsOni(true);
             }
           }
-        }, 1500); // 1.5s delay for better UX
+        }, 2000); // 2s delay to wait for fade sequence to complete
         
         // Only host places items on the map
         if (isHost) {
@@ -1701,7 +1790,7 @@ async function initGame(): Promise<void> {
                   // Player was never tagged - survived the entire game
                   finalSurvivedTime = gameElapsedTime;
                 }
-                console.log(`[Game End] [HOST] Player ${player.username}: survivedTime=${finalSurvivedTime}, wasTagged=${!!taggedTime}`);
+                console.log(`[Game End] [HOST] Player ${player.username} (${player.id}): isOni=${player.isOni}, wasTagged=${!!taggedTime}, survivedTime=${finalSurvivedTime}`);
                 
                 // Validate and sanitize data before sending
                 const isValidNumber = (n: number) => typeof n === 'number' && isFinite(n);
@@ -1827,17 +1916,31 @@ async function initGame(): Promise<void> {
             // Show results screen with game results
             if (endGameResponse && endGameResponse.success && endGameResponse.results) {
               console.log('[Game End] Showing results screen...');
-              const { UIResults } = await import('./ui/ui-results');
               
-              // Use server results directly
-              const uiResults = new UIResults(endGameResponse.results, i18n);
-              uiResults.create();
-              
-              // Track if already returning to menu to prevent duplicate calls
-              let returningToMenu = false;
-              
-              // Set callback to return to menu
-              uiResults.setOnBackToMenu(() => {
+              try {
+                // Remove any existing results screen from previous game
+                const existingResults = document.getElementById('results-screen');
+                if (existingResults) {
+                  existingResults.remove();
+                }
+                
+                // Fade to black before showing results
+                await screenFade.fadeToBlack(500);
+                
+                const { UIResults } = await import('./ui/ui-results');
+                
+                // Use server results directly
+                const uiResults = new UIResults(endGameResponse.results, i18n);
+                uiResults.create();
+                
+                // Fade from black to reveal results
+                await screenFade.fadeFromBlack(500);
+                
+                // Track if already returning to menu to prevent duplicate calls
+                let returningToMenu = false;
+                
+                // Set callback to return to menu
+                uiResults.setOnBackToMenu(() => {
                 // Prevent duplicate calls
                 if (returningToMenu) {
                   return;
@@ -1853,6 +1956,17 @@ async function initGame(): Promise<void> {
                 gameHasStarted = false;
                 gameStarted = false;
                 wasOni = false;
+                gameStartTime = 0; // Reset game start time
+                lastGameEndCheck = 0; // Reset game end check timer
+                
+                // Clear tagged time map
+                taggedTimeMap.clear();
+                
+                // Clear AI sync time map
+                aiLastSyncTime.clear();
+                
+                // Reset time of day to default (day)
+                gameEngine.setTimeOfDay('day');
                 
                 // Clean up visual effects
                 tagRangeVisual.dispose();
@@ -1914,13 +2028,18 @@ async function initGame(): Promise<void> {
                 // Show title screen
                 uiMenu.showTitleScreen();
                 
-              });
-              
-              // Remove game finished message before showing results
-              gameOverMessage.remove();
-              style.remove();
-              
-              uiResults.show(gameState.getLocalPlayer().id);
+                });
+                
+                // Remove game finished message before showing results
+                gameOverMessage.remove();
+                style.remove();
+                
+                uiResults.show(gameState.getLocalPlayer().id);
+              } catch (error) {
+                console.error('[Game End] Error showing results:', error);
+                // Ensure screen is not stuck in black
+                await screenFade.fadeFromBlack(500);
+              }
             } else {
               console.error('[Game End] Failed to get results:', endGameResponse);
               // Remove game finished message and show error
@@ -1988,6 +2107,17 @@ async function initGame(): Promise<void> {
         }
         
       });
+      
+      // Listen for time of day changes in lobby
+      window.addEventListener('timeOfDayChange', ((e: Event) => {
+        const customEvent = e as CustomEvent;
+        const timeOfDay = customEvent.detail?.timeOfDay as 'day' | 'night';
+        
+        // Only apply in lobby phase
+        if (gameState.getGamePhase() === 'lobby') {
+          gameEngine.setTimeOfDay(timeOfDay);
+        }
+      }) as EventListener);
       
       uiMenu.showTitleScreen();
       

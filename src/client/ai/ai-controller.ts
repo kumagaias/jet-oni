@@ -47,7 +47,7 @@ const DEFAULT_AI_CONFIG: AIConfig = {
   chaseDistance: 100,
   fleeDistance: 50,
   wanderChangeInterval: 3,
-  abilityUseChance: 0.6, // Increased from 0.3 to 0.6 for more aggressive AI
+  abilityUseChance: 0.8, // Increased to 0.8 for more aggressive AI ONI
   abilityUseCooldown: 1.5, // Reduced from 2 to 1.5 for faster ability usage
 };
 
@@ -329,7 +329,7 @@ export class AIController {
     const distance = this.calculateDistance(aiPlayer.position, nearestRunner.position);
     
     // Always chase if runner is visible (increased from 100 to always chase)
-    let decision = this.behaviorSystem.chase(aiPlayer, nearestRunner);
+    let decision = this.behaviorSystem.chase(aiPlayer, nearestRunner, deltaTime);
     
     // Adjust direction to avoid stuck locations
     decision = this.adjustDirectionToAvoidStuckLocations(aiPlayer, decision);
@@ -531,6 +531,8 @@ export class AIController {
     let speed = PLAYER_SPEED;
     if (player.isOni) {
       speed *= ONI_SPEED_MULTIPLIER;
+      // AI ONI gets additional speed boost (1.15x) to be more threatening
+      speed *= 1.15;
     }
     if (decision.useAbility && decision.abilityType === 'dash') {
       speed = DASH_SPEED;

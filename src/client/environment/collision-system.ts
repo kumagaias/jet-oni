@@ -68,9 +68,13 @@ export class CollisionSystem {
     const dz = targetPosition.z - currentPosition.z;
     const movementDistance = Math.sqrt(dx * dx + dy * dy + dz * dz);
     
+    // Only use swept collision for very fast movement (e.g., jetpacking)
+    // Threshold: 2.0 units per frame (much larger than normal movement)
+    const SWEPT_COLLISION_THRESHOLD = 2.0;
+    
     // Only use swept collision if player is not inside a building
     // (if inside, we want to push them out, not block movement)
-    if (!isCurrentlyInside && movementDistance > playerRadius) {
+    if (!isCurrentlyInside && movementDistance > SWEPT_COLLISION_THRESHOLD) {
       const sweptResult = this.checkSweptCollision(
         currentPosition,
         targetPosition,
@@ -127,25 +131,45 @@ export class CollisionSystem {
     endPosition: Vector3,
     playerRadius: number
   ): CollisionResult {
-    // Sample points along the movement path
-    const steps = Math.ceil(
-      Math.sqrt(
-        Math.pow(endPosition.x - startPosition.x, 2) +
-        Math.pow(endPosition.y - startPosition.y, 2) +
-        Math.pow(endPosition.z - startPosition.z, 2)
-      ) / playerRadius
-    );
+    // Calculate movement distance
+    const dx = endPosition.x - startPosition.x;
+    const dy = endPosition.y - startPosition.y;
+    const dz = endPosition.z - startPosition.z;
+    const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    
+    // Limit sample steps to reasonable number for performance
+    // Use larger step size (1.0 unit) instead of playerRadius (0.5)
+    const steps = Math.min(Math.ceil(distance / 1.0), 10); // Max 10 samples
+    
+    // Pre-filter buildings that are potentially in the path
+    const midX = (startPosition.x + endPosition.x) / 2;
+    const midZ = (startPosition.z + endPosition.z) / 2;
+    const searchRadius = distance / 2 + 20; // Add buffer
+    
+    const nearbyBuildings = this.buildings.filter(building => {
+      const distX = Math.abs(building.position.x - midX);
+      const distZ = Math.abs(building.position.z - midZ);
+      return distX < searchRadius && distZ < searchRadius;
+    });
+    
+    // If no nearby buildings, skip swept collision
+    if (nearbyBuildings.length === 0) {
+      return {
+        position: endPosition,
+        collided: false,
+      };
+    }
     
     for (let i = 0; i <= steps; i++) {
       const t = i / steps;
       const samplePosition: Vector3 = {
-        x: startPosition.x + (endPosition.x - startPosition.x) * t,
-        y: startPosition.y + (endPosition.y - startPosition.y) * t,
-        z: startPosition.z + (endPosition.z - startPosition.z) * t,
+        x: startPosition.x + dx * t,
+        y: startPosition.y + dy * t,
+        z: startPosition.z + dz * t,
       };
       
-      // Check collision at this sample point
-      for (const building of this.buildings) {
+      // Check collision at this sample point (only nearby buildings)
+      for (const building of nearbyBuildings) {
         const collision = this.checkBuildingCollision(
           samplePosition,
           playerRadius,

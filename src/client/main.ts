@@ -1347,39 +1347,48 @@ async function initGame(): Promise<void> {
             // Update local game state with server players
             const updatedLocalPlayerId = matchingServerPlayer?.id || localPlayer.id;
             
-            for (const player of serverGameState.players) {
-              if (player.id !== updatedLocalPlayerId) {
-                // Set random spawn position for each player (avoid buildings)
-                const buildings = cityGenerator.getBuildingData();
-                const findSafeSpawnPosition = () => {
-                  const maxAttempts = 50;
-                  for (let attempt = 0; attempt < maxAttempts; attempt++) {
-                    const spawnX = (Math.random() - 0.5) * 360;
-                    const spawnZ = (Math.random() - 0.5) * 360;
-                    
-                    let insideBuilding = false;
-                    for (const building of buildings) {
-                      const halfWidth = building.width / 2;
-                      const halfDepth = building.depth / 2;
-                      
-                      if (
-                        spawnX >= building.x - halfWidth &&
-                        spawnX <= building.x + halfWidth &&
-                        spawnZ >= building.z - halfDepth &&
-                        spawnZ <= building.z + halfDepth
-                      ) {
-                        insideBuilding = true;
-                        break;
-                      }
-                    }
-                    
-                    if (!insideBuilding) {
-                      return { x: spawnX, y: 0.5, z: spawnZ };
-                    }
-                  }
-                  return { x: 0, y: 0.5, z: 0 };
-                };
+            // Get buildings for spawn position calculation
+            const buildings = cityGenerator.getBuildingData();
+            
+            // Helper function to find safe spawn position
+            const findSafeSpawnPosition = () => {
+              const maxAttempts = 50;
+              for (let attempt = 0; attempt < maxAttempts; attempt++) {
+                const spawnX = (Math.random() - 0.5) * 360;
+                const spawnZ = (Math.random() - 0.5) * 360;
                 
+                let insideBuilding = false;
+                for (const building of buildings) {
+                  const halfWidth = building.width / 2;
+                  const halfDepth = building.depth / 2;
+                  
+                  if (
+                    spawnX >= building.x - halfWidth &&
+                    spawnX <= building.x + halfWidth &&
+                    spawnZ >= building.z - halfDepth &&
+                    spawnZ <= building.z + halfDepth
+                  ) {
+                    insideBuilding = true;
+                    break;
+                  }
+                }
+                
+                if (!insideBuilding) {
+                  return { x: spawnX, y: 0.5, z: spawnZ };
+                }
+              }
+              return { x: 0, y: 0.5, z: 0 };
+            };
+            
+            for (const player of serverGameState.players) {
+              if (player.id === updatedLocalPlayerId) {
+                // Set local player spawn position
+                const spawnPosition = findSafeSpawnPosition();
+                gameState.setLocalPlayerPosition(spawnPosition);
+                gameState.setLocalPlayerVelocity({ x: 0, y: 0, z: 0 });
+                console.log(`[Game Start] Set local player spawn position: (${spawnPosition.x}, ${spawnPosition.y}, ${spawnPosition.z})`);
+              } else {
+                // Set random spawn position for remote/AI players
                 const spawnPosition = findSafeSpawnPosition();
                 
                 // Update player with spawn position

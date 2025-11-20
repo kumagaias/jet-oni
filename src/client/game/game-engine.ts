@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { CAMERA_HEIGHT, MAP_SIZE, MAP_HEIGHT } from '../../shared/constants';
+import { CAMERA_HEIGHT, MAP_SIZE } from '../../shared/constants';
 import { PerformanceOptimizer } from '../utils/performance-optimizer';
 
 /**
@@ -101,25 +101,25 @@ export class GameEngine {
     const hemisphereLight = this.scene.getObjectByName('hemisphereLight') as THREE.HemisphereLight;
 
     if (timeOfDay === 'night') {
-      // Night mode: darker ambient, moonlight, dark blue sky
+      // Night mode: brighter ambient for better visibility, moonlight, dark blue sky
       if (ambientLight) {
-        ambientLight.intensity = 0.2;
-        ambientLight.color.setHex(0x4a5f8f); // Blue-ish ambient
+        ambientLight.intensity = 0.4; // Increased from 0.2 to 0.4
+        ambientLight.color.setHex(0x6a7faf); // Lighter blue-ish ambient
       }
       if (directionalLight) {
-        directionalLight.intensity = 0.3;
-        directionalLight.color.setHex(0x9db4d4); // Moonlight color
+        directionalLight.intensity = 0.5; // Increased from 0.3 to 0.5
+        directionalLight.color.setHex(0xb4c4e4); // Brighter moonlight color
         directionalLight.position.set(-50, 100, -50); // Moon position
       }
       if (hemisphereLight) {
-        hemisphereLight.intensity = 0.2;
-        hemisphereLight.color.setHex(0x1a1a2e); // Dark sky
-        hemisphereLight.groundColor.setHex(0x0f0f1e); // Dark ground
+        hemisphereLight.intensity = 0.3; // Increased from 0.2 to 0.3
+        hemisphereLight.color.setHex(0x2a2a4e); // Lighter dark sky
+        hemisphereLight.groundColor.setHex(0x1f1f3e); // Lighter dark ground
       }
       
-      // Change scene background and fog to night
-      this.scene.background = new THREE.Color(0x0a0a1a);
-      this.scene.fog = new THREE.Fog(0x0a0a1a, 30, MAP_SIZE * 1.2);
+      // Change scene background and fog to night (lighter for better visibility)
+      this.scene.background = new THREE.Color(0x1a1a3a); // Lighter night sky
+      this.scene.fog = new THREE.Fog(0x1a1a3a, 30, MAP_SIZE * 1.2);
     } else {
       // Day mode: bright ambient, sunlight, sky blue
       if (ambientLight) {

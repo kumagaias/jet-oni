@@ -1,5 +1,3 @@
-import { I18n } from '../i18n/i18n';
-
 /**
  * UICountdown displays a countdown timer in the center of the screen
  */
@@ -9,10 +7,11 @@ export class UICountdown {
   private onComplete?: () => void;
   private onCountdownChange?: (value: number) => void;
   private intervalId: number | null = null;
-  private i18n: I18n;
+  private completeTimerId: number | null = null;
+  private hideTimerId: number | null = null;
 
-  constructor(i18n: I18n) {
-    this.i18n = i18n;
+  constructor() {
+    // No initialization needed
   }
 
   /**
@@ -52,6 +51,7 @@ export class UICountdown {
         }
         
         if (remainingMs <= 0) {
+          console.log('[Countdown] Time reached 0, calling complete()');
           this.complete();
         } else {
           requestAnimationFrame(updateCountdown);
@@ -67,6 +67,7 @@ export class UICountdown {
         this.countdownValue--;
 
         if (this.countdownValue <= 0) {
+          console.log('[Countdown] Countdown reached 0, calling complete()');
           this.complete();
         } else {
           this.updateDisplay();
@@ -92,7 +93,7 @@ export class UICountdown {
       justify-content: center;
       align-items: center;
       background: rgba(0, 0, 0, 0);
-      z-index: 9999;
+      z-index: 99998;
       pointer-events: none;
       transition: background 0.5s ease-out;
     `;
@@ -103,6 +104,10 @@ export class UICountdown {
       font-size: 180px;
       font-weight: bold;
       color: #ff8800;
+      text-align: center;
+      width: 100%;
+      position: relative;
+      z-index: 10000;
       text-shadow: 0 0 30px rgba(255, 136, 0, 1),
                    0 0 60px rgba(255, 136, 0, 0.8),
                    0 0 90px rgba(255, 100, 0, 0.6);
@@ -165,17 +170,8 @@ export class UICountdown {
       }, 10);
     }
     
-    // Gradually darken background as countdown approaches 0
-    if (this.container) {
-      // Start darkening from countdown 2 (not 10)
-      // 2 -> 0: opacity 0 -> 0.8
-      const maxOpacity = 0.8;
-      let opacity = 0;
-      if (this.countdownValue <= 2) {
-        opacity = maxOpacity * (1 - this.countdownValue / 2);
-      }
-      this.container.style.background = `rgba(0, 0, 0, ${opacity})`;
-    }
+    // Don't darken background during countdown
+    // Background stays transparent until countdown reaches 0
     
     // Notify countdown change
     if (this.onCountdownChange) {
@@ -187,47 +183,99 @@ export class UICountdown {
    * Complete countdown and show game start message
    */
   private complete(): void {
+    console.log('[Countdown] complete() called');
+    
     // Stop interval
     if (this.intervalId !== null) {
       clearInterval(this.intervalId);
       this.intervalId = null;
     }
 
-    // Darken background to full black
+    // Fade to complete black
     if (this.container) {
+      this.container.style.transition = 'background 0.3s ease-out';
       this.container.style.background = 'rgba(0, 0, 0, 1)';
+      console.log('[Countdown] Background set to black');
     }
 
-    // Show "Game Start!!" message
-    const countdownText = document.getElementById('countdown-text');
-    if (countdownText) {
-      countdownText.textContent = 'Game Start!!';
-      countdownText.style.color = '#ff8800';
-      countdownText.style.fontSize = '100px';
-      countdownText.style.textShadow = `
+    // Create a separate overlay for "Game Start!!" text on top of everything
+    const gameStartOverlay = document.createElement('div');
+    gameStartOverlay.id = 'game-start-overlay';
+    gameStartOverlay.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 100000;
+      pointer-events: none;
+    `;
+
+    const gameStartText = document.createElement('div');
+    gameStartText.textContent = 'Game Start!!';
+    gameStartText.style.cssText = `
+      color: #ff8800;
+      font-size: min(100px, 15vw);
+      font-weight: bold;
+      text-align: center;
+      width: 100%;
+      padding: 0 20px;
+      box-sizing: border-box;
+      white-space: nowrap;
+      text-shadow: 
         0 0 30px rgba(255, 136, 0, 1),
         0 0 60px rgba(255, 136, 0, 0.8),
-        0 0 90px rgba(255, 100, 0, 0.6)
-      `;
-    }
+        0 0 90px rgba(255, 100, 0, 0.6);
+    `;
 
-    // Hide after 800ms and call onComplete
-    setTimeout(() => {
-      this.hide();
+    gameStartOverlay.appendChild(gameStartText);
+    document.body.appendChild(gameStartOverlay);
+    console.log('[Countdown] Game Start overlay created');
+
+    // Trigger game start after a short delay (let black screen appear first)
+    this.completeTimerId = window.setTimeout(() => {
+      console.log('[Countdown] Triggering onComplete callback');
       if (this.onComplete) {
         this.onComplete();
+      } else {
+        console.error('[Countdown] onComplete callback is not defined!');
       }
-    }, 800); // Increased to 800ms to show "Game Start!!" message longer
+      this.completeTimerId = null;
+    }, 100);
+
+    // Keep black screen with "Game Start!!" message for 2 seconds, then hide
+    this.hideTimerId = window.setTimeout(() => {
+      // Remove game start overlay
+      const overlay = document.getElementById('game-start-overlay');
+      if (overlay) {
+        overlay.remove();
+      }
+      this.hide();
+      this.hideTimerId = null;
+    }, 2000); // 2 seconds black screen with "Game Start!!" message
   }
 
   /**
    * Hide countdown
    */
   public hide(): void {
-    // Clear interval first
+    // Clear all timers
     if (this.intervalId !== null) {
       clearInterval(this.intervalId);
       this.intervalId = null;
+    }
+    
+    if (this.completeTimerId !== null) {
+      clearTimeout(this.completeTimerId);
+      this.completeTimerId = null;
+    }
+    
+    if (this.hideTimerId !== null) {
+      clearTimeout(this.hideTimerId);
+      this.hideTimerId = null;
     }
 
     // Remove container
@@ -245,6 +293,12 @@ export class UICountdown {
     const text = document.getElementById('countdown-text');
     if (text) {
       text.remove();
+    }
+
+    // Remove game start overlay if it exists
+    const gameStartOverlay = document.getElementById('game-start-overlay');
+    if (gameStartOverlay) {
+      gameStartOverlay.remove();
     }
   }
 

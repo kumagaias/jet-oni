@@ -8,15 +8,22 @@ import {
   JUMP_FORCE,
 } from '../../shared/constants';
 import { AIBehaviorSystem } from './ai-behavior';
+import { PersonalityManager, OniPersonality } from './ai-personality';
+import { StuckDetectionManager } from './ai-stuck-detection';
 
 /**
  * AI behavior types
  */
 export enum AIBehavior {
-  CHASE = 'chase',     // ONI chasing nearest runner
-  FLEE = 'flee',       // Runner fleeing from nearest ONI
-  WANDER = 'wander',   // Random movement when no targets nearby
+  CHASE = 'chase',
+  FLEE = 'flee',
+  WANDER = 'wander',
 }
+
+/**
+ * Export OniPersonality for external use
+ */
+export { OniPersonality };
 
 /**
  * AI decision state
@@ -33,11 +40,11 @@ export interface AIDecision {
  * AI configuration
  */
 export interface AIConfig {
-  chaseDistance: number;      // Distance to start chasing (ONI)
-  fleeDistance: number;        // Distance to start fleeing (Runner)
-  wanderChangeInterval: number; // Time between wander direction changes (seconds)
-  abilityUseChance: number;    // Chance to use ability (0-1)
-  abilityUseCooldown: number;  // Cooldown between ability uses (seconds)
+  chaseDistance: number;
+  fleeDistance: number;
+  wanderChangeInterval: number;
+  abilityUseChance: number;
+  abilityUseCooldown: number;
 }
 
 /**
@@ -47,8 +54,8 @@ const DEFAULT_AI_CONFIG: AIConfig = {
   chaseDistance: 100,
   fleeDistance: 50,
   wanderChangeInterval: 3,
-  abilityUseChance: 0.8, // Increased to 0.8 for more aggressive AI ONI
-  abilityUseCooldown: 1.5, // Reduced from 2 to 1.5 for faster ability usage
+  abilityUseChance: 0.8,
+  abilityUseCooldown: 1.5,
 };
 
 /**
@@ -58,16 +65,11 @@ export class AIController {
   private gameState: GameState;
   private config: AIConfig;
   private behaviorSystem: AIBehaviorSystem;
+  private personalityManager: PersonalityManager;
+  private stuckDetectionManager: StuckDetectionManager;
   private abilityTimers: Map<string, number> = new Map();
-  private assignedTargets: Map<string, string> = new Map(); // Map of oniId -> runnerId
-  private cloakedPlayerId: string | null = null; // Player who is currently cloaked
-  
-  // Stuck detection
-  private lastPositions: Map<string, { x: number; y: number; z: number; time: number }> = new Map();
-  private stuckThreshold: number = 2.0; // If moved less than 2 units in 2 seconds, consider stuck
-  private stuckCheckInterval: number = 2000; // Check every 2 seconds
-  private stuckLocations: Map<string, Array<{ x: number; z: number; time: number }>> = new Map(); // Track stuck locations
-  private unstuckAttempts: Map<string, number> = new Map(); // Track unstuck attempts
+  private assignedTargets: Map<string, string> = new Map();
+  private cloakedPlayerId: string | null = null;
 
   constructor(gameState: GameState, config: Partial<AIConfig> = {}) {
     this.gameState = gameState;
@@ -77,10 +79,12 @@ export class AIController {
       fleeDistance: this.config.fleeDistance,
       wanderChangeInterval: this.config.wanderChangeInterval,
     });
+    this.personalityManager = new PersonalityManager();
+    this.stuckDetectionManager = new StuckDetectionManager();
   }
 
   /**
-   * Set the cloaked player ID (AI will ignore this player)
+   * Set cloaked player ID
    */
   public setCloakedPlayer(playerId: string | null): void {
     this.cloakedPlayerId = playerId;
@@ -92,7 +96,7 @@ export class AIController {
   public update(deltaTime: number): void {
     const players = this.gameState.getAllPlayers();
     
-    // Clean up assigned targets for ONIs that no longer exist or are no longer ONI
+    // Clean up assigned targets
     const currentOniIds = new Set(players.filter(p => p.isAI && p.isOni).map(p => p.id));
     for (const oniId of Array.from(this.assignedTargets.keys())) {
       if (!currentOniIds.has(oniId)) {
@@ -100,7 +104,6 @@ export class AIController {
       }
     }
     
-    // Clean up targets that no longer exist or became ONI
     const currentRunnerIds = new Set(players.filter(p => !p.isOni).map(p => p.id));
     for (const [oniId, runnerId] of Array.from(this.assignedTargets.entries())) {
       if (!currentRunnerIds.has(runnerId)) {
@@ -109,18 +112,14 @@ export class AIController {
     }
     
     for (const player of players) {
-      // Skip human players
       if (!player.isAI) continue;
       
-      // Make decision for this AI player
       const decision = this.makeDecision(player, players, deltaTime);
       
-      // Update assigned target if this is an ONI
       if (player.isOni && decision.targetPlayerId) {
         this.assignedTargets.set(player.id, decision.targetPlayerId);
       }
       
-      // Apply decision to player state
       this.applyDecision(player, decision, deltaTime);
     }
   }
@@ -133,48 +132,33 @@ export class AIController {
     allPlayers: Player[],
     deltaTime: number
   ): AIDecision {
-    // Update ability timer
-    const abilityTimer = this.abilityTimers.get(aiPlayer.id) || 0;
-    this.abilityTimers.set(aiPlayer.id, abilityTimer + deltaTime);
+    this.abilityTimers.set(aiPlayer.id, (this.abilityTimers.get(aiPlayer.id) || 0) + deltaTime);
     
-    // Check if AI is stuck
-    const isStuck = this.checkIfStuck(aiPlayer);
+    // Check unstuck mode
+    if (this.stuckDetectionManager.isInUnstuckMode(aiPlayer.id)) {
+      const escapeDirection = this.stuckDetectionManager.generateEscapeDirection(aiPlayer);
+      return {
+        behavior: AIBehavior.WANDER,
+        targetPlayerId: null,
+        moveDirection: escapeDirection,
+        useAbility: false,
+        abilityType: null,
+      };
+    }
     
-    if (isStuck) {
-      // Get unstuck attempts for this player
-      const attempts = this.unstuckAttempts.get(aiPlayer.id) || 0;
-      this.unstuckAttempts.set(aiPlayer.id, attempts + 1);
-      
-      // Record stuck location to avoid returning to it
-      this.recordStuckLocation(aiPlayer);
-      
-      // Generate escape direction away from stuck locations
-      const escapeDirection = this.generateEscapeDirection(aiPlayer);
-      
-      // Choose unstuck strategy based on attempts
-      let abilityType: 'jetpack' | 'dash' | 'jump' | null = null;
-      
-      if (attempts % 3 === 0) {
-        // Every 3rd attempt: Use jetpack to fly over obstacle
-        abilityType = 'jetpack';
-      } else if (attempts % 3 === 1) {
-        // Every other attempt: Use dash to burst through
-        abilityType = 'dash';
-      } else {
-        // Default: Use jump to hop over
-        abilityType = 'jump';
-      }
+    // Check if stuck
+    if (this.stuckDetectionManager.checkIfStuck(aiPlayer)) {
+      this.stuckDetectionManager.startUnstuckPeriod(aiPlayer.id);
+      this.stuckDetectionManager.recordStuckLocation(aiPlayer);
+      const escapeDirection = this.stuckDetectionManager.generateEscapeDirection(aiPlayer);
       
       return {
         behavior: AIBehavior.WANDER,
         targetPlayerId: null,
         moveDirection: escapeDirection,
         useAbility: true,
-        abilityType: abilityType,
+        abilityType: 'jetpack',
       };
-    } else {
-      // Not stuck, reset unstuck attempts
-      this.unstuckAttempts.set(aiPlayer.id, 0);
     }
     
     if (aiPlayer.isOni) {
@@ -183,173 +167,74 @@ export class AIController {
       return this.makeRunnerDecision(aiPlayer, allPlayers, deltaTime);
     }
   }
-  
-  /**
-   * Record a stuck location to avoid returning to it
-   */
-  private recordStuckLocation(aiPlayer: Player): void {
-    const now = Date.now();
-    const locations = this.stuckLocations.get(aiPlayer.id) || [];
-    
-    // Add current location
-    locations.push({
-      x: aiPlayer.position.x,
-      z: aiPlayer.position.z,
-      time: now,
-    });
-    
-    // Keep only recent stuck locations (last 10 seconds)
-    const recentLocations = locations.filter(loc => now - loc.time < 10000);
-    this.stuckLocations.set(aiPlayer.id, recentLocations);
-  }
-  
-  /**
-   * Generate escape direction away from stuck locations
-   */
-  private generateEscapeDirection(aiPlayer: Player): Vector3 {
-    const stuckLocs = this.stuckLocations.get(aiPlayer.id) || [];
-    
-    if (stuckLocs.length === 0) {
-      // No stuck history, use random direction
-      const angle = Math.random() * Math.PI * 2;
-      return {
-        x: Math.cos(angle),
-        y: 0,
-        z: Math.sin(angle),
-      };
-    }
-    
-    // Calculate average stuck location
-    let avgX = 0;
-    let avgZ = 0;
-    for (const loc of stuckLocs) {
-      avgX += loc.x;
-      avgZ += loc.z;
-    }
-    avgX /= stuckLocs.length;
-    avgZ /= stuckLocs.length;
-    
-    // Move away from average stuck location
-    let escapeX = aiPlayer.position.x - avgX;
-    let escapeZ = aiPlayer.position.z - avgZ;
-    
-    // If too close to stuck location, use perpendicular direction
-    const distToStuck = Math.sqrt(escapeX * escapeX + escapeZ * escapeZ);
-    if (distToStuck < 1.0) {
-      // Use perpendicular direction
-      const temp = escapeX;
-      escapeX = -escapeZ;
-      escapeZ = temp;
-    }
-    
-    // Normalize
-    const length = Math.sqrt(escapeX * escapeX + escapeZ * escapeZ);
-    if (length > 0) {
-      escapeX /= length;
-      escapeZ /= length;
-    }
-    
-    // Add some randomness to avoid predictable patterns
-    const randomAngle = (Math.random() - 0.5) * Math.PI * 0.5; // ±45 degrees
-    const cos = Math.cos(randomAngle);
-    const sin = Math.sin(randomAngle);
-    const rotatedX = escapeX * cos - escapeZ * sin;
-    const rotatedZ = escapeX * sin + escapeZ * cos;
-    
-    return {
-      x: rotatedX,
-      y: 0,
-      z: rotatedZ,
-    };
-  }
-  
-  /**
-   * Check if AI player is stuck (not moving much)
-   */
-  private checkIfStuck(aiPlayer: Player): boolean {
-    const now = Date.now();
-    const lastPos = this.lastPositions.get(aiPlayer.id);
-    
-    if (!lastPos) {
-      // First time checking, record position
-      this.lastPositions.set(aiPlayer.id, {
-        x: aiPlayer.position.x,
-        y: aiPlayer.position.y,
-        z: aiPlayer.position.z,
-        time: now,
-      });
-      return false;
-    }
-    
-    // Check if enough time has passed
-    if (now - lastPos.time < this.stuckCheckInterval) {
-      return false;
-    }
-    
-    // Calculate distance moved
-    const dx = aiPlayer.position.x - lastPos.x;
-    const dy = aiPlayer.position.y - lastPos.y;
-    const dz = aiPlayer.position.z - lastPos.z;
-    const distanceMoved = Math.sqrt(dx * dx + dy * dy + dz * dz);
-    
-    // Update last position
-    this.lastPositions.set(aiPlayer.id, {
-      x: aiPlayer.position.x,
-      y: aiPlayer.position.y,
-      z: aiPlayer.position.z,
-      time: now,
-    });
-    
-    // If moved less than threshold, consider stuck
-    return distanceMoved < this.stuckThreshold;
-  }
 
   /**
-   * Make decision for ONI AI (improved for smarter behavior)
+   * Make decision for ONI AI
    */
   private makeOniDecision(
     aiPlayer: Player,
     allPlayers: Player[],
     deltaTime: number
   ): AIDecision {
-    // Find nearest runner (with target distribution to avoid clustering)
+    const personality = this.personalityManager.getOniPersonality(aiPlayer.id);
+    
+    const visiblePlayers = this.cloakedPlayerId 
+      ? allPlayers.filter(p => p.id !== this.cloakedPlayerId)
+      : allPlayers;
+    
     const nearestRunner = this.behaviorSystem.findNearestRunner(
       aiPlayer, 
-      allPlayers,
+      visiblePlayers,
       this.assignedTargets
     );
     
     if (!nearestRunner) {
-      // No runners found, wander
       const decision = this.behaviorSystem.wander(aiPlayer, deltaTime);
       return this.addAbilityDecision(aiPlayer, decision, 'jetpack');
     }
     
-    // Calculate distance to target
     const distance = this.calculateDistance(aiPlayer.position, nearestRunner.position);
-    
-    // Always chase if runner is visible (increased from 100 to always chase)
-    let decision = this.behaviorSystem.chase(aiPlayer, nearestRunner, deltaTime);
-    
-    // Adjust direction to avoid stuck locations
-    decision = this.adjustDirectionToAvoidStuckLocations(aiPlayer, decision);
-    
-    // Use jetpack more aggressively when:
-    // 1. Target is far (> 30 units)
-    // 2. Target is above us (y difference > 2) - lowered threshold to chase airborne runners
-    // 3. Target is jetpacking (actively flying)
-    // 4. Random chance for unpredictability
-    // 5. Near a stuck location
     const yDiff = nearestRunner.position.y - aiPlayer.position.y;
-    const nearStuckLocation = this.isNearStuckLocation(aiPlayer);
+    const nearStuckLocation = this.stuckDetectionManager.isNearStuckLocation(aiPlayer);
     const targetIsAirborne = nearestRunner.isJetpacking || yDiff > 2;
-    const shouldUseJetpack = distance > 30 || targetIsAirborne || Math.random() < 0.4 || nearStuckLocation;
+    const isMoving = Math.abs(aiPlayer.velocity.x) > 0.1 || Math.abs(aiPlayer.velocity.z) > 0.1;
     
-    return {
-      ...decision,
-      useAbility: shouldUseJetpack && this.shouldUseAbility(aiPlayer, 'jetpack'),
-      abilityType: shouldUseJetpack && this.shouldUseAbility(aiPlayer, 'jetpack') ? 'jetpack' : null,
-    };
+    const baseDecision = this.behaviorSystem.chase(aiPlayer, nearestRunner);
+    
+    return this.personalityManager.applyPersonalityBehavior(
+      personality,
+      aiPlayer,
+      baseDecision,
+      distance,
+      yDiff,
+      targetIsAirborne,
+      nearStuckLocation,
+      isMoving,
+      (_playerId, abilityType) => this.shouldUseAbility(aiPlayer, abilityType),
+      (player, decision) => this.adjustDirectionToAvoidStuckLocations(player, decision)
+    );
+  }
+
+  /**
+   * Make decision for Runner AI
+   */
+  private makeRunnerDecision(
+    aiPlayer: Player,
+    allPlayers: Player[],
+    deltaTime: number
+  ): AIDecision {
+    const nearestOni = this.behaviorSystem.findNearestOni(aiPlayer, allPlayers);
+    
+    if (!nearestOni) {
+      return this.behaviorSystem.wander(aiPlayer, deltaTime);
+    }
+    
+    if (this.behaviorSystem.isWithinFleeDistance(aiPlayer, nearestOni)) {
+      const decision = this.behaviorSystem.flee(aiPlayer, nearestOni);
+      return this.addAbilityDecision(aiPlayer, decision, 'jetpack');
+    }
+    
+    return this.behaviorSystem.wander(aiPlayer, deltaTime);
   }
 
   /**
@@ -361,280 +246,94 @@ export class AIController {
     const dz = pos2.z - pos1.z;
     return Math.sqrt(dx * dx + dy * dy + dz * dz);
   }
-  
+
   /**
-   * Check if AI is near a stuck location
-   */
-  private isNearStuckLocation(aiPlayer: Player): boolean {
-    const stuckLocs = this.stuckLocations.get(aiPlayer.id) || [];
-    const now = Date.now();
-    
-    for (const loc of stuckLocs) {
-      // Only check recent stuck locations (last 5 seconds)
-      if (now - loc.time > 5000) continue;
-      
-      const dx = aiPlayer.position.x - loc.x;
-      const dz = aiPlayer.position.z - loc.z;
-      const distance = Math.sqrt(dx * dx + dz * dz);
-      
-      // Consider "near" if within 5 units
-      if (distance < 5) {
-        return true;
-      }
-    }
-    
-    return false;
-  }
-  
-  /**
-   * Adjust movement direction to avoid stuck locations
+   * Adjust direction to avoid stuck locations
    */
   private adjustDirectionToAvoidStuckLocations(aiPlayer: Player, decision: AIDecision): AIDecision {
-    const stuckLocs = this.stuckLocations.get(aiPlayer.id) || [];
-    if (stuckLocs.length === 0) {
-      return decision; // No stuck locations to avoid
+    if (this.stuckDetectionManager.isNearStuckLocation(aiPlayer)) {
+      const escapeDirection = this.stuckDetectionManager.generateEscapeDirection(aiPlayer);
+      return {
+        ...decision,
+        moveDirection: escapeDirection,
+      };
     }
-    
-    const now = Date.now();
-    let avoidanceX = 0;
-    let avoidanceZ = 0;
-    let avoidanceCount = 0;
-    
-    // Calculate avoidance vector from recent stuck locations
-    for (const loc of stuckLocs) {
-      // Only avoid recent stuck locations (last 5 seconds)
-      if (now - loc.time > 5000) continue;
-      
-      const dx = aiPlayer.position.x - loc.x;
-      const dz = aiPlayer.position.z - loc.z;
-      const distance = Math.sqrt(dx * dx + dz * dz);
-      
-      // If close to stuck location, add avoidance force
-      if (distance < 10) {
-        // Stronger avoidance when closer
-        const strength = 1.0 - (distance / 10);
-        avoidanceX += (dx / distance) * strength;
-        avoidanceZ += (dz / distance) * strength;
-        avoidanceCount++;
-      }
-    }
-    
-    if (avoidanceCount === 0) {
-      return decision; // Not near any stuck locations
-    }
-    
-    // Average avoidance vector
-    avoidanceX /= avoidanceCount;
-    avoidanceZ /= avoidanceCount;
-    
-    // Blend original direction with avoidance (70% original, 30% avoidance)
-    const blendedX = decision.moveDirection.x * 0.7 + avoidanceX * 0.3;
-    const blendedZ = decision.moveDirection.z * 0.7 + avoidanceZ * 0.3;
-    
-    // Normalize
-    const length = Math.sqrt(blendedX * blendedX + blendedZ * blendedZ);
-    const normalizedX = length > 0 ? blendedX / length : decision.moveDirection.x;
-    const normalizedZ = length > 0 ? blendedZ / length : decision.moveDirection.z;
-    
-    return {
-      ...decision,
-      moveDirection: {
-        x: normalizedX,
-        y: decision.moveDirection.y,
-        z: normalizedZ,
-      },
-    };
+    return decision;
   }
 
   /**
-   * Make decision for Runner AI
-   */
-  private makeRunnerDecision(
-    aiPlayer: Player,
-    allPlayers: Player[],
-    deltaTime: number
-  ): AIDecision {
-    // Find nearest ONI
-    const nearestOni = this.behaviorSystem.findNearestOni(aiPlayer, allPlayers);
-    
-    if (!nearestOni) {
-      // No ONI found, wander
-      const decision = this.behaviorSystem.wander(aiPlayer, deltaTime);
-      return this.addAbilityDecision(aiPlayer, decision, 'dash');
-    }
-    
-    if (this.behaviorSystem.isWithinFleeDistance(aiPlayer, nearestOni)) {
-      // Flee from nearest ONI
-      let decision = this.behaviorSystem.flee(aiPlayer, nearestOni);
-      
-      // Adjust direction to avoid stuck locations
-      decision = this.adjustDirectionToAvoidStuckLocations(aiPlayer, decision);
-      
-      // Use dash more aggressively when near stuck location
-      const nearStuckLocation = this.isNearStuckLocation(aiPlayer);
-      if (nearStuckLocation) {
-        return {
-          ...decision,
-          useAbility: true,
-          abilityType: 'dash',
-        };
-      }
-      
-      return this.addAbilityDecision(aiPlayer, decision, 'dash');
-    } else {
-      // Safe distance, wander
-      const decision = this.behaviorSystem.wander(aiPlayer, deltaTime);
-      return this.addAbilityDecision(aiPlayer, decision, 'dash');
-    }
-  }
-
-  /**
-   * Add ability decision to base decision
+   * Add ability decision
    */
   private addAbilityDecision(
     aiPlayer: Player,
-    baseDecision: AIDecision,
-    abilityType: 'jetpack' | 'dash'
+    decision: AIDecision,
+    _abilityType: 'jetpack' | 'dash' | 'jump'
   ): AIDecision {
-    const useAbility = this.shouldUseAbility(aiPlayer, abilityType);
-    
+    const canUseAbility = this.shouldUseAbility(aiPlayer, _abilityType);
     return {
-      ...baseDecision,
-      useAbility,
-      abilityType: useAbility ? abilityType : null,
+      ...decision,
+      useAbility: canUseAbility,
+      abilityType: canUseAbility ? _abilityType : null,
     };
   }
 
   /**
-   * Check if AI should use beacon ability
+   * Check if AI should use ability
    */
-  public shouldUseBeacon(aiPlayer: Player): boolean {
-    // Only ONI can use beacon
-    if (!aiPlayer.isOni) return false;
+  private shouldUseAbility(aiPlayer: Player, _abilityType: string): boolean {
+    const timer = this.abilityTimers.get(aiPlayer.id) || 0;
+    if (timer < this.config.abilityUseCooldown) {
+      return false;
+    }
     
-    // Check if beacon is on cooldown
-    if (aiPlayer.beaconCooldown > 0) return false;
+    if (Math.random() > this.config.abilityUseChance) {
+      return false;
+    }
     
-    // Random chance to use beacon when available
-    return Math.random() < this.config.abilityUseChance;
+    this.abilityTimers.set(aiPlayer.id, 0);
+    return true;
   }
 
   /**
    * Apply decision to player state
    */
-  private applyDecision(
-    player: Player,
-    decision: AIDecision,
-    deltaTime: number
-  ): void {
-    // Calculate speed based on behavior and abilities
-    let speed = PLAYER_SPEED;
-    if (player.isOni) {
-      speed *= ONI_SPEED_MULTIPLIER;
-      // AI ONI gets additional speed boost (1.15x) to be more threatening
-      speed *= 1.15;
-    }
-    if (decision.useAbility && decision.abilityType === 'dash') {
-      speed = DASH_SPEED;
-    }
+  private applyDecision(aiPlayer: Player, decision: AIDecision, _deltaTime: number): void {
+    const speed = aiPlayer.isOni ? PLAYER_SPEED * ONI_SPEED_MULTIPLIER : PLAYER_SPEED;
     
-    // Apply movement
-    const velocity = {
-      x: decision.moveDirection.x * speed,
-      y: player.velocity.y, // Preserve vertical velocity
-      z: decision.moveDirection.z * speed,
-    };
-    
-    this.gameState.setPlayerVelocity(player.id, velocity);
-    
-    // Apply ability
-    if (decision.useAbility && decision.abilityType) {
-      this.useAbility(player, decision.abilityType, deltaTime);
-    }
-  }
-
-  /**
-   * Use ability for AI player
-   */
-  private useAbility(
-    player: Player,
-    abilityType: 'jetpack' | 'dash' | 'jump',
-    deltaTime: number
-  ): void {
-    if (abilityType === 'jetpack' && player.isOni && player.fuel > 0) {
-      // Apply jetpack force
-      const newVelocity = {
-        ...player.velocity,
-        y: player.velocity.y + JETPACK_FORCE * deltaTime,
-      };
-      this.gameState.setPlayerVelocity(player.id, newVelocity);
-      this.gameState.setPlayerJetpacking(player.id, true);
-    } else if (abilityType === 'dash' && !player.isOni && player.fuel > 0) {
-      // Dash is handled by speed calculation in applyDecision
-      this.gameState.setPlayerDashing(player.id, true);
-    } else if (abilityType === 'jump' && !player.isOni && player.isOnSurface) {
-      // Apply jump force
-      const newVelocity = {
-        ...player.velocity,
+    if (decision.useAbility && decision.abilityType === 'jetpack') {
+      this.gameState.setPlayerVelocity(aiPlayer.id, {
+        x: decision.moveDirection.x * speed,
+        y: JETPACK_FORCE,
+        z: decision.moveDirection.z * speed,
+      });
+      this.gameState.setPlayerJetpacking(aiPlayer.id, true);
+    } else if (decision.useAbility && decision.abilityType === 'dash') {
+      this.gameState.setPlayerVelocity(aiPlayer.id, {
+        x: decision.moveDirection.x * DASH_SPEED,
+        y: aiPlayer.velocity.y,
+        z: decision.moveDirection.z * DASH_SPEED,
+      });
+      this.gameState.setPlayerDashing(aiPlayer.id, true);
+    } else if (decision.useAbility && decision.abilityType === 'jump') {
+      this.gameState.setPlayerVelocity(aiPlayer.id, {
+        x: decision.moveDirection.x * speed,
         y: JUMP_FORCE,
-      };
-      this.gameState.setPlayerVelocity(player.id, newVelocity);
+        z: decision.moveDirection.z * speed,
+      });
+    } else {
+      this.gameState.setPlayerVelocity(aiPlayer.id, {
+        x: decision.moveDirection.x * speed,
+        y: aiPlayer.velocity.y,
+        z: decision.moveDirection.z * speed,
+      });
+      this.gameState.setPlayerJetpacking(aiPlayer.id, false);
+      this.gameState.setPlayerDashing(aiPlayer.id, false);
     }
-  }
-
-  /**
-   * Determine if AI should use ability
-   */
-  private shouldUseAbility(
-    player: Player,
-    abilityType: 'jetpack' | 'dash' | 'jump'
-  ): boolean {
-    // Check fuel
-    if (player.fuel <= 0) return false;
     
-    // Check cooldown
-    const abilityTimer = this.abilityTimers.get(player.id) || 0;
-    if (abilityTimer < this.config.abilityUseCooldown) return false;
-    
-    // Random chance
-    if (Math.random() > this.config.abilityUseChance) return false;
-    
-    // Reset timer
-    this.abilityTimers.set(player.id, 0);
-    
-    return true;
-  }
-
-
-
-  /**
-   * Get AI configuration
-   */
-  public getConfig(): AIConfig {
-    return { ...this.config };
-  }
-
-  /**
-   * Update AI configuration
-   */
-  public setConfig(config: Partial<AIConfig>): void {
-    this.config = { ...this.config, ...config };
-    
-    // Update behavior system config
-    this.behaviorSystem.setConfig({
-      chaseDistance: this.config.chaseDistance,
-      fleeDistance: this.config.fleeDistance,
-      wanderChangeInterval: this.config.wanderChangeInterval,
-    });
-  }
-
-  /**
-   * Reset AI state for a player
-   */
-  public resetPlayer(playerId: string): void {
-    this.behaviorSystem.resetPlayer(playerId);
-    this.abilityTimers.delete(playerId);
-    this.lastPositions.delete(playerId);
+    if (decision.moveDirection.x !== 0 || decision.moveDirection.z !== 0) {
+      const yaw = Math.atan2(decision.moveDirection.z, decision.moveDirection.x);
+      this.gameState.setPlayerRotation(aiPlayer.id, { yaw, pitch: 0 });
+    }
   }
 
   /**
@@ -643,6 +342,8 @@ export class AIController {
   public reset(): void {
     this.behaviorSystem.reset();
     this.abilityTimers.clear();
-    this.lastPositions.clear();
+    this.assignedTargets.clear();
+    this.personalityManager.clear();
+    this.stuckDetectionManager.clear();
   }
 }

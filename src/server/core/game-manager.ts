@@ -250,7 +250,16 @@ export class GameManager {
     // ONI wins if all players became ONI
     const runnersAtEnd = gameState.players.filter((p) => !p.isOni);
     console.log(`[Game End] Runners at end: ${runnersAtEnd.length}`);
-    const teamWinner = runnersAtEnd.length > 0 ? 'runners' : 'oni';
+    
+    // Also check if all non-initial-ONI players were tagged
+    const nonInitialOniPlayers = gameState.players.filter(p => !initialOniIds.includes(p.id));
+    const allNonInitialOniTagged = nonInitialOniPlayers.every(p => p.wasTagged || p.isOni);
+    console.log(`[Game End] Non-initial ONI players: ${nonInitialOniPlayers.length}, All tagged: ${allNonInitialOniTagged}`);
+    
+    // ONI wins if:
+    // 1. No runners left at end (all became ONI), OR
+    // 2. All non-initial-ONI players were tagged
+    const teamWinner = (runnersAtEnd.length === 0 || allNonInitialOniTagged) ? 'oni' : 'runners';
     console.log(`[Game End] Team winner: ${teamWinner}`);
     
     // Filter players to show based on team winner:

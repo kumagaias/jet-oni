@@ -157,7 +157,8 @@ describe('UIMenu', () => {
 
       const playersSlider = document.getElementById('players-slider') as HTMLInputElement;
       expect(playersSlider).toBeTruthy();
-      expect(playersSlider.min).toBe('6');
+      // In test environment (localhost), min is 2 (from data-dev-min attribute)
+      expect(playersSlider.min).toBe('2');
       expect(playersSlider.max).toBe('20');
       expect(playersSlider.step).toBe('2');
     });

@@ -16,7 +16,7 @@ export interface DynamicObject {
 export interface CollisionResult {
   position: Vector3;
   collided: boolean;
-  normal?: Vector3; // Surface normal at collision point
+  normal?: Vector3 | undefined; // Surface normal at collision point
 }
 
 /**
@@ -59,7 +59,30 @@ export class CollisionSystem {
     let collided = false;
     let collisionNormal: Vector3 | undefined;
 
-    // Check building collisions
+    // Check if player is currently inside a building
+    const isCurrentlyInside = this.isInsideBuilding(currentPosition, playerRadius);
+    
+    // Check if movement is large (potential tunneling)
+    const dx = targetPosition.x - currentPosition.x;
+    const dy = targetPosition.y - currentPosition.y;
+    const dz = targetPosition.z - currentPosition.z;
+    const movementDistance = Math.sqrt(dx * dx + dy * dy + dz * dz);
+    
+    // Only use swept collision if player is not inside a building
+    // (if inside, we want to push them out, not block movement)
+    if (!isCurrentlyInside && movementDistance > playerRadius) {
+      const sweptResult = this.checkSweptCollision(
+        currentPosition,
+        targetPosition,
+        playerRadius
+      );
+      
+      if (sweptResult.collided) {
+        return sweptResult;
+      }
+    }
+
+    // Check building collisions at target position
     for (const building of this.buildings) {
       const buildingCollision = this.checkBuildingCollision(
         finalPosition,
@@ -93,6 +116,52 @@ export class CollisionSystem {
       position: finalPosition,
       collided,
       normal: collisionNormal,
+    };
+  }
+
+  /**
+   * Check collision along movement path (swept collision)
+   */
+  private checkSweptCollision(
+    startPosition: Vector3,
+    endPosition: Vector3,
+    playerRadius: number
+  ): CollisionResult {
+    // Sample points along the movement path
+    const steps = Math.ceil(
+      Math.sqrt(
+        Math.pow(endPosition.x - startPosition.x, 2) +
+        Math.pow(endPosition.y - startPosition.y, 2) +
+        Math.pow(endPosition.z - startPosition.z, 2)
+      ) / playerRadius
+    );
+    
+    for (let i = 0; i <= steps; i++) {
+      const t = i / steps;
+      const samplePosition: Vector3 = {
+        x: startPosition.x + (endPosition.x - startPosition.x) * t,
+        y: startPosition.y + (endPosition.y - startPosition.y) * t,
+        z: startPosition.z + (endPosition.z - startPosition.z) * t,
+      };
+      
+      // Check collision at this sample point
+      for (const building of this.buildings) {
+        const collision = this.checkBuildingCollision(
+          samplePosition,
+          playerRadius,
+          building
+        );
+        
+        if (collision.collided) {
+          // Return the adjusted position from collision detection
+          return collision;
+        }
+      }
+    }
+    
+    return {
+      position: endPosition,
+      collided: false,
     };
   }
 

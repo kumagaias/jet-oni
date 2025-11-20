@@ -78,8 +78,9 @@ describe('CityGenerator', () => {
       
       const landmarkAreas = occupiedAreas.filter(area => area.type === 'landmark');
       
-      // Should have 1 landmark (or 0 if placement fails)
-      expect(landmarkAreas.length).toBeLessThanOrEqual(1);
+      // Should have multiple landmarks (tower, dome, arch) or fewer if placement fails
+      expect(landmarkAreas.length).toBeGreaterThanOrEqual(0);
+      expect(landmarkAreas.length).toBeLessThanOrEqual(3);
     });
   });
 

@@ -592,6 +592,7 @@ export class UIMenu {
               max="20"
               step="2" 
               value="6"
+              data-dev-min="2"
               style="
                 width: 100%;
                 height: 6px;
@@ -602,7 +603,7 @@ export class UIMenu {
               "
             />
             <div style="display: flex; justify-content: space-between; margin-top: 5px;">
-              <span style="color: #666; font-size: 10px;">6</span>
+              <span id="players-min-label" style="color: #666; font-size: 10px;">6</span>
               <span style="color: #666; font-size: 10px;">20</span>
             </div>
             <!-- ONI count message -->
@@ -808,8 +809,26 @@ export class UIMenu {
     // Players slider
     const playersSlider = document.getElementById('players-slider') as HTMLInputElement;
     const playersValue = document.getElementById('players-value');
+    const playersMinLabel = document.getElementById('players-min-label');
     
     if (playersSlider && playersValue) {
+      // Check if in dev subreddit
+      const url = window.location.href.toLowerCase();
+      const isDevSubreddit = url.includes('jet_oni_dev') || 
+                             url.includes('localhost') ||
+                             url.includes('playtest');
+      
+      // Set min value based on environment
+      if (isDevSubreddit) {
+        const devMin = playersSlider.getAttribute('data-dev-min');
+        if (devMin) {
+          playersSlider.min = devMin;
+          if (playersMinLabel) {
+            playersMinLabel.textContent = devMin;
+          }
+        }
+      }
+      
       // Update gradient background
       const updatePlayersSliderBackground = () => {
         const min = parseInt(playersSlider.min);
@@ -1552,7 +1571,14 @@ export class UIMenu {
         this.currentGameId = null;
         this.currentPlayerId = null;
         
-        this.showTitleScreen();
+        // Return to appropriate screen based on role
+        if (isHost) {
+          // Host returns to game creation screen
+          this.showCreateGameScreen();
+        } else {
+          // Participant returns to title screen
+          this.showTitleScreen();
+        }
       });
     });
     

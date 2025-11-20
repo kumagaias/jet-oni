@@ -344,14 +344,7 @@ export class UIResults {
     this.onBackToMenu = callback;
   }
 
-  /**
-   * Format time in seconds to MM:SS
-   */
-  private formatTime(seconds: number): string {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  }
+
 
   /**
    * Update translations

@@ -145,16 +145,27 @@ export class CarSystem {
     
     carGroup.rotation.y = rotation;
     
-    // Add front headlights AFTER rotation (more natural yellow-white)
+    // Add front headlights AFTER rotation (bright glowing lights)
     const headlightGeometry = new THREE.BoxGeometry(1.8, 0.4, 0.2);
-    const headlightMaterial = new THREE.MeshBasicMaterial({ 
-      color: 0xfff4e0, // Warm white (more natural)
-      transparent: true,
-      opacity: 0.8
+    const headlightMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0xffffdd, // Bright warm white
+      emissive: 0xffffdd, // Glowing effect
+      emissiveIntensity: 1.2, // Strong glow
+      roughness: 0.1,
+      metalness: 0.1,
     });
     const headlights = new THREE.Mesh(headlightGeometry, headlightMaterial);
     headlights.position.set(0, 0.6, 2.1); // At front of car (positive Z in local space)
     carGroup.add(headlights);
+    
+    // Add point lights for actual illumination (optional, for extra effect)
+    const leftHeadlight = new THREE.PointLight(0xffffdd, 0.5, 15);
+    leftHeadlight.position.set(-0.6, 0.6, 2.5);
+    carGroup.add(leftHeadlight);
+    
+    const rightHeadlight = new THREE.PointLight(0xffffdd, 0.5, 15);
+    rightHeadlight.position.set(0.6, 0.6, 2.5);
+    carGroup.add(rightHeadlight);
     carGroup.position.set(position.x, position.y, position.z);
     this.scene.add(carGroup);
 

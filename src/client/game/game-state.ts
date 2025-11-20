@@ -370,6 +370,20 @@ export class GameState {
   }
 
   /**
+   * Set player rotation (for AI players)
+   */
+  public setPlayerRotation(playerId: string, rotation: Rotation): void {
+    if (playerId === this.localPlayer.id) {
+      this.setLocalPlayerRotation(rotation.yaw, rotation.pitch);
+    } else {
+      const player = this.remotePlayers.get(playerId);
+      if (player) {
+        player.rotation = { ...rotation };
+      }
+    }
+  }
+
+  /**
    * Get all players (local + remote)
    */
   public getAllPlayers(): Player[] {

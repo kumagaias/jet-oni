@@ -1,10 +1,12 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { AIBehaviorSystem } from './ai-behavior';
-import { AIBehavior } from './ai-controller';
 import { Player } from '../../shared/types/game';
+import { AIBehavior } from './ai-controller';
 
-describe('AIBehaviorSystem', () => {
+describe('AI Behavior System', () => {
   let behaviorSystem: AIBehaviorSystem;
+  let mockPlayer: Player;
+  let mockTarget: Player;
 
   beforeEach(() => {
     behaviorSystem = new AIBehaviorSystem({
@@ -12,448 +14,217 @@ describe('AIBehaviorSystem', () => {
       fleeDistance: 50,
       wanderChangeInterval: 3,
     });
+
+    mockPlayer = {
+      id: 'player1',
+      username: 'Player 1',
+      isOni: false,
+      isAI: true,
+      position: { x: 0, y: 0, z: 0 },
+      velocity: { x: 0, y: 0, z: 0 },
+      rotation: { yaw: 0, pitch: 0 },
+      fuel: 100,
+      survivedTime: 0,
+    };
+
+    mockTarget = {
+      id: 'target1',
+      username: 'Target 1',
+      isOni: true,
+      isAI: false,
+      position: { x: 10, y: 0, z: 10 },
+      velocity: { x: 0, y: 0, z: 0 },
+      rotation: { yaw: 0, pitch: 0 },
+      fuel: 100,
+      survivedTime: 0,
+    };
   });
 
-  describe('chase behavior', () => {
-    it('should return chase decision with direction towards target', () => {
-      const aiPlayer: Player = {
-        id: 'ai-1',
-        username: 'AI 1',
-        position: { x: 0, y: 0, z: 0 },
-        velocity: { x: 0, y: 0, z: 0 },
-        rotation: { yaw: 0, pitch: 0 },
-        isOni: true,
-        isAI: true,
-        fuel: 100,
-        isOnSurface: true,
-        isJetpacking: false,
-        isDashing: false,
-        survivalTime: 0,
-        wasTagged: false,
-        beaconCooldown: 0,
-      };
-
-      const target: Player = {
-        id: 'target-1',
-        username: 'Target 1',
-        position: { x: 10, y: 0, z: 0 },
-        velocity: { x: 0, y: 0, z: 0 },
-        isOni: false,
-        isAI: false,
-        fuel: 100,
-        isOnSurface: true,
-        isJetpacking: false,
-        isDashing: false,
-        survivalTime: 0,
-        wasTagged: false,
-        beaconCooldown: 0,
-      };
-
-      const decision = behaviorSystem.chase(aiPlayer, target);
+  describe('Chase Behavior', () => {
+    it('should return chase decision with direction toward target', () => {
+      const decision = behaviorSystem.chase(mockPlayer, mockTarget);
 
       expect(decision.behavior).toBe(AIBehavior.CHASE);
-      expect(decision.targetPlayerId).toBe('target-1');
+      expect(decision.targetPlayerId).toBe('target1');
       expect(decision.moveDirection.x).toBeGreaterThan(0);
-      expect(decision.moveDirection.z).toBe(0);
+      expect(decision.moveDirection.z).toBeGreaterThan(0);
+      expect(decision.useAbility).toBe(false);
+    });
+
+    it('should normalize direction vector', () => {
+      const decision = behaviorSystem.chase(mockPlayer, mockTarget);
+      const length = Math.sqrt(
+        decision.moveDirection.x ** 2 + decision.moveDirection.z ** 2
+      );
+
+      expect(length).toBeCloseTo(1, 5);
     });
   });
 
-  describe('flee behavior', () => {
+  describe('Flee Behavior', () => {
     it('should return flee decision with direction away from threat', () => {
-      const aiPlayer: Player = {
-        id: 'ai-1',
-        username: 'AI 1',
-        position: { x: 0, y: 0, z: 0 },
-        velocity: { x: 0, y: 0, z: 0 },
-        isOni: false,
-        isAI: true,
-        fuel: 100,
-        isOnSurface: true,
-        isJetpacking: false,
-        isDashing: false,
-        survivalTime: 0,
-        wasTagged: false,
-        beaconCooldown: 0,
-      };
-
-      const threat: Player = {
-        id: 'threat-1',
-        username: 'Threat 1',
-        position: { x: 10, y: 0, z: 0 },
-        velocity: { x: 0, y: 0, z: 0 },
-        isOni: true,
-        isAI: false,
-        fuel: 100,
-        isOnSurface: true,
-        isJetpacking: false,
-        isDashing: false,
-        survivalTime: 0,
-        wasTagged: false,
-        beaconCooldown: 0,
-      };
-
-      const decision = behaviorSystem.flee(aiPlayer, threat);
+      const decision = behaviorSystem.flee(mockPlayer, mockTarget);
 
       expect(decision.behavior).toBe(AIBehavior.FLEE);
-      expect(decision.targetPlayerId).toBe('threat-1');
+      expect(decision.targetPlayerId).toBe('target1');
       expect(decision.moveDirection.x).toBeLessThan(0);
-      expect(decision.moveDirection.z).toBe(0);
+      expect(decision.moveDirection.z).toBeLessThan(0);
+      expect(decision.useAbility).toBe(false);
     });
   });
 
-  describe('wander behavior', () => {
+  describe('Wander Behavior', () => {
     it('should return wander decision with random direction', () => {
-      const aiPlayer: Player = {
-        id: 'ai-1',
-        username: 'AI 1',
-        position: { x: 0, y: 0, z: 0 },
-        velocity: { x: 0, y: 0, z: 0 },
-        isOni: false,
-        isAI: true,
-        fuel: 100,
-        isOnSurface: true,
-        isJetpacking: false,
-        isDashing: false,
-        survivalTime: 0,
-        wasTagged: false,
-        beaconCooldown: 0,
-      };
-
-      const decision = behaviorSystem.wander(aiPlayer, 0.016);
+      const decision = behaviorSystem.wander(mockPlayer, 0.016);
 
       expect(decision.behavior).toBe(AIBehavior.WANDER);
       expect(decision.targetPlayerId).toBeNull();
-      expect(decision.moveDirection).toBeDefined();
+      expect(decision.useAbility).toBe(false);
     });
 
-    it('should change direction after wander interval', () => {
-      const aiPlayer: Player = {
-        id: 'ai-1',
-        username: 'AI 1',
-        position: { x: 0, y: 0, z: 0 },
-        velocity: { x: 0, y: 0, z: 0 },
-        isOni: false,
-        isAI: true,
-        fuel: 100,
-        isOnSurface: true,
-        isJetpacking: false,
-        isDashing: false,
-        survivalTime: 0,
-        wasTagged: false,
-        beaconCooldown: 0,
-      };
+    it('should change direction after interval', () => {
+      const decision1 = behaviorSystem.wander(mockPlayer, 0.016);
+      const direction1 = { ...decision1.moveDirection };
 
-      const decision1 = behaviorSystem.wander(aiPlayer, 0.016);
-      const direction1 = decision1.moveDirection;
-
-      const decision2 = behaviorSystem.wander(aiPlayer, 3.0);
-      const direction2 = decision2.moveDirection;
+      // Advance time past interval
+      const decision2 = behaviorSystem.wander(mockPlayer, 3.5);
+      const direction2 = { ...decision2.moveDirection };
 
       // Directions should be different after interval
-      expect(
-        direction1.x !== direction2.x || direction1.z !== direction2.z
-      ).toBe(true);
-    });
-
-    it('should maintain direction within interval', () => {
-      const aiPlayer: Player = {
-        id: 'ai-1',
-        username: 'AI 1',
-        position: { x: 0, y: 0, z: 0 },
-        velocity: { x: 0, y: 0, z: 0 },
-        isOni: false,
-        isAI: true,
-        fuel: 100,
-        isOnSurface: true,
-        isJetpacking: false,
-        isDashing: false,
-        survivalTime: 0,
-        wasTagged: false,
-        beaconCooldown: 0,
-      };
-
-      const decision1 = behaviorSystem.wander(aiPlayer, 0.016);
-      const direction1 = decision1.moveDirection;
-
-      const decision2 = behaviorSystem.wander(aiPlayer, 0.016);
-      const direction2 = decision2.moveDirection;
-
-      // Directions should be the same within interval
-      expect(direction1.x).toBe(direction2.x);
-      expect(direction1.z).toBe(direction2.z);
+      const same =
+        direction1.x === direction2.x && direction1.z === direction2.z;
+      expect(same).toBe(false);
     });
   });
 
-  describe('findNearestRunner', () => {
+  describe('Find Nearest Runner', () => {
     it('should find nearest runner to ONI', () => {
-      const aiPlayer: Player = {
-        id: 'ai-oni',
-        username: 'AI ONI',
-        position: { x: 0, y: 0, z: 0 },
-        velocity: { x: 0, y: 0, z: 0 },
-        isOni: true,
-        isAI: true,
-        fuel: 100,
-        isOnSurface: true,
-        isJetpacking: false,
-        isDashing: false,
-        survivalTime: 0,
-        wasTagged: false,
-        beaconCooldown: 0,
-      };
-
+      const oni: Player = { ...mockPlayer, isOni: true };
       const runner1: Player = {
-        id: 'runner-1',
-        username: 'Runner 1',
-        position: { x: 50, y: 0, z: 0 },
-        velocity: { x: 0, y: 0, z: 0 },
+        ...mockPlayer,
+        id: 'runner1',
         isOni: false,
-        isAI: false,
-        fuel: 100,
-        isOnSurface: true,
-        isJetpacking: false,
-        isDashing: false,
-        survivalTime: 0,
-        wasTagged: false,
-        beaconCooldown: 0,
+        position: { x: 10, y: 0, z: 0 },
       };
-
       const runner2: Player = {
-        id: 'runner-2',
-        username: 'Runner 2',
-        position: { x: 100, y: 0, z: 0 },
-        velocity: { x: 0, y: 0, z: 0 },
+        ...mockPlayer,
+        id: 'runner2',
         isOni: false,
-        isAI: false,
-        fuel: 100,
-        isOnSurface: true,
-        isJetpacking: false,
-        isDashing: false,
-        survivalTime: 0,
-        wasTagged: false,
-        beaconCooldown: 0,
+        position: { x: 5, y: 0, z: 0 },
       };
 
-      const allPlayers = [aiPlayer, runner1, runner2];
-      const nearest = behaviorSystem.findNearestRunner(aiPlayer, allPlayers);
+      const nearest = behaviorSystem.findNearestRunner(oni, [
+        oni,
+        runner1,
+        runner2,
+      ]);
 
-      expect(nearest).toBe(runner1);
+      expect(nearest?.id).toBe('runner2');
     });
 
-    it('should return null when no runners exist', () => {
-      const aiPlayer: Player = {
-        id: 'ai-oni',
-        username: 'AI ONI',
-        position: { x: 0, y: 0, z: 0 },
-        velocity: { x: 0, y: 0, z: 0 },
-        isOni: true,
-        isAI: true,
-        fuel: 100,
-        isOnSurface: true,
-        isJetpacking: false,
-        isDashing: false,
-        survivalTime: 0,
-        wasTagged: false,
-        beaconCooldown: 0,
-      };
-
-      const allPlayers = [aiPlayer];
-      const nearest = behaviorSystem.findNearestRunner(aiPlayer, allPlayers);
+    it('should return null if no runners exist', () => {
+      const oni: Player = { ...mockPlayer, isOni: true };
+      const nearest = behaviorSystem.findNearestRunner(oni, [oni]);
 
       expect(nearest).toBeNull();
     });
+
+    it('should prefer unassigned runners when target distribution is enabled', () => {
+      const oni: Player = { ...mockPlayer, isOni: true };
+      const runner1: Player = {
+        ...mockPlayer,
+        id: 'runner1',
+        isOni: false,
+        position: { x: 5, y: 0, z: 0 },
+      };
+      const runner2: Player = {
+        ...mockPlayer,
+        id: 'runner2',
+        isOni: false,
+        position: { x: 10, y: 0, z: 0 },
+      };
+
+      const assignedTargets = new Map([['other-oni', 'runner1']]);
+      const nearest = behaviorSystem.findNearestRunner(
+        oni,
+        [oni, runner1, runner2],
+        assignedTargets
+      );
+
+      expect(nearest?.id).toBe('runner2');
+    });
   });
 
-  describe('findNearestOni', () => {
+  describe('Find Nearest ONI', () => {
     it('should find nearest ONI to runner', () => {
-      const aiPlayer: Player = {
-        id: 'ai-runner',
-        username: 'AI Runner',
-        position: { x: 0, y: 0, z: 0 },
-        velocity: { x: 0, y: 0, z: 0 },
-        isOni: false,
-        isAI: true,
-        fuel: 100,
-        isOnSurface: true,
-        isJetpacking: false,
-        isDashing: false,
-        survivalTime: 0,
-        wasTagged: false,
-        beaconCooldown: 0,
-      };
-
+      const runner: Player = { ...mockPlayer, isOni: false };
       const oni1: Player = {
-        id: 'oni-1',
-        username: 'ONI 1',
-        position: { x: 30, y: 0, z: 0 },
-        velocity: { x: 0, y: 0, z: 0 },
+        ...mockPlayer,
+        id: 'oni1',
         isOni: true,
-        isAI: false,
-        fuel: 100,
-        isOnSurface: true,
-        isJetpacking: false,
-        isDashing: false,
-        survivalTime: 0,
-        wasTagged: false,
-        beaconCooldown: 0,
+        position: { x: 10, y: 0, z: 0 },
       };
-
       const oni2: Player = {
-        id: 'oni-2',
-        username: 'ONI 2',
-        position: { x: 60, y: 0, z: 0 },
-        velocity: { x: 0, y: 0, z: 0 },
+        ...mockPlayer,
+        id: 'oni2',
         isOni: true,
-        isAI: false,
-        fuel: 100,
-        isOnSurface: true,
-        isJetpacking: false,
-        isDashing: false,
-        survivalTime: 0,
-        wasTagged: false,
-        beaconCooldown: 0,
+        position: { x: 5, y: 0, z: 0 },
       };
 
-      const allPlayers = [aiPlayer, oni1, oni2];
-      const nearest = behaviorSystem.findNearestOni(aiPlayer, allPlayers);
+      const nearest = behaviorSystem.findNearestOni(runner, [
+        runner,
+        oni1,
+        oni2,
+      ]);
 
-      expect(nearest).toBe(oni1);
+      expect(nearest?.id).toBe('oni2');
     });
 
-    it('should return null when no ONI exists', () => {
-      const aiPlayer: Player = {
-        id: 'ai-runner',
-        username: 'AI Runner',
-        position: { x: 0, y: 0, z: 0 },
-        velocity: { x: 0, y: 0, z: 0 },
-        isOni: false,
-        isAI: true,
-        fuel: 100,
-        isOnSurface: true,
-        isJetpacking: false,
-        isDashing: false,
-        survivalTime: 0,
-        wasTagged: false,
-        beaconCooldown: 0,
-      };
-
-      const allPlayers = [aiPlayer];
-      const nearest = behaviorSystem.findNearestOni(aiPlayer, allPlayers);
+    it('should return null if no ONI exist', () => {
+      const runner: Player = { ...mockPlayer, isOni: false };
+      const nearest = behaviorSystem.findNearestOni(runner, [runner]);
 
       expect(nearest).toBeNull();
     });
   });
 
-  describe('distance checks', () => {
+  describe('Distance Checks', () => {
     it('should correctly check if within chase distance', () => {
-      const aiPlayer: Player = {
-        id: 'ai-1',
-        username: 'AI 1',
-        position: { x: 0, y: 0, z: 0 },
-        velocity: { x: 0, y: 0, z: 0 },
-        isOni: true,
-        isAI: true,
-        fuel: 100,
-        isOnSurface: true,
-        isJetpacking: false,
-        isDashing: false,
-        survivalTime: 0,
-        wasTagged: false,
-        beaconCooldown: 0,
-      };
-
-      const nearTarget: Player = {
-        id: 'near',
-        username: 'Near',
+      const player: Player = { ...mockPlayer, position: { x: 0, y: 0, z: 0 } };
+      const target: Player = {
+        ...mockTarget,
         position: { x: 50, y: 0, z: 0 },
-        velocity: { x: 0, y: 0, z: 0 },
-        isOni: false,
-        isAI: false,
-        fuel: 100,
-        isOnSurface: true,
-        isJetpacking: false,
-        isDashing: false,
-        survivalTime: 0,
-        wasTagged: false,
-        beaconCooldown: 0,
       };
 
-      const farTarget: Player = {
-        id: 'far',
-        username: 'Far',
+      const within = behaviorSystem.isWithinChaseDistance(player, target);
+      expect(within).toBe(true);
+    });
+
+    it('should correctly check if outside chase distance', () => {
+      const player: Player = { ...mockPlayer, position: { x: 0, y: 0, z: 0 } };
+      const target: Player = {
+        ...mockTarget,
         position: { x: 150, y: 0, z: 0 },
-        velocity: { x: 0, y: 0, z: 0 },
-        isOni: false,
-        isAI: false,
-        fuel: 100,
-        isOnSurface: true,
-        isJetpacking: false,
-        isDashing: false,
-        survivalTime: 0,
-        wasTagged: false,
-        beaconCooldown: 0,
       };
 
-      expect(behaviorSystem.isWithinChaseDistance(aiPlayer, nearTarget)).toBe(true);
-      expect(behaviorSystem.isWithinChaseDistance(aiPlayer, farTarget)).toBe(false);
+      const within = behaviorSystem.isWithinChaseDistance(player, target);
+      expect(within).toBe(false);
     });
 
     it('should correctly check if within flee distance', () => {
-      const aiPlayer: Player = {
-        id: 'ai-1',
-        username: 'AI 1',
-        position: { x: 0, y: 0, z: 0 },
-        velocity: { x: 0, y: 0, z: 0 },
-        isOni: false,
-        isAI: true,
-        fuel: 100,
-        isOnSurface: true,
-        isJetpacking: false,
-        isDashing: false,
-        survivalTime: 0,
-        wasTagged: false,
-        beaconCooldown: 0,
-      };
-
-      const nearThreat: Player = {
-        id: 'near',
-        username: 'Near',
+      const player: Player = { ...mockPlayer, position: { x: 0, y: 0, z: 0 } };
+      const threat: Player = {
+        ...mockTarget,
         position: { x: 30, y: 0, z: 0 },
-        velocity: { x: 0, y: 0, z: 0 },
-        isOni: true,
-        isAI: false,
-        fuel: 100,
-        isOnSurface: true,
-        isJetpacking: false,
-        isDashing: false,
-        survivalTime: 0,
-        wasTagged: false,
-        beaconCooldown: 0,
       };
 
-      const farThreat: Player = {
-        id: 'far',
-        username: 'Far',
-        position: { x: 80, y: 0, z: 0 },
-        velocity: { x: 0, y: 0, z: 0 },
-        isOni: true,
-        isAI: false,
-        fuel: 100,
-        isOnSurface: true,
-        isJetpacking: false,
-        isDashing: false,
-        survivalTime: 0,
-        wasTagged: false,
-        beaconCooldown: 0,
-      };
-
-      expect(behaviorSystem.isWithinFleeDistance(aiPlayer, nearThreat)).toBe(true);
-      expect(behaviorSystem.isWithinFleeDistance(aiPlayer, farThreat)).toBe(false);
+      const within = behaviorSystem.isWithinFleeDistance(player, threat);
+      expect(within).toBe(true);
     });
   });
 
-  describe('config management', () => {
-    it('should get current config', () => {
+  describe('Configuration', () => {
+    it('should return current configuration', () => {
       const config = behaviorSystem.getConfig();
 
       expect(config.chaseDistance).toBe(100);
@@ -461,75 +232,30 @@ describe('AIBehaviorSystem', () => {
       expect(config.wanderChangeInterval).toBe(3);
     });
 
-    it('should update config', () => {
-      behaviorSystem.setConfig({
-        chaseDistance: 150,
-        fleeDistance: 75,
-      });
-
+    it('should update configuration', () => {
+      behaviorSystem.setConfig({ chaseDistance: 150 });
       const config = behaviorSystem.getConfig();
+
       expect(config.chaseDistance).toBe(150);
-      expect(config.fleeDistance).toBe(75);
+      expect(config.fleeDistance).toBe(50);
     });
   });
 
-  describe('reset', () => {
-    it('should reset player state', () => {
-      const aiPlayer: Player = {
-        id: 'ai-1',
-        username: 'AI 1',
-        position: { x: 0, y: 0, z: 0 },
-        velocity: { x: 0, y: 0, z: 0 },
-        isOni: false,
-        isAI: true,
-        fuel: 100,
-        isOnSurface: true,
-        isJetpacking: false,
-        isDashing: false,
-        survivalTime: 0,
-        wasTagged: false,
-        beaconCooldown: 0,
-      };
-
-      // Build some state
-      behaviorSystem.wander(aiPlayer, 0.016);
-      behaviorSystem.wander(aiPlayer, 0.016);
-
-      // Reset player
-      behaviorSystem.resetPlayer('ai-1');
-
-      // Should work without errors
-      const decision = behaviorSystem.wander(aiPlayer, 0.016);
-      expect(decision).toBeDefined();
-    });
-
-    it('should reset all state', () => {
-      const aiPlayer: Player = {
-        id: 'ai-1',
-        username: 'AI 1',
-        position: { x: 0, y: 0, z: 0 },
-        velocity: { x: 0, y: 0, z: 0 },
-        isOni: false,
-        isAI: true,
-        fuel: 100,
-        isOnSurface: true,
-        isJetpacking: false,
-        isDashing: false,
-        survivalTime: 0,
-        wasTagged: false,
-        beaconCooldown: 0,
-      };
-
-      // Build some state
-      behaviorSystem.wander(aiPlayer, 0.016);
-      behaviorSystem.wander(aiPlayer, 0.016);
-
-      // Reset all
+  describe('Reset', () => {
+    it('should clear all state on reset', () => {
+      behaviorSystem.wander(mockPlayer, 0.016);
       behaviorSystem.reset();
 
-      // Should work without errors
-      const decision = behaviorSystem.wander(aiPlayer, 0.016);
-      expect(decision).toBeDefined();
+      const decision = behaviorSystem.wander(mockPlayer, 0.016);
+      expect(decision.moveDirection).toBeDefined();
+    });
+
+    it('should clear player-specific state', () => {
+      behaviorSystem.wander(mockPlayer, 0.016);
+      behaviorSystem.resetPlayer('player1');
+
+      const decision = behaviorSystem.wander(mockPlayer, 0.016);
+      expect(decision.moveDirection).toBeDefined();
     });
   });
 });

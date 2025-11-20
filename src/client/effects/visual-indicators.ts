@@ -79,6 +79,25 @@ export class VisualIndicators {
   }
 
   /**
+   * Remove markers for players not in the given set
+   */
+  public removeMarkersNotInSet(activePlayerIds: Set<string>): void {
+    const markersToRemove: string[] = [];
+    
+    // Find markers that should be removed
+    this.markers.forEach((_marker, playerId) => {
+      if (!activePlayerIds.has(playerId)) {
+        markersToRemove.push(playerId);
+      }
+    });
+    
+    // Remove the markers
+    markersToRemove.forEach(playerId => {
+      this.removeMarker(playerId);
+    });
+  }
+
+  /**
    * Remove all markers
    */
   public clear(): void {
@@ -100,12 +119,12 @@ export class VisualIndicators {
 
   /**
    * Show "spotted" indicator above a player
-   * @param playerId - Player who was spotted
+   * @param _playerId - Player who was spotted (unused, kept for API consistency)
    * @param position - Player position
    * @param duration - How long to show the indicator (in seconds)
    */
   public showSpottedIndicator(
-    playerId: string,
+    _playerId: string,
     position: THREE.Vector3,
     duration: number = 2
   ): void {

@@ -8,7 +8,7 @@ export class OniAssignment {
   /**
    * Calculate the number of oni players based on total player count
    * 1 oni for every 3 players (rounded down)
-   * Examples: 6 players => 2 oni, 8 players => 2 oni, 10 players => 3 oni
+   * Examples: 4-5 players => 1 oni, 6-8 players => 2 oni, 9-11 players => 3 oni
    */
   public static calculateOniCount(totalPlayers: number): number {
     if (totalPlayers < MIN_TOTAL_PLAYERS) {

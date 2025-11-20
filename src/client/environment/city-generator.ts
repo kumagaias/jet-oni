@@ -365,10 +365,10 @@ export class CityGenerator {
     const windowSpacing = 3;
 
     const windowMaterial = new THREE.MeshStandardMaterial({
-      color: 0x87ceeb, // Sky blue
-      emissive: 0x87ceeb,
-      emissiveIntensity: 0.3,
-      roughness: 0.3,
+      color: 0xffdd88, // Warm light color
+      emissive: 0xffdd88, // Warm glow
+      emissiveIntensity: 0.8, // Increased from 0.3 to 0.8 for brighter glow
+      roughness: 0.2,
       metalness: 0.1,
     });
 
@@ -571,38 +571,74 @@ export class CityGenerator {
       const windowSize = width * 0.35;
       const windowHeight = height * 0.4;
       
-      // Left wall - bottom part
-      const leftWallBottom = new THREE.BoxGeometry(wallThickness, height - windowHeight, depth);
+      // Left wall - bottom part (below window)
+      const leftWallBottomHeight = (height - windowHeight) / 2;
+      const leftWallBottom = new THREE.BoxGeometry(wallThickness, leftWallBottomHeight, depth);
       const leftBottom = new THREE.Mesh(leftWallBottom, wallMaterial);
-      leftBottom.position.set(-width / 2, -(windowHeight / 2), 0);
+      leftBottom.position.set(-width / 2, -height / 2 + leftWallBottomHeight / 2, 0);
       leftBottom.castShadow = true;
       leftBottom.receiveShadow = true;
       houseGroup.add(leftBottom);
 
       // Left wall - top part (above window)
-      const leftWallTop = new THREE.BoxGeometry(wallThickness, windowHeight, depth - windowSize);
+      const leftWallTopHeight = (height - windowHeight) / 2;
+      const leftWallTop = new THREE.BoxGeometry(wallThickness, leftWallTopHeight, depth);
       const leftTop = new THREE.Mesh(leftWallTop, wallMaterial);
-      leftTop.position.set(-width / 2, height / 2 - windowHeight / 2, -depth / 2 + (depth - windowSize) / 2);
+      leftTop.position.set(-width / 2, height / 2 - leftWallTopHeight / 2, 0);
       leftTop.castShadow = true;
       leftTop.receiveShadow = true;
       houseGroup.add(leftTop);
 
+      // Left wall - sides (left and right of window)
+      const leftWallSideDepth = (depth - windowSize) / 2;
+      const leftWallSideLeft = new THREE.BoxGeometry(wallThickness, windowHeight, leftWallSideDepth);
+      const leftSideLeft = new THREE.Mesh(leftWallSideLeft, wallMaterial);
+      leftSideLeft.position.set(-width / 2, 0, -depth / 2 + leftWallSideDepth / 2);
+      leftSideLeft.castShadow = true;
+      leftSideLeft.receiveShadow = true;
+      houseGroup.add(leftSideLeft);
+
+      const leftWallSideRight = new THREE.BoxGeometry(wallThickness, windowHeight, leftWallSideDepth);
+      const leftSideRight = new THREE.Mesh(leftWallSideRight, wallMaterial);
+      leftSideRight.position.set(-width / 2, 0, depth / 2 - leftWallSideDepth / 2);
+      leftSideRight.castShadow = true;
+      leftSideRight.receiveShadow = true;
+      houseGroup.add(leftSideRight);
+
       // Right wall (with window opening - second window)
-      // Right wall - bottom part
-      const rightWallBottom = new THREE.BoxGeometry(wallThickness, height - windowHeight, depth);
+      // Right wall - bottom part (below window)
+      const rightWallBottomHeight = (height - windowHeight) / 2;
+      const rightWallBottom = new THREE.BoxGeometry(wallThickness, rightWallBottomHeight, depth);
       const rightBottom = new THREE.Mesh(rightWallBottom, wallMaterial);
-      rightBottom.position.set(width / 2, -(windowHeight / 2), 0);
+      rightBottom.position.set(width / 2, -height / 2 + rightWallBottomHeight / 2, 0);
       rightBottom.castShadow = true;
       rightBottom.receiveShadow = true;
       houseGroup.add(rightBottom);
 
       // Right wall - top part (above window)
-      const rightWallTop = new THREE.BoxGeometry(wallThickness, windowHeight, depth - windowSize);
+      const rightWallTopHeight = (height - windowHeight) / 2;
+      const rightWallTop = new THREE.BoxGeometry(wallThickness, rightWallTopHeight, depth);
       const rightTop = new THREE.Mesh(rightWallTop, wallMaterial);
-      rightTop.position.set(width / 2, height / 2 - windowHeight / 2, depth / 2 - (depth - windowSize) / 2);
+      rightTop.position.set(width / 2, height / 2 - rightWallTopHeight / 2, 0);
       rightTop.castShadow = true;
       rightTop.receiveShadow = true;
       houseGroup.add(rightTop);
+
+      // Right wall - sides (left and right of window)
+      const rightWallSideDepth = (depth - windowSize) / 2;
+      const rightWallSideLeft = new THREE.BoxGeometry(wallThickness, windowHeight, rightWallSideDepth);
+      const rightSideLeft = new THREE.Mesh(rightWallSideLeft, wallMaterial);
+      rightSideLeft.position.set(width / 2, 0, -depth / 2 + rightWallSideDepth / 2);
+      rightSideLeft.castShadow = true;
+      rightSideLeft.receiveShadow = true;
+      houseGroup.add(rightSideLeft);
+
+      const rightWallSideRight = new THREE.BoxGeometry(wallThickness, windowHeight, rightWallSideDepth);
+      const rightSideRight = new THREE.Mesh(rightWallSideRight, wallMaterial);
+      rightSideRight.position.set(width / 2, 0, depth / 2 - rightWallSideDepth / 2);
+      rightSideRight.castShadow = true;
+      rightSideRight.receiveShadow = true;
+      houseGroup.add(rightSideRight);
 
       // Floor
       const floorGeometry = new THREE.BoxGeometry(width, wallThickness, depth);

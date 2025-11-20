@@ -124,33 +124,29 @@ async function initGame(): Promise<void> {
       // Start in lobby state
       gameState.setGamePhase('lobby');
       
-      // Generate city environment with fixed seed (will be regenerated with gameId when game starts)
-      // Use fixed seed for initial lobby view
-      const initialSeed = 'lobby-preview-city';
-      const cityGenerator = new CityGenerator(initialSeed);
-      let city = cityGenerator.generateCity();
+      // Generate preview city for lobby (will be regenerated with gameId when game starts)
+      const previewSeed = 'lobby-preview-city';
+      let cityGenerator: CityGenerator = new CityGenerator(previewSeed);
+      let city: THREE.Group = cityGenerator.generateCity();
       gameEngine.addToScene(city);
       
-      // Generate dynamic objects (cars, pedestrians, ladders)
-      let dynamicObjects = new DynamicObjects();
-      let dynamicGroup = dynamicObjects.initialize(cityGenerator.getBuildings());
+      // Generate dynamic objects for preview
+      let dynamicObjects: DynamicObjects = new DynamicObjects();
+      let dynamicGroup: THREE.Group = dynamicObjects.initialize(cityGenerator.getBuildings());
       gameEngine.addToScene(dynamicGroup);
       
-      // Initialize ladder system
+      // Initialize systems with preview city data
       const ladderSystem = new LadderSystem();
       ladderSystem.registerLadders(dynamicObjects.getLadders());
       
-      // Initialize collision system
       const collisionSystem = new CollisionSystem();
-      // Get building data directly from city generator (already in correct format)
       const buildingData: BuildingData[] = cityGenerator.getBuildingData();
       collisionSystem.registerBuildings(buildingData);
       
-      // Initialize player physics
       const playerPhysics = new PlayerPhysics();
       playerPhysics.registerBuildings(buildingData);
       
-      // Register river and bridge data for water physics
+      // Register river and bridge data
       const riverData = cityGenerator.getRiverData();
       if (riverData) {
         playerPhysics.registerWaterAreas([riverData]);
@@ -724,8 +720,10 @@ async function initGame(): Promise<void> {
         beaconVisual.update(gameState.getAllPlayers(), false, localPlayer.id);
         beaconVisual.animate(deltaTime);
         
-        // Update dynamic objects (cars, pedestrians)
-        dynamicObjects.update(deltaTime);
+        // Update dynamic objects (cars, pedestrians) - only if initialized
+        if (dynamicObjects) {
+          dynamicObjects.update(deltaTime);
+        }
         
         // Update car system
         carSystem.update(deltaTime);
@@ -767,6 +765,15 @@ async function initGame(): Promise<void> {
             physicsResult.position
           );
           
+          // If collision occurred, apply sliding movement along the wall
+          if (collisionResult.collided && collisionResult.normal) {
+            // Apply sliding movement to velocity
+            finalVelocity = collisionSystem.applySlidingMovement(
+              finalVelocity,
+              collisionResult.normal
+            );
+          }
+          
           // Update player state with physics and collision results
           gameState.setLocalPlayerPosition(collisionResult.position);
           gameState.setLocalPlayerVelocity(finalVelocity);
@@ -794,6 +801,10 @@ async function initGame(): Promise<void> {
         if (gameState.getGamePhase() === 'playing' || gameState.getGamePhase() === 'countdown') {
           const allPlayers = gameState.getAllPlayers();
           const localPlayerId = gameState.getLocalPlayer().id;
+          const activePlayerIds = new Set(allPlayers.map(p => p.id));
+          
+          // Remove markers for players that are no longer in the game
+          visualIndicators.removeMarkersNotInSet(activePlayerIds);
           
           for (const player of allPlayers) {
             // Skip local player's marker (don't show own marker in first-person view)
@@ -1066,7 +1077,7 @@ async function initGame(): Promise<void> {
       uiLoading.hide();
       
       // Initialize countdown UI
-      const uiCountdown = new UICountdown(i18n);
+      const uiCountdown = new UICountdown();
       
       // Set countdown change callback to apply night mode at countdown 3
       uiCountdown.setOnCountdownChange((value: number) => {
@@ -1128,7 +1139,7 @@ async function initGame(): Promise<void> {
       
       // Track last AI sync time per AI player (to throttle Realtime updates)
       const aiLastSyncTime: Map<string, number> = new Map();
-      const AI_SYNC_INTERVAL = 500; // Send AI updates every 500ms (2 times per second)
+      const AI_SYNC_INTERVAL = 200; // Send AI updates every 200ms (5 times per second)
       
       // Listen for game start countdown event (when host presses start button)
       window.addEventListener('gameStartCountdown', ((e: Event) => {
@@ -1169,6 +1180,10 @@ async function initGame(): Promise<void> {
         // Set game config if provided
         if (customEvent.detail?.config) {
           gameState.setGameConfig(customEvent.detail.config);
+          
+          // Apply time of day setting from config
+          const timeOfDay = customEvent.detail.config.timeOfDay || 'day';
+          gameEngine.setTimeOfDay(timeOfDay);
         }
         
         // Set game ID and connect to Realtime
@@ -1189,7 +1204,7 @@ async function initGame(): Promise<void> {
         // Start countdown (10 seconds) with timestamp synchronization
         const startTimestamp = customEvent.detail?.startTimestamp || Date.now();
         uiCountdown.start(10, async () => {
-          // Countdown already fades to black, so just trigger game start
+          // Trigger game start immediately (spawn processing happens during black screen)
           window.dispatchEvent(new CustomEvent('gameStart', {
             detail: {
               config: gameState.getGameConfig(),
@@ -1197,9 +1212,7 @@ async function initGame(): Promise<void> {
             },
           }));
           
-          // Wait a bit for game start to process, then fade from black
-          await new Promise(resolve => setTimeout(resolve, 500));
-          await screenFade.fadeFromBlack(500);
+          // No fade needed - countdown handles the black screen display
         }, startTimestamp);
       }) as EventListener);
       
@@ -1237,42 +1250,44 @@ async function initGame(): Promise<void> {
         // Clear all remote players from game state
         gameState.clearRemotePlayers();
         
-
-        
         // Regenerate city with gameId as seed for consistent map across all players
-        if (customEvent.detail?.gameId) {
-          const gameId = customEvent.detail.gameId as string;
-          
-          // Remove old city
+        const gameId = customEvent.detail?.gameId as string || `game-${Date.now()}`;
+        console.log(`[Game Start] Generating city with gameId: ${gameId}`);
+        
+        // Remove old city if exists
+        if (city) {
           gameEngine.removeFromScene(city);
-          
-          // Generate new city with gameId as seed
-          const newCityGenerator = new CityGenerator(gameId);
-          city = newCityGenerator.generateCity();
-          gameEngine.addToScene(city);
-          
-          // Update collision system with new buildings
-          const newBuildingData: BuildingData[] = newCityGenerator.getBuildingData();
-          collisionSystem.registerBuildings(newBuildingData);
-          playerPhysics.registerBuildings(newBuildingData);
-          
-          // Register river and bridge data for water physics
-          const newRiverData = newCityGenerator.getRiverData();
-          if (newRiverData) {
-            playerPhysics.registerWaterAreas([newRiverData]);
-          }
-          const newBridgeData = newCityGenerator.getBridgeData();
-          playerPhysics.registerBridges(newBridgeData);
-          
-          // Regenerate dynamic objects
-          gameEngine.removeFromScene(dynamicGroup);
-          dynamicObjects = new DynamicObjects();
-          dynamicGroup = dynamicObjects.initialize(newCityGenerator.getBuildings());
-          gameEngine.addToScene(dynamicGroup);
-          
-          // Update ladder system
-          ladderSystem.registerLadders(dynamicObjects.getLadders());
         }
+        
+        // Generate new city with gameId as seed
+        cityGenerator = new CityGenerator(gameId);
+        city = cityGenerator.generateCity();
+        gameEngine.addToScene(city);
+        console.log(`[Game Start] City generated and added to scene`);
+        
+        // Update collision system with new buildings
+        const newBuildingData: BuildingData[] = cityGenerator.getBuildingData();
+        collisionSystem.registerBuildings(newBuildingData);
+        playerPhysics.registerBuildings(newBuildingData);
+        
+        // Register river and bridge data for water physics
+        const newRiverData = cityGenerator.getRiverData();
+        if (newRiverData) {
+          playerPhysics.registerWaterAreas([newRiverData]);
+        }
+        const newBridgeData = cityGenerator.getBridgeData();
+        playerPhysics.registerBridges(newBridgeData);
+        
+        // Regenerate dynamic objects
+        if (dynamicGroup) {
+          gameEngine.removeFromScene(dynamicGroup);
+        }
+        dynamicObjects = new DynamicObjects();
+        dynamicGroup = dynamicObjects.initialize(cityGenerator.getBuildings());
+        gameEngine.addToScene(dynamicGroup);
+        
+        // Update ladder system
+        ladderSystem.registerLadders(dynamicObjects.getLadders());
         
         // Show canvas and resume game engine
         const canvas = document.getElementById('bg') as HTMLCanvasElement;
@@ -1312,7 +1327,8 @@ async function initGame(): Promise<void> {
             // Find the server player that matches the local player's username
             const matchingServerPlayer = serverGameState.players.find(p => 
               p.username === localPlayer.id || // If local ID is username
-              p.id === localPlayer.id // If local ID already matches
+              p.id === localPlayer.id || // If local ID already matches
+              p.username === localPlayer.username // Match by username
             );
             
             if (matchingServerPlayer) {
@@ -1321,10 +1337,6 @@ async function initGame(): Promise<void> {
               
               // Update local player ONI status from server
               gameState.setLocalPlayerIsOni(matchingServerPlayer.isOni);
-              
-              console.log(`[Game Start] Synced local player from server: id=${matchingServerPlayer.id}, isOni=${matchingServerPlayer.isOni}`);
-            } else {
-              console.warn(`[Game Start] Could not find matching server player for local player: ${localPlayer.id}`);
             }
             
             // Update local game state with server players
@@ -1357,10 +1369,10 @@ async function initGame(): Promise<void> {
                     }
                     
                     if (!insideBuilding) {
-                      return { x: spawnX, y: 2, z: spawnZ };
+                      return { x: spawnX, y: 0.5, z: spawnZ };
                     }
                   }
-                  return { x: 0, y: 2, z: 0 };
+                  return { x: 0, y: 0.5, z: 0 };
                 };
                 
                 const spawnPosition = findSafeSpawnPosition();
@@ -1692,6 +1704,18 @@ async function initGame(): Promise<void> {
                 window.dispatchEvent(new Event('returnToMenu'));
               }, 2000);
             });
+          }
+        }
+        
+        // Fetch game config from server to get timeOfDay setting
+        if (gameId) {
+          try {
+            const serverGameState = await gameApiClient.getGameState(gameId);
+            if (serverGameState?.config?.timeOfDay) {
+              gameEngine.setTimeOfDay(serverGameState.config.timeOfDay);
+            }
+          } catch (error) {
+            console.warn('[Lobby] Failed to fetch game config:', error);
           }
         }
         

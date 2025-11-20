@@ -948,6 +948,11 @@ async function initGame(): Promise<void> {
             continue;
           }
           
+          // Skip local player (don't create model for ourselves)
+          if (remotePlayer.id === gameState.getLocalPlayer().id) {
+            continue;
+          }
+          
           let model = remotePlayerModels.get(remotePlayer.id);
           
           if (!model) {

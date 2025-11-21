@@ -1,6 +1,19 @@
 import * as THREE from 'three';
 import { MAP_SIZE, BUILDING_COUNT, HOUSE_COUNT } from '../../shared/constants';
 import { SeededRandom } from '../utils/seeded-random';
+import {
+  createBuilding as buildingGeneratorCreateBuilding,
+  createHouse as buildingGeneratorCreateHouse,
+  createTrafficLight,
+  BuildingConfig as BuildingGeneratorConfig,
+} from './building-generator';
+import {
+  createGround,
+  createRiver,
+  createRoads,
+  createBridge,
+  RoadSegment,
+} from './environment-generator';
 
 /**
  * Represents an occupied area in the city to prevent overlapping structures
@@ -103,21 +116,10 @@ export class CityGenerator {
   }
 
   /**
-   * Create ground plane
+   * Create ground plane (using environment-generator)
    */
   private createGround(): THREE.Mesh {
-    const geometry = new THREE.PlaneGeometry(MAP_SIZE * 2, MAP_SIZE * 2);
-    const material = new THREE.MeshStandardMaterial({
-      color: 0x3a5f3a, // Dark green grass
-      roughness: 0.8,
-      metalness: 0.2,
-    });
-
-    const ground = new THREE.Mesh(geometry, material);
-    ground.rotation.x = -Math.PI / 2;
-    ground.receiveShadow = true;
-
-    return ground;
+    return createGround();
   }
 
   /**

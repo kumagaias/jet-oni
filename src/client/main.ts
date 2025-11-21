@@ -548,118 +548,16 @@ async function initGame(): Promise<void> {
                 0.5 // AI player radius
               );
               
-              // If collision occurred, try to move AI around obstacle
+              // If collision occurred, apply sliding movement
               let finalVelocity = physicsResult.velocity;
               let finalPosition = collisionResult.position;
               
-              if (collisionResult.collided) {
-                // When AI hits a wall, try multiple escape strategies
-                const speed = Math.sqrt(aiPlayer.velocity.x ** 2 + aiPlayer.velocity.z ** 2);
-                
-                // Strategy 1: Try perpendicular directions (left and right)
-                const perpendicular1 = {
-                  x: -aiPlayer.velocity.z,
-                  y: aiPlayer.velocity.y,
-                  z: aiPlayer.velocity.x,
-                };
-                const perpendicular2 = {
-                  x: aiPlayer.velocity.z,
-                  y: aiPlayer.velocity.y,
-                  z: -aiPlayer.velocity.x,
-                };
-                
-                // Normalize perpendicular vectors
-                const perp1Length = Math.sqrt(perpendicular1.x ** 2 + perpendicular1.z ** 2);
-                const perp2Length = Math.sqrt(perpendicular2.x ** 2 + perpendicular2.z ** 2);
-                
-                if (perp1Length > 0) {
-                  perpendicular1.x = (perpendicular1.x / perp1Length) * speed;
-                  perpendicular1.z = (perpendicular1.z / perp1Length) * speed;
-                }
-                if (perp2Length > 0) {
-                  perpendicular2.x = (perpendicular2.x / perp2Length) * speed;
-                  perpendicular2.z = (perpendicular2.z / perp2Length) * speed;
-                }
-                
-                // Try moving in perpendicular directions
-                const altPosition1 = {
-                  x: aiPlayer.position.x + perpendicular1.x * deltaTime,
-                  y: aiPlayer.position.y + perpendicular1.y * deltaTime,
-                  z: aiPlayer.position.z + perpendicular1.z * deltaTime,
-                };
-                const altPosition2 = {
-                  x: aiPlayer.position.x + perpendicular2.x * deltaTime,
-                  y: aiPlayer.position.y + perpendicular2.y * deltaTime,
-                  z: aiPlayer.position.z + perpendicular2.z * deltaTime,
-                };
-                
-                const altCollision1 = collisionSystem.checkCollision(aiPlayer.position, altPosition1, 0.5);
-                const altCollision2 = collisionSystem.checkCollision(aiPlayer.position, altPosition2, 0.5);
-                
-                // Use the first non-colliding alternative
-                if (!altCollision1.collided) {
-                  finalPosition = altCollision1.position;
-                  finalVelocity = perpendicular1;
-                } else if (!altCollision2.collided) {
-                  finalPosition = altCollision2.position;
-                  finalVelocity = perpendicular2;
-                } else {
-                  // Strategy 2: Try diagonal directions
-                  const diagonal1 = {
-                    x: (aiPlayer.velocity.x + perpendicular1.x) * 0.5,
-                    y: aiPlayer.velocity.y,
-                    z: (aiPlayer.velocity.z + perpendicular1.z) * 0.5,
-                  };
-                  const diagonal2 = {
-                    x: (aiPlayer.velocity.x + perpendicular2.x) * 0.5,
-                    y: aiPlayer.velocity.y,
-                    z: (aiPlayer.velocity.z + perpendicular2.z) * 0.5,
-                  };
-                  
-                  const diagPosition1 = {
-                    x: aiPlayer.position.x + diagonal1.x * deltaTime,
-                    y: aiPlayer.position.y + diagonal1.y * deltaTime,
-                    z: aiPlayer.position.z + diagonal1.z * deltaTime,
-                  };
-                  const diagPosition2 = {
-                    x: aiPlayer.position.x + diagonal2.x * deltaTime,
-                    y: aiPlayer.position.y + diagonal2.y * deltaTime,
-                    z: aiPlayer.position.z + diagonal2.z * deltaTime,
-                  };
-                  
-                  const diagCollision1 = collisionSystem.checkCollision(aiPlayer.position, diagPosition1, 0.5);
-                  const diagCollision2 = collisionSystem.checkCollision(aiPlayer.position, diagPosition2, 0.5);
-                  
-                  if (!diagCollision1.collided) {
-                    finalPosition = diagCollision1.position;
-                    finalVelocity = diagonal1;
-                  } else if (!diagCollision2.collided) {
-                    finalPosition = diagCollision2.position;
-                    finalVelocity = diagonal2;
-                  } else {
-                    // Strategy 3: Try backing up slightly and then moving perpendicular
-                    const backupPosition = {
-                      x: aiPlayer.position.x - aiPlayer.velocity.x * deltaTime * 0.5,
-                      y: aiPlayer.position.y,
-                      z: aiPlayer.position.z - aiPlayer.velocity.z * deltaTime * 0.5,
-                    };
-                    
-                    const backupCollision = collisionSystem.checkCollision(aiPlayer.position, backupPosition, 0.5);
-                    
-                    if (!backupCollision.collided) {
-                      finalPosition = backupCollision.position;
-                      // Choose a random perpendicular direction
-                      finalVelocity = Math.random() > 0.5 ? perpendicular1 : perpendicular2;
-                    } else {
-                      // Last resort: Stop moving
-                      finalVelocity = {
-                        x: 0,
-                        y: physicsResult.velocity.y,
-                        z: 0,
-                      };
-                    }
-                  }
-                }
+              if (collisionResult.collided && collisionResult.normal) {
+                // Apply sliding movement along the wall (same as player)
+                finalVelocity = collisionSystem.applySlidingMovement(
+                  finalVelocity,
+                  collisionResult.normal
+                );
               }
               
               // Update AI player position and state
@@ -776,26 +674,28 @@ async function initGame(): Promise<void> {
         }
         
         // Update visual effects AFTER physics (so they use updated positions)
-        // Update tag range visual (show ONI tagging range) - only during gameplay
-        if (gameState.getGamePhase() === 'playing' || gameState.getGamePhase() === 'countdown') {
-          tagRangeVisual.update(gameState.getAllPlayers());
+        // Cache getAllPlayers() result to avoid multiple calls
+        const currentPhase = gameState.getGamePhase();
+        const isGameplayPhase = currentPhase === 'playing' || currentPhase === 'countdown';
+        
+        if (isGameplayPhase) {
+          // Get all players once and reuse
+          const allPlayers = gameState.getAllPlayers();
+          const localPlayerData = gameState.getLocalPlayer();
+          
+          // Update tag range visual (show ONI tagging range)
+          tagRangeVisual.update(allPlayers);
           
           // Update target lock visual (show lock-on for nearby runners when ONI)
-          const localPlayerData = gameState.getLocalPlayer();
-          const localPlayerFull = gameState.getAllPlayers().find(p => p.id === localPlayerData.id);
-          if (localPlayerFull) {
-            const camera = gameEngine.getCamera();
-            targetLockVisual.update(localPlayerFull, gameState.getAllPlayers(), camera);
-          }
-        }
-        
-        // Update jetpack effect (show jetpack particles for all players)
-        jetpackEffect.update(gameState.getAllPlayers(), deltaTime);
-        
-        // Update visual indicators (player markers) - only during gameplay
-        if (gameState.getGamePhase() === 'playing' || gameState.getGamePhase() === 'countdown') {
-          const allPlayers = gameState.getAllPlayers();
-          const localPlayerId = gameState.getLocalPlayer().id;
+          // Use localPlayerData directly instead of finding in array
+          const camera = gameEngine.getCamera();
+          targetLockVisual.update(localPlayerData, allPlayers, camera);
+          
+          // Update jetpack effect (show jetpack particles for all players)
+          jetpackEffect.update(allPlayers, deltaTime);
+          
+          // Update visual indicators (player markers)
+          const localPlayerId = localPlayerData.id;
           const activePlayerIds = new Set(allPlayers.map(p => p.id));
           
           // Remove markers for players that are no longer in the game
@@ -809,11 +709,11 @@ async function initGame(): Promise<void> {
             }
             
             // Check if player is moving (velocity magnitude > threshold)
-            const velocityMagnitude = Math.sqrt(
+            // Use squared magnitude to avoid sqrt
+            const velocitySquared = 
               player.velocity.x * player.velocity.x +
-              player.velocity.z * player.velocity.z
-            );
-            const isMoving = velocityMagnitude > 0.5;
+              player.velocity.z * player.velocity.z;
+            const isMoving = velocitySquared > 0.25; // 0.5^2 = 0.25
             
             // Update marker for this player
             visualIndicators.updateMarker(
@@ -823,13 +723,13 @@ async function initGame(): Promise<void> {
               isMoving
             );
           }
+          
+          // Update particle system (jetpack and dash effects)
+          particleSystem.update(deltaTime, allPlayers);
         } else {
           // Clear markers when not in gameplay
           visualIndicators.clear();
         }
-        
-        // Update particle system (jetpack and dash effects)
-        particleSystem.update(deltaTime, gameState.getAllPlayers());
         
         // Update camera
         playerCamera.update(deltaTime);

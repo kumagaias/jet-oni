@@ -244,7 +244,7 @@ export class UIControls {
       button.addEventListener('touchstart', (e) => {
         e.preventDefault();
         handleStart();
-      });
+      }, { passive: false });
       
       button.addEventListener('touchend', (e) => {
         e.preventDefault();
@@ -362,7 +362,7 @@ export class UIControls {
     button.addEventListener('touchstart', (e) => {
       e.preventDefault();
       handlePress();
-    });
+    }, { passive: false });
 
     button.addEventListener('touchend', (e) => {
       e.preventDefault();

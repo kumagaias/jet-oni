@@ -138,7 +138,7 @@ export class MobileControls {
       e.preventDefault();
       button.style.background = 'rgba(255, 136, 0, 0.8)';
       onPress();
-    });
+    }, { passive: false });
 
     button.addEventListener('touchend', (e) => {
       e.preventDefault();
@@ -236,11 +236,11 @@ class VirtualJoystick {
     `;
     this.base.appendChild(this.stick);
 
-    // Setup touch events
-    this.base.addEventListener('touchstart', this.onTouchStart.bind(this));
-    this.base.addEventListener('touchmove', this.onTouchMove.bind(this));
-    this.base.addEventListener('touchend', this.onTouchEnd.bind(this));
-    this.base.addEventListener('touchcancel', this.onTouchEnd.bind(this));
+    // Setup touch events with explicit passive: false (we need preventDefault)
+    this.base.addEventListener('touchstart', this.onTouchStart.bind(this), { passive: false });
+    this.base.addEventListener('touchmove', this.onTouchMove.bind(this), { passive: false });
+    this.base.addEventListener('touchend', this.onTouchEnd.bind(this), { passive: false });
+    this.base.addEventListener('touchcancel', this.onTouchEnd.bind(this), { passive: false });
   }
 
   private onTouchStart(e: TouchEvent): void {

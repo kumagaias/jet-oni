@@ -1099,9 +1099,10 @@ async function initGame(): Promise<void> {
         gameState.setGamePhase('countdown');
         
         // Generate city during countdown (if not already generated)
-        if (!city && currentGameId) {
-          console.log(`[Countdown] Generating city with gameId: ${currentGameId}`);
-          cityGenerator = new CityGenerator(currentGameId);
+        const gameIdForCity = currentGameId || `game-${Date.now()}`;
+        if (!city) {
+          console.log(`[Countdown] Generating city with gameId: ${gameIdForCity}`);
+          cityGenerator = new CityGenerator(gameIdForCity);
           city = cityGenerator.generateCity();
           gameEngine.addToScene(city);
           

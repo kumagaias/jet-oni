@@ -105,7 +105,7 @@ async function initGame(): Promise<void> {
       const hostMonitor = new HostMonitor(gameApiClient);
       
       // Initialize UI
-      const uiMenu = new UIMenu(i18n, gameApiClient, aiApiClient);
+      const uiMenu = new UIMenu(uiManager, i18n, data.username || playerId, gameApiClient, gameEngine);
       const uiCountdown = new UICountdown(i18n);
       
       // Setup debug mode

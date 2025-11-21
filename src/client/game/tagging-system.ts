@@ -79,14 +79,8 @@ export class TaggingSystem {
         // Calculate distance
         const distance = this.calculateDistance(localPlayer.position, player.position);
 
-        // Debug: Log when ONI is close
-        if (distance <= TAG_DISTANCE * 2) {
-          console.log(`[Tag] ONI ${player.id} (AI: ${player.isAI}) is ${distance.toFixed(2)} units away (tag distance: ${TAG_DISTANCE})`);
-        }
-
         // Check if within tagging distance
         if (distance <= TAG_DISTANCE) {
-          console.log(`[Tag] Local runner tagged by ONI ${player.id} (AI: ${player.isAI})`);
           // Local player gets tagged by remote ONI
           const tagEvent = this.tagPlayer(player.id, localPlayer.id);
           this.lastTagTime = now;

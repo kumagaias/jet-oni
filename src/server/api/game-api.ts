@@ -37,15 +37,6 @@ router.post(
         return;
       }
 
-      // Validate config
-      if (!config.totalPlayers || config.totalPlayers < 6 || config.totalPlayers > 20 || config.totalPlayers % 2 !== 0) {
-        res.status(400).json({
-          success: false,
-          error: 'Total players must be between 6 and 20 (even numbers only)',
-        });
-        return;
-      }
-
       // Check if in dev subreddit (safely handle test environment where context may not exist)
       let isDevSubreddit = false;
       try {
@@ -54,6 +45,27 @@ router.post(
       } catch (error) {
         // Context not available (e.g., in test environment), default to production rules
         isDevSubreddit = false;
+      }
+
+      // Validate config
+      if (isDevSubreddit) {
+        // Dev subreddit: allow 2-20 players (even numbers only)
+        if (!config.totalPlayers || config.totalPlayers < 2 || config.totalPlayers > 20 || config.totalPlayers % 2 !== 0) {
+          res.status(400).json({
+            success: false,
+            error: 'Total players must be between 2 and 20 (even numbers only)',
+          });
+          return;
+        }
+      } else {
+        // Production: require 6-20 players (even numbers only)
+        if (!config.totalPlayers || config.totalPlayers < 6 || config.totalPlayers > 20 || config.totalPlayers % 2 !== 0) {
+          res.status(400).json({
+            success: false,
+            error: 'Total players must be between 6 and 20 (even numbers only)',
+          });
+          return;
+        }
       }
 
       // Allow 1 minute (60 seconds) in dev subreddit, otherwise require 3, 5, or 7 minutes

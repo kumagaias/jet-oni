@@ -10,8 +10,7 @@ import {
   JETPACK_FORCE,
   JUMP_FORCE,
   RUNNER_JUMP_MULTIPLIER,
-  DASH_FUEL_COST,
-  DASH_DURATION,
+  DASH_FUEL_CONSUMPTION,
   ONI_FUEL_RECOVERY,
   RUNNER_FUEL_RECOVERY,
 } from '../../shared/constants';
@@ -38,8 +37,6 @@ export class PlayerController {
   private lastMouseX = 0;
   private lastMouseY = 0;
   private usePointerLockFallback = false;
-  private dashEndTime = 0; // When current dash will end
-  private isDashActive = false; // Whether dash is currently active
 
   constructor(gameState: GameState) {
     this.gameState = gameState;
@@ -536,12 +533,10 @@ export class PlayerController {
       const fuelRecovered = ONI_FUEL_RECOVERY * deltaTime;
       this.gameState.setLocalPlayerFuel(player.fuel + fuelRecovered);
     } else {
-      // Runner recovers fuel on surface while stationary
-      const isStationary = Math.abs(player.velocity.x) < 0.1 && Math.abs(player.velocity.z) < 0.1;
-      if (isStationary) {
-        const fuelRecovered = RUNNER_FUEL_RECOVERY * deltaTime;
-        this.gameState.setLocalPlayerFuel(player.fuel + fuelRecovered);
-      }
+      // Runner recovers fuel while walking (not dashing, not stationary)
+      // Recover at 20 per second = 100 fuel in 5 seconds
+      const fuelRecovered = RUNNER_FUEL_RECOVERY * deltaTime;
+      this.gameState.setLocalPlayerFuel(player.fuel + fuelRecovered);
     }
   }
 
@@ -552,16 +547,11 @@ export class PlayerController {
     const player = this.gameState.getLocalPlayer();
     let speed = this.gameState.getLocalPlayerSpeed();
 
-    // Check if dash is active (time-based)
-    const now = Date.now();
-    if (this.isDashActive && now < this.dashEndTime) {
+    // Check if dash button is pressed and player has fuel (runner only)
+    if (this.inputState.dash && !player.isOni && player.fuel > 0) {
       speed = DASH_SPEED;
       this.gameState.setLocalPlayerDashing(true);
     } else {
-      // Dash expired
-      if (this.isDashActive) {
-        this.isDashActive = false;
-      }
       this.gameState.setLocalPlayerDashing(false);
     }
 
@@ -574,19 +564,16 @@ export class PlayerController {
   }
 
   /**
-   * Handle dash activation and fuel consumption
+   * Handle dash fuel consumption
    */
-  private handleDashFuelConsumption(_deltaTime: number): void {
+  private handleDashFuelConsumption(deltaTime: number): void {
     const player = this.gameState.getLocalPlayer();
     
-    // Activate dash when button is pressed (runner only, not already dashing, has fuel)
-    if (this.inputState.dash && !player.isOni && !this.isDashActive && player.fuel >= DASH_FUEL_COST) {
-      // Activate dash
-      this.isDashActive = true;
-      this.dashEndTime = Date.now() + (DASH_DURATION * 1000);
-      
-      // Consume fuel immediately
-      this.gameState.setLocalPlayerFuel(player.fuel - DASH_FUEL_COST);
+    // Consume fuel while dashing (runner only, button pressed, has fuel)
+    if (this.inputState.dash && !player.isOni && player.fuel > 0) {
+      // Consume fuel continuously while dashing
+      const fuelConsumed = DASH_FUEL_CONSUMPTION * deltaTime;
+      this.gameState.setLocalPlayerFuel(player.fuel - fuelConsumed);
     }
   }
 

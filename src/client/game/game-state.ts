@@ -491,9 +491,6 @@ export class GameState {
    */
   public hasTimeRunOut(): boolean {
     const remaining = this.getRemainingTime();
-    if (remaining <= 0 && this.isPlaying()) {
-      console.log(`[GameState] Time run out: remaining=${remaining}, elapsed=${this.getElapsedTime()}, startTime=${this.gameStartTime}, config=${JSON.stringify(this.gameConfig)}`);
-    }
     return remaining <= 0;
   }
 
@@ -509,7 +506,6 @@ export class GameState {
     // Don't check for game end in the first 10 seconds (allow time for sync)
     const elapsed = this.getElapsedTime();
     if (elapsed < 10) {
-      console.log(`[GameState] areAllPlayersOni: Too early (${elapsed}s < 10s)`);
       return false;
     }
     
@@ -518,13 +514,11 @@ export class GameState {
     
     // Don't end game if there are less than 2 total players
     if (allPlayers.length < 2) {
-      console.log(`[GameState] areAllPlayersOni: Not enough players (${allPlayers.length} < 2)`);
       return false; // Wait for players to join
     }
     
     // Check if all players are oni
     const runnerCount = allPlayers.filter(p => !p.isOni).length;
-    console.log(`[GameState] areAllPlayersOni: elapsed=${elapsed}s, totalPlayers=${allPlayers.length}, runnerCount=${runnerCount}`);
     return runnerCount === 0;
   }
 

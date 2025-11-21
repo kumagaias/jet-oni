@@ -1121,6 +1121,9 @@ async function initGame(): Promise<void> {
           // Register ladders
           ladderSystem.registerLadders(cityGenerator.getLadders());
           
+          // Start car system
+          carSystem.start(cityGenerator.getRoadSegments());
+          
           console.log(`[Countdown] City generated and added to scene`);
         }
         
@@ -1617,15 +1620,40 @@ async function initGame(): Promise<void> {
         gameState.setLocalPlayerVelocity({ x: 0, y: 0, z: 0 });
         gameState.setLocalPlayerIsOni(false);
         
-        
-        // Hide canvas during lobby
+        // Show canvas during lobby
         const canvas = document.getElementById('bg') as HTMLCanvasElement;
         if (canvas) {
-          canvas.style.display = 'none';
+          canvas.style.display = 'block';
         }
         
-        // Pause game engine
-        gameEngine.pause();
+        // Generate city for lobby if not already generated
+        const gameIdForCity = gameId || `game-${Date.now()}`;
+        if (!city) {
+          cityGenerator = new CityGenerator(gameIdForCity);
+          city = cityGenerator.generateCity();
+          gameEngine.addToScene(city);
+          
+          // Update collision system with buildings
+          const buildingData: BuildingData[] = cityGenerator.getBuildingData();
+          collisionSystem.registerBuildings(buildingData);
+          playerPhysics.registerBuildings(buildingData);
+          
+          // Register river and bridge data
+          const riverData = cityGenerator.getRiverData();
+          if (riverData) {
+            playerPhysics.registerWaterAreas([riverData]);
+          }
+          playerPhysics.registerBridges(cityGenerator.getBridgeData());
+          
+          // Register ladders
+          ladderSystem.registerLadders(cityGenerator.getLadders());
+          
+          // Start car system
+          carSystem.start(cityGenerator.getRoadSegments());
+        }
+        
+        // Resume game engine to show scene
+        gameEngine.resume();
         
         const { currentPlayers, maxPlayers, isHost: isHostFlag, gameId } = customEvent.detail;
         isHost = isHostFlag;

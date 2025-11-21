@@ -3,8 +3,7 @@ import { PlayerController } from './player-controller';
 import { GameState } from '../game/game-state';
 import {
   JETPACK_FUEL_CONSUMPTION,
-  DASH_FUEL_COST,
-  DASH_DURATION,
+  DASH_FUEL_CONSUMPTION,
   ONI_FUEL_RECOVERY,
   RUNNER_FUEL_RECOVERY,
   MAX_FUEL,
@@ -167,7 +166,8 @@ describe('PlayerController', () => {
       controller.update(deltaTime);
 
       const newFuel = gameState.getLocalPlayer().fuel;
-      const expectedFuel = initialFuel - DASH_FUEL_COST; // Fixed cost per activation
+      const expectedFuelConsumed = DASH_FUEL_CONSUMPTION * deltaTime;
+      const expectedFuel = initialFuel - expectedFuelConsumed;
 
       expect(newFuel).toBeCloseTo(expectedFuel, 1);
     });
@@ -206,59 +206,46 @@ describe('PlayerController', () => {
       expect(player.isDashing).toBe(false);
     });
 
-    it('should maintain dash for DASH_DURATION seconds', () => {
-      // Use fake timers to control time
-      vi.useFakeTimers();
-      
+    it('should dash only while button is held', () => {
       // Activate dash
       const keydownEvent = new KeyboardEvent('keydown', { code: 'ShiftLeft' });
       window.dispatchEvent(keydownEvent);
       controller.update(0.016);
 
-      // Verify dash is active
+      // Verify dash is active while button is held
       expect(gameState.getLocalPlayer().isDashing).toBe(true);
 
       // Release key
       const keyupEvent = new KeyboardEvent('keyup', { code: 'ShiftLeft' });
       window.dispatchEvent(keyupEvent);
 
-      // Advance time by 1 second
-      vi.advanceTimersByTime(1000);
-      controller.update(1.0);
-      expect(gameState.getLocalPlayer().isDashing).toBe(true);
-
-      // Advance time by DASH_DURATION seconds (total: 3 seconds > 2 seconds)
-      vi.advanceTimersByTime(DASH_DURATION * 1000);
-      controller.update(DASH_DURATION);
+      // Update after releasing button
+      controller.update(0.016);
       expect(gameState.getLocalPlayer().isDashing).toBe(false);
-      
-      // Restore real timers
-      vi.useRealTimers();
     });
 
-    it('should not consume additional fuel when pressing dash during active dash', () => {
-      // Set fuel to exact amount to avoid recovery issues
-      gameState.setLocalPlayerFuel(100);
+    it('should consume fuel continuously while dashing', () => {
+      // Set fuel to full
       const initialFuel = 100;
+      gameState.setLocalPlayerFuel(initialFuel);
 
       // Activate dash
-      const keydownEvent1 = new KeyboardEvent('keydown', { code: 'ShiftLeft' });
-      window.dispatchEvent(keydownEvent1);
-      controller.update(0.016);
-
-      const fuelAfterFirstDash = gameState.getLocalPlayer().fuel;
-      expect(fuelAfterFirstDash).toBe(initialFuel - DASH_FUEL_COST);
-
-      // Release and press again while still active
-      const keyupEvent = new KeyboardEvent('keyup', { code: 'ShiftLeft' });
-      window.dispatchEvent(keyupEvent);
+      const keydownEvent = new KeyboardEvent('keydown', { code: 'ShiftLeft' });
+      window.dispatchEvent(keydownEvent);
       
-      const keydownEvent2 = new KeyboardEvent('keydown', { code: 'ShiftLeft' });
-      window.dispatchEvent(keydownEvent2);
-      controller.update(0.016);
+      // Update for 0.1 seconds (should consume DASH_FUEL_CONSUMPTION * 0.1)
+      const deltaTime = 0.1;
+      controller.update(deltaTime);
 
-      // Fuel should not decrease further (dash is still active)
-      expect(gameState.getLocalPlayer().fuel).toBe(fuelAfterFirstDash);
+      const fuelAfterDash = gameState.getLocalPlayer().fuel;
+      const expectedFuelConsumed = DASH_FUEL_CONSUMPTION * deltaTime;
+      expect(fuelAfterDash).toBeCloseTo(initialFuel - expectedFuelConsumed, 1);
+
+      // Continue dashing for another 0.1 seconds
+      controller.update(deltaTime);
+      
+      const fuelAfterMoreDash = gameState.getLocalPlayer().fuel;
+      expect(fuelAfterMoreDash).toBeCloseTo(initialFuel - expectedFuelConsumed * 2, 1);
     });
   });
 
@@ -347,13 +334,13 @@ describe('PlayerController', () => {
         gameState.setLocalPlayerOnSurface(true);
       });
 
-      it('should recover fuel on surface while stationary', () => {
-        // Set velocity to zero (stationary)
-        gameState.setLocalPlayerVelocity({ x: 0, y: 0, z: 0 });
+      it('should recover fuel on surface while walking (not dashing)', () => {
+        // Set velocity to walking speed (not stationary)
+        gameState.setLocalPlayerVelocity({ x: 5, y: 0, z: 5 });
 
         const initialFuel = gameState.getLocalPlayer().fuel;
 
-        // Update controller
+        // Update controller without dash input
         const deltaTime = 1; // 1 second
         controller.update(deltaTime);
 
@@ -363,17 +350,23 @@ describe('PlayerController', () => {
         expect(newFuel).toBeCloseTo(expectedFuel, 1);
       });
 
-      it('should not recover fuel while moving', () => {
-        // Set velocity to non-zero (moving)
+      it('should not recover fuel while dashing', () => {
+        // Set velocity to walking speed
         gameState.setLocalPlayerVelocity({ x: 5, y: 0, z: 5 });
 
         const initialFuel = gameState.getLocalPlayer().fuel;
 
+        // Activate dash
+        const keydownEvent = new KeyboardEvent('keydown', { code: 'ShiftLeft' });
+        window.dispatchEvent(keydownEvent);
+
         // Update controller
-        controller.update(1);
+        const deltaTime = 0.1;
+        controller.update(deltaTime);
 
         const newFuel = gameState.getLocalPlayer().fuel;
-        expect(newFuel).toBe(initialFuel);
+        // Fuel should decrease (not recover) while dashing
+        expect(newFuel).toBeLessThan(initialFuel);
       });
 
       it('should not recover fuel when not on surface', () => {

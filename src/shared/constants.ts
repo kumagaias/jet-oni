@@ -8,10 +8,9 @@ export const DASH_SPEED = 30; // 3x normal speed
 // Fuel system
 export const MAX_FUEL = 100;
 export const JETPACK_FUEL_CONSUMPTION = 30; // per second
-export const DASH_FUEL_COST = 30; // fuel cost per dash activation
-export const DASH_DURATION = 2; // seconds - how long dash lasts
+export const DASH_FUEL_CONSUMPTION = 50; // per second while dashing
 export const ONI_FUEL_RECOVERY = 20; // per second on surface
-export const RUNNER_FUEL_RECOVERY = 20; // per second on surface while stationary
+export const RUNNER_FUEL_RECOVERY = 20; // per second on surface while walking (not dashing)
 
 // Physics
 export const GRAVITY = 20;

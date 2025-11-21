@@ -231,7 +231,8 @@ export class AIController {
     
     if (this.behaviorSystem.isWithinFleeDistance(aiPlayer, nearestOni)) {
       const decision = this.behaviorSystem.flee(aiPlayer, nearestOni);
-      return this.addAbilityDecision(aiPlayer, decision, 'jetpack');
+      // Runners use dash, not jetpack
+      return this.addAbilityDecision(aiPlayer, decision, 'dash');
     }
     
     return this.behaviorSystem.wander(aiPlayer, deltaTime);
@@ -269,6 +270,13 @@ export class AIController {
     decision: AIDecision,
     _abilityType: 'jetpack' | 'dash' | 'jump'
   ): AIDecision {
+    // Validate ability type based on player role
+    // ONI can use jetpack, Runners can use dash/jump
+    if (_abilityType === 'jetpack' && !aiPlayer.isOni) {
+      // Runner cannot use jetpack, use dash instead
+      _abilityType = 'dash';
+    }
+    
     const canUseAbility = this.shouldUseAbility(aiPlayer, _abilityType);
     return {
       ...decision,

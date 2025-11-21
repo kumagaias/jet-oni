@@ -369,6 +369,9 @@ async function initGame(): Promise<void> {
       `;
       document.body.appendChild(oniOverlay);
       
+      // AI update throttling (update every other frame for 30 FPS)
+      let aiUpdateSkip = false;
+      
       // Setup game loop
       gameEngine.onUpdate((deltaTime: number) => {
         // Get mobile control input and apply to player controller
@@ -524,7 +527,11 @@ async function initGame(): Promise<void> {
         }
         
         // Apply physics to AI players and update models (host only)
-        if (isHost) {
+        // Update AI at 30 FPS instead of 60 FPS for better performance
+        const shouldUpdateAI = !aiUpdateSkip;
+        aiUpdateSkip = !aiUpdateSkip;
+        
+        if (isHost && shouldUpdateAI) {
           for (const [aiId, aiModel] of aiPlayerModels) {
             const aiPlayer = gameState.getPlayer(aiId);
             if (!aiPlayer) {

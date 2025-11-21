@@ -1166,16 +1166,16 @@ async function initGame(): Promise<void> {
         console.log(`[Game Start] City generated and added to scene`);
         
         // Update collision system with new buildings
-        const newBuildingData: BuildingData[] = cityGenerator.getBuildingData();
+        const newBuildingData: BuildingData[] = cityGenerator!.getBuildingData();
         collisionSystem.registerBuildings(newBuildingData);
         playerPhysics.registerBuildings(newBuildingData);
         
         // Register river and bridge data for water physics
-        const newRiverData = cityGenerator.getRiverData();
+        const newRiverData = cityGenerator!.getRiverData();
         if (newRiverData) {
           playerPhysics.registerWaterAreas([newRiverData]);
         }
-        const newBridgeData = cityGenerator.getBridgeData();
+        const newBridgeData = cityGenerator!.getBridgeData();
         playerPhysics.registerBridges(newBridgeData);
         
         // Regenerate dynamic objects
@@ -1183,7 +1183,7 @@ async function initGame(): Promise<void> {
           gameEngine.removeFromScene(dynamicGroup);
         }
         dynamicObjects = new DynamicObjects();
-        dynamicGroup = dynamicObjects.initialize(cityGenerator.getBuildings());
+        dynamicGroup = dynamicObjects.initialize(cityGenerator!.getBuildings());
         gameEngine.addToScene(dynamicGroup);
         
         // Update ladder system
@@ -1243,7 +1243,7 @@ async function initGame(): Promise<void> {
             const updatedLocalPlayerId = matchingServerPlayer?.id || localPlayer.id;
             
             // Get buildings for spawn position calculation
-            const buildings = cityGenerator.getBuildingData();
+            const buildings = cityGenerator?.getBuildingData() ?? [];
             
             // Helper function to find safe spawn position
             const findSafeSpawnPosition = () => {
@@ -1353,7 +1353,7 @@ async function initGame(): Promise<void> {
         uiControls.show();
         
         // Set random spawn position for local player (avoid buildings)
-        const buildings = cityGenerator.getBuildingData();
+        const buildings = cityGenerator?.getBuildingData() ?? [];
         const findSafeSpawnPosition = () => {
           const maxAttempts = 50;
           for (let attempt = 0; attempt < maxAttempts; attempt++) {
@@ -1454,7 +1454,7 @@ async function initGame(): Promise<void> {
         }, 2000); // 2s delay to wait for fade sequence to complete
         
         // Only host places items on the map
-        if (isHost) {
+        if (isHost && cityGenerator) {
           const buildings = cityGenerator.getBuildingData();
           oniSpawnItem.placeItems(buildings);
           cloakItem.placeItems(buildings);

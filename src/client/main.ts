@@ -609,20 +609,25 @@ async function initGame(): Promise<void> {
           }
         } // End of isHost check for AI physics
         
-        // Update beacon visuals (will be used for Super ONI ability later)
-        beaconVisual.update(gameState.getAllPlayers(), false, localPlayer.id);
-        beaconVisual.animate(deltaTime);
+        // Cache game phase for this frame
+        const gamePhase = gameState.getGamePhase();
+        const isPlaying = gamePhase === 'playing';
         
-        // Update dynamic objects (cars, pedestrians) - only if initialized
-        if (dynamicObjects) {
+        // Update beacon visuals (will be used for Super ONI ability later)
+        // Only update during gameplay to save performance
+        if (isPlaying) {
+          beaconVisual.update(gameState.getAllPlayers(), false, localPlayer.id);
+          beaconVisual.animate(deltaTime);
+        }
+        
+        // Update dynamic objects (cars, pedestrians) - only during gameplay
+        if (dynamicObjects && isPlaying) {
           dynamicObjects.update(deltaTime);
         }
         
-        // Update car system
-        carSystem.update(deltaTime);
-        
-        // Update collision system with car positions (only during gameplay)
-        if (gameState.getGamePhase() === 'playing') {
+        // Update car system - only during gameplay
+        if (isPlaying) {
+          carSystem.update(deltaTime);
           collisionSystem.updateDynamicObjects(carSystem.getDynamicObjects());
         } else {
           // Clear dynamic objects during countdown
@@ -640,7 +645,7 @@ async function initGame(): Promise<void> {
           
           // Check car collision first (for bounce effect) - only during gameplay
           let finalVelocity = physicsResult.velocity;
-          if (gameState.getGamePhase() === 'playing') {
+          if (isPlaying) {
             const carCollision = carSystem.checkCarCollision(
               physicsResult.position,
               physicsResult.velocity

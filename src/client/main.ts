@@ -124,35 +124,21 @@ async function initGame(): Promise<void> {
       // Start in lobby state
       gameState.setGamePhase('lobby');
       
-      // Generate preview city for lobby (will be regenerated with gameId when game starts)
-      const previewSeed = 'lobby-preview-city';
-      let cityGenerator: CityGenerator = new CityGenerator(previewSeed);
-      let city: THREE.Group = cityGenerator.generateCity();
-      gameEngine.addToScene(city);
+      // Don't generate city in lobby for better performance
+      // City will be generated when game starts
+      let cityGenerator: CityGenerator | null = null;
+      let city: THREE.Group | null = null;
       
-      // Generate dynamic objects for preview
-      let dynamicObjects: DynamicObjects = new DynamicObjects();
-      let dynamicGroup: THREE.Group = dynamicObjects.initialize(cityGenerator.getBuildings());
-      gameEngine.addToScene(dynamicGroup);
+      // Don't generate dynamic objects in lobby
+      let dynamicObjects: DynamicObjects | null = null;
+      let dynamicGroup: THREE.Group | null = null;
       
-      // Initialize systems with preview city data
+      // Initialize systems (will be populated when game starts)
       const ladderSystem = new LadderSystem();
-      ladderSystem.registerLadders(dynamicObjects.getLadders());
-      
       const collisionSystem = new CollisionSystem();
-      const buildingData: BuildingData[] = cityGenerator.getBuildingData();
-      collisionSystem.registerBuildings(buildingData);
       
       const playerPhysics = new PlayerPhysics();
-      playerPhysics.registerBuildings(buildingData);
-      
-      // Register river and bridge data
-      const riverData = cityGenerator.getRiverData();
-      if (riverData) {
-        playerPhysics.registerWaterAreas([riverData]);
-      }
-      const bridgeData = cityGenerator.getBridgeData();
-      playerPhysics.registerBridges(bridgeData);
+      // Building, river, and bridge data will be registered when city is generated
       
       // Initialize player camera
       const playerCamera = new PlayerCamera(gameEngine.getCamera(), gameState);

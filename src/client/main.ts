@@ -1098,6 +1098,31 @@ async function initGame(): Promise<void> {
         // Change phase to countdown
         gameState.setGamePhase('countdown');
         
+        // Generate city during countdown (if not already generated)
+        if (!city && currentGameId) {
+          console.log(`[Countdown] Generating city with gameId: ${currentGameId}`);
+          cityGenerator = new CityGenerator(currentGameId);
+          city = cityGenerator.generateCity();
+          gameEngine.addToScene(city);
+          
+          // Update collision system with buildings
+          const buildingData: BuildingData[] = cityGenerator.getBuildingData();
+          collisionSystem.registerBuildings(buildingData);
+          playerPhysics.registerBuildings(buildingData);
+          
+          // Register river and bridge data
+          const riverData = cityGenerator.getRiverData();
+          if (riverData) {
+            playerPhysics.registerWaterAreas([riverData]);
+          }
+          playerPhysics.registerBridges(cityGenerator.getBridgeData());
+          
+          // Register ladders
+          ladderSystem.registerLadders(cityGenerator.getLadders());
+          
+          console.log(`[Countdown] City generated and added to scene`);
+        }
+        
         // Show controls during countdown so mobile players can move
         uiControls.show();
         
@@ -1150,35 +1175,44 @@ async function initGame(): Promise<void> {
         // Clear all remote players from game state
         gameState.clearRemotePlayers();
         
-        // Regenerate city with gameId as seed for consistent map across all players
+        // City should already be generated during countdown
+        // Only generate if missing (shouldn't happen in normal flow)
         const gameId = customEvent.detail?.gameId as string || `game-${Date.now()}`;
-        console.log(`[Game Start] Generating city with gameId: ${gameId}`);
         
-        // Remove old city if exists
-        if (city) {
-          gameEngine.removeFromScene(city);
+        if (!city || !cityGenerator) {
+          console.log(`[Game Start] City not found, generating with gameId: ${gameId}`);
+          
+          // Remove old city if exists
+          if (city) {
+            gameEngine.removeFromScene(city);
+          }
+          
+          // Generate new city with gameId as seed
+          cityGenerator = new CityGenerator(gameId);
+          city = cityGenerator.generateCity();
+          gameEngine.addToScene(city);
+          console.log(`[Game Start] City generated and added to scene`);
+          
+          // Update collision system with new buildings
+          const newBuildingData: BuildingData[] = cityGenerator.getBuildingData();
+          collisionSystem.registerBuildings(newBuildingData);
+          playerPhysics.registerBuildings(newBuildingData);
+          
+          // Register river and bridge data for water physics
+          const newRiverData = cityGenerator.getRiverData();
+          if (newRiverData) {
+            playerPhysics.registerWaterAreas([newRiverData]);
+          }
+          const newBridgeData = cityGenerator.getBridgeData();
+          playerPhysics.registerBridges(newBridgeData);
+          
+          // Update ladder system
+          ladderSystem.registerLadders(cityGenerator.getLadders());
+        } else {
+          console.log(`[Game Start] Using city generated during countdown`);
         }
         
-        // Generate new city with gameId as seed
-        cityGenerator = new CityGenerator(gameId);
-        city = cityGenerator.generateCity();
-        gameEngine.addToScene(city);
-        console.log(`[Game Start] City generated and added to scene`);
-        
-        // Update collision system with new buildings
-        const newBuildingData: BuildingData[] = cityGenerator!.getBuildingData();
-        collisionSystem.registerBuildings(newBuildingData);
-        playerPhysics.registerBuildings(newBuildingData);
-        
-        // Register river and bridge data for water physics
-        const newRiverData = cityGenerator!.getRiverData();
-        if (newRiverData) {
-          playerPhysics.registerWaterAreas([newRiverData]);
-        }
-        const newBridgeData = cityGenerator!.getBridgeData();
-        playerPhysics.registerBridges(newBridgeData);
-        
-        // Regenerate dynamic objects
+        // Generate dynamic objects (cars, pedestrians)
         if (dynamicGroup) {
           gameEngine.removeFromScene(dynamicGroup);
         }
@@ -1186,7 +1220,7 @@ async function initGame(): Promise<void> {
         dynamicGroup = dynamicObjects.initialize(cityGenerator!.getBuildings());
         gameEngine.addToScene(dynamicGroup);
         
-        // Update ladder system
+        // Update ladder system with dynamic objects
         ladderSystem.registerLadders(dynamicObjects.getLadders());
         
         // Show canvas and resume game engine

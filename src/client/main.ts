@@ -1626,34 +1626,40 @@ async function initGame(): Promise<void> {
           canvas.style.display = 'block';
         }
         
-        // Generate city for lobby if not already generated
-        const gameIdForCity = gameId || `game-${Date.now()}`;
-        if (!city) {
-          cityGenerator = new CityGenerator(gameIdForCity);
-          city = cityGenerator.generateCity();
-          gameEngine.addToScene(city);
-          
-          // Update collision system with buildings
-          const buildingData: BuildingData[] = cityGenerator.getBuildingData();
-          collisionSystem.registerBuildings(buildingData);
-          playerPhysics.registerBuildings(buildingData);
-          
-          // Register river and bridge data
-          const riverData = cityGenerator.getRiverData();
-          if (riverData) {
-            playerPhysics.registerWaterAreas([riverData]);
-          }
-          playerPhysics.registerBridges(cityGenerator.getBridgeData());
-          
-          // Register ladders
-          ladderSystem.registerLadders(cityGenerator.getLadders());
-          
-          // Start car system
-          carSystem.start(cityGenerator.getRoadSegments());
-        }
-        
-        // Resume game engine to show scene
+        // Resume game engine first
         gameEngine.resume();
+        
+        // Generate city for lobby if not already generated (with slight delay to ensure initialization)
+        setTimeout(() => {
+          const gameIdForCity = gameId || `game-${Date.now()}`;
+          if (!city) {
+            try {
+              cityGenerator = new CityGenerator(gameIdForCity);
+              city = cityGenerator.generateCity();
+              gameEngine.addToScene(city);
+              
+              // Update collision system with buildings
+              const buildingData = cityGenerator.getBuildingData();
+              collisionSystem.registerBuildings(buildingData);
+              playerPhysics.registerBuildings(buildingData);
+              
+              // Register river and bridge data
+              const riverData = cityGenerator.getRiverData();
+              if (riverData) {
+                playerPhysics.registerWaterAreas([riverData]);
+              }
+              playerPhysics.registerBridges(cityGenerator.getBridgeData());
+              
+              // Register ladders
+              ladderSystem.registerLadders(cityGenerator.getLadders());
+              
+              // Start car system
+              carSystem.start(cityGenerator.getRoadSegments());
+            } catch (error) {
+              console.error('[Lobby] Failed to generate city:', error);
+            }
+          }
+        }, 100);
         
         const { currentPlayers, maxPlayers, isHost: isHostFlag, gameId } = customEvent.detail;
         isHost = isHostFlag;

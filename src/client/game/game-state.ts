@@ -533,8 +533,11 @@ export class GameState {
     const timeRunOut = this.hasTimeRunOut();
     const allOni = this.areAllPlayersOni();
     
+    // Debug log (only when time is running out or all are oni)
     if (timeRunOut || allOni) {
-      // Game should end
+      const allPlayers = this.getAllPlayers();
+      const runnerCount = allPlayers.filter(p => !p.isOni).length;
+      console.log(`[GameState] shouldGameEnd: timeRunOut=${timeRunOut}, allOni=${allOni}, players=${allPlayers.length}, runners=${runnerCount}, elapsed=${this.getElapsedTime()}s`);
     }
     
     return timeRunOut || allOni;

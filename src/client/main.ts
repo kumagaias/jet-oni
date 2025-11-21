@@ -550,7 +550,7 @@ async function initGame(): Promise<void> {
               
               // If collision occurred, apply sliding movement
               let finalVelocity = physicsResult.velocity;
-              let finalPosition = collisionResult.position;
+              const finalPosition = collisionResult.position;
               
               if (collisionResult.collided && collisionResult.normal) {
                 // Apply sliding movement along the wall (same as player)

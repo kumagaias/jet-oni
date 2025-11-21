@@ -353,6 +353,22 @@ async function initGame(): Promise<void> {
       let gameStartTime = 0; // Track game start time for timer sync
       let lastTimerSync = 0; // Track last timer sync time
       
+      // Create ONI overlay once (outside game loop)
+      const oniOverlay = document.createElement('div');
+      oniOverlay.id = 'oni-overlay';
+      oniOverlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        pointer-events: none;
+        z-index: 10;
+        background-color: transparent;
+        transition: background-color 0.3s ease;
+      `;
+      document.body.appendChild(oniOverlay);
+      
       // Setup game loop
       gameEngine.onUpdate((deltaTime: number) => {
         // Get mobile control input and apply to player controller
@@ -378,34 +394,13 @@ async function initGame(): Promise<void> {
         if (gameHasStarted && localPlayer.isOni && !wasOni) {
           // Show toast message when becoming ONI
           toast.show(i18n.t('game.becameOni'), 'warning');
-        }
-        wasOni = localPlayer.isOni;
-        
-        // Update ONI screen overlay (always visible when ONI, fixed to screen)
-        let oniOverlay = document.getElementById('oni-overlay');
-        if (!oniOverlay) {
-          oniOverlay = document.createElement('div');
-          oniOverlay.id = 'oni-overlay';
-          oniOverlay.style.cssText = `
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            pointer-events: none;
-            z-index: 10;
-            background-color: transparent;
-            transition: background-color 0.3s ease;
-          `;
-          document.body.appendChild(oniOverlay);
-        }
-        
-        // Always show red overlay when ONI (fixed to screen, not affected by player movement)
-        if (localPlayer.isOni) {
+          // Update overlay when becoming ONI
           oniOverlay.style.backgroundColor = 'rgba(255, 0, 0, 0.05)';
-        } else {
+        } else if (gameHasStarted && !localPlayer.isOni && wasOni) {
+          // Update overlay when becoming Runner
           oniOverlay.style.backgroundColor = 'transparent';
         }
+        wasOni = localPlayer.isOni;
         
         // Check ONI spawn item collection (ONI only) - spawns 2 AI ONI
         const collectedOniSpawn = oniSpawnItem.checkCollection(localPlayer.position, localPlayer.isOni);

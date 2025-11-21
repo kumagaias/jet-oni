@@ -384,7 +384,18 @@ export class CollisionSystem {
    * Check if a position is inside any building
    */
   public isInsideBuilding(position: Vector3, playerRadius = 0.5): boolean {
+    // Quick spatial filter: only check buildings within reasonable distance
+    const searchRadius = 50; // Only check buildings within 50 units
+    
     for (const building of this.buildings) {
+      // Quick distance check before detailed collision
+      const dx = Math.abs(position.x - building.position.x);
+      const dz = Math.abs(position.z - building.position.z);
+      
+      if (dx > searchRadius || dz > searchRadius) {
+        continue;
+      }
+      
       const minY = building.position.y - building.height / 2;
       const maxY = building.position.y + building.height / 2;
 

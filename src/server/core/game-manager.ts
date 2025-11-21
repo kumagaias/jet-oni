@@ -2,6 +2,7 @@ import { GameState, GameConfig, Player, Vector3, Rotation } from '../../shared/t
 import { GameListItem, GameResults, PlayerResult } from '../../shared/types/api';
 import { StateValidator } from './state-validator';
 import { RedisStorage } from './redis-storage';
+import { assignRandomOni } from './oni-assignment';
 
 /**
  * GameManager handles game session creation, player management, and game state
@@ -128,7 +129,7 @@ export class GameManager {
 
     // If game is full, assign random oni
     if (gameState.players.length === gameState.config.totalPlayers) {
-      this.assignRandomOni(gameState);
+      this.assignRandomOniInternal(gameState);
     }
 
     await this.saveGameState(gameState);
@@ -538,7 +539,7 @@ export class GameManager {
     // This will handle the rules:
     // - 1 human: random assignment
     // - 2+ humans: at least 1 human must be oni
-    this.assignRandomOni(gameState);
+    this.assignRandomOniInternal(gameState);
 
     // Save initial ONI IDs after assignment (for game results calculation)
     gameState.initialOniIds = gameState.players
@@ -637,118 +638,11 @@ export class GameManager {
    * - 2+ human players: At least 1 human must be oni
    * - Formula: 1 oni for every 3 players (rounded down), minimum 1 oni
    */
-  private assignRandomOni(gameState: GameState): void {
-    try {
-      if (!gameState || !gameState.players) {
-        console.error('[GameManager] assignRandomOni: Invalid game state');
-        return;
-      }
-
-      if (gameState.players.length === 0) {
-        console.warn('[GameManager] assignRandomOni: No players to assign ONI');
-        return;
-      }
-
-      // Count human players
-      const humanPlayers = gameState.players.filter(p => !p.isAI);
-      const humanCount = humanPlayers.length;
-      
-      console.log(`[GameManager] assignRandomOni: Total players: ${gameState.players.length}, Human players: ${humanCount}`);
-
-      // Calculate number of oni: 1 oni for every 3 players (rounded down)
-      const oniCount = Math.max(1, Math.floor(gameState.players.length / 3));
-      console.log(`[GameManager] assignRandomOni: Required ONI count: ${oniCount}`);
-
-      // Reset all players to runner
-      gameState.players.forEach((player) => {
-        if (player) {
-          player.isOni = false;
-        }
-      });
-
-      // Special case: Only 1 human player - random assignment
-      if (humanCount === 1) {
-        console.log(`[GameManager] assignRandomOni: Single human player - random assignment`);
-        
-        // Shuffle all players
-        const shuffled = [...gameState.players].sort(() => Math.random() - 0.5);
-        
-        // Select first N players as oni
-        for (let i = 0; i < oniCount && i < shuffled.length; i++) {
-          const selectedPlayer = shuffled[i];
-          if (selectedPlayer) {
-            selectedPlayer.isOni = true;
-            console.log(`[GameManager] assignRandomOni: Assigned ${selectedPlayer.username} (${selectedPlayer.id}) as ONI`);
-          }
-        }
-      } 
-      // 2+ human players: Ensure at least 1 human is oni AND at least 1 human is runner
-      else if (humanCount >= 2) {
-        console.log(`[GameManager] assignRandomOni: Multiple human players - ensuring at least 1 human ONI and 1 human Runner`);
-        
-        // Shuffle human players
-        const shuffledHumans = [...humanPlayers].sort(() => Math.random() - 0.5);
-        
-        // Calculate how many humans should be oni
-        // Must be: at least 1, at most (humanCount - 1) to ensure at least 1 runner
-        const maxHumanOni = Math.min(oniCount, humanCount - 1);
-        const humanOniCount = Math.max(1, maxHumanOni);
-        
-        console.log(`[GameManager] assignRandomOni: Assigning ${humanOniCount} human ONI (max: ${maxHumanOni})`);
-        
-        // Assign humans as oni
-        let assignedOniCount = 0;
-        for (let i = 0; i < humanOniCount && i < shuffledHumans.length; i++) {
-          const selectedPlayer = shuffledHumans[i];
-          if (selectedPlayer) {
-            selectedPlayer.isOni = true;
-            assignedOniCount++;
-            console.log(`[GameManager] assignRandomOni: Assigned human ${selectedPlayer.username} (${selectedPlayer.id}) as ONI`);
-          }
-        }
-        
-        // If we need more oni, assign from AI players only (to preserve human runners)
-        if (assignedOniCount < oniCount) {
-          const aiPlayers = gameState.players.filter(p => p.isAI && !p.isOni);
-          const shuffledAI = [...aiPlayers].sort(() => Math.random() - 0.5);
-          
-          for (let i = 0; i < shuffledAI.length && assignedOniCount < oniCount; i++) {
-            const selectedPlayer = shuffledAI[i];
-            if (selectedPlayer) {
-              selectedPlayer.isOni = true;
-              assignedOniCount++;
-              console.log(`[GameManager] assignRandomOni: Assigned AI ${selectedPlayer.username} (${selectedPlayer.id}) as ONI`);
-            }
-          }
-        }
-        
-        // Log human distribution
-        const humanOni = gameState.players.filter(p => !p.isAI && p.isOni).length;
-        const humanRunner = gameState.players.filter(p => !p.isAI && !p.isOni).length;
-        console.log(`[GameManager] assignRandomOni: Human distribution - ONI: ${humanOni}, Runner: ${humanRunner}`);
-      }
-      // No human players (all AI) - random assignment
-      else {
-        console.log(`[GameManager] assignRandomOni: No human players - random assignment`);
-        
-        // Shuffle all players
-        const shuffled = [...gameState.players].sort(() => Math.random() - 0.5);
-        
-        // Select first N players as oni
-        for (let i = 0; i < oniCount && i < shuffled.length; i++) {
-          const selectedPlayer = shuffled[i];
-          if (selectedPlayer) {
-            selectedPlayer.isOni = true;
-            console.log(`[GameManager] assignRandomOni: Assigned ${selectedPlayer.username} (${selectedPlayer.id}) as ONI`);
-          }
-        }
-      }
-
-      console.log(`[GameManager] assignRandomOni: Completed. ONI players: ${gameState.players.filter(p => p.isOni).length}`);
-    } catch (error) {
-      console.error('[GameManager] assignRandomOni: Unexpected error:', error);
-      throw error;
-    }
+  /**
+   * Assign random ONI to players (using oni-assignment module)
+   */
+  private assignRandomOniInternal(gameState: GameState): void {
+    assignRandomOni(gameState);
   }
 
   /**

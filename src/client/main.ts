@@ -900,8 +900,10 @@ async function initGame(): Promise<void> {
       // Initialize AIAPIClient
       const aiApiClient = new AIAPIClient();
       
-      // Initialize RealtimeSyncManager
-      const realtimeSyncManager = new RealtimeSyncManager();
+      // Initialize RealtimeSyncManager with shorter interpolation for smoother movement
+      const realtimeSyncManager = new RealtimeSyncManager({
+        interpolationDuration: 100, // 100ms interpolation (was 500ms default)
+      });
       
       // Initialize HostMonitor
       const hostMonitor = new HostMonitor(gameApiClient);
@@ -1398,7 +1400,7 @@ async function initGame(): Promise<void> {
                 };
                 
                 // Host: Add AI players to aiPlayerModels
-                // Non-host: Add all players (including AI) to remotePlayerModels
+                // Non-host: Add all non-local players to remotePlayerModels
                 if (isHost && player.isAI) {
                   // Host: Add AI player to game state and aiPlayerModels
                   gameState.updateRemotePlayer(playerWithSpawn);
@@ -1412,8 +1414,9 @@ async function initGame(): Promise<void> {
                     aiPlayerModels.set(player.id, aiModel);
                     console.log(`[Game Start] Created AI model for ${player.id} at (${spawnPosition.x}, ${spawnPosition.y}, ${spawnPosition.z})`);
                   }
-                } else {
-                  // Non-host or human player: Add to remotePlayerModels
+                } else if (!isHost || !player.isAI) {
+                  // Non-host: Add all non-local players to remotePlayerModels
+                  // Host: Add human players (not AI) to remotePlayerModels
                   gameState.updateRemotePlayer(playerWithSpawn);
                   
                   if (!remotePlayerModels.has(player.id)) {
@@ -1423,6 +1426,7 @@ async function initGame(): Promise<void> {
                     remoteModel.setIsOni(player.isOni);
                     gameEngine.addToScene(remoteModel.getModel());
                     remotePlayerModels.set(player.id, remoteModel);
+                    console.log(`[Game Start] Created remote model for ${player.id} (isAI: ${player.isAI}) at (${spawnPosition.x}, ${spawnPosition.y}, ${spawnPosition.z})`);
                   }
                 }
               }

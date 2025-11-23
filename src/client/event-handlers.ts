@@ -227,6 +227,9 @@ export function setupCountdownHandler(
     // Change phase to countdown
     deps.gameState.setGamePhase('countdown');
     
+    // Show controls during countdown (for mobile players)
+    // Note: uiControls is not available in deps, need to add it
+    
     // Generate city during countdown (if not already generated)
     const gameIdForCity = deps.state.currentGameId || `game-${Date.now()}`;
     if (!cityState.city) {

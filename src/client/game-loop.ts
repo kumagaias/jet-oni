@@ -27,6 +27,7 @@ export interface GameLoopState {
 export interface GameLoopCallbacks {
   onGameEnd: () => void;
   onAISync: (aiId: string, aiPlayer: any) => void;
+  onTag?: (taggerId: string, taggedId: string) => void;
 }
 
 /**
@@ -62,8 +63,11 @@ export function createGameLoop(
         systems.aiController.update(deltaTime);
       }
       
-      // Update tag system
-      systems.tagSystem.update();
+      // Update tag system and handle tag events
+      const tagEvent = systems.tagSystem.update();
+      if (tagEvent && callbacks.onTag) {
+        callbacks.onTag(tagEvent.taggerId, tagEvent.taggedId);
+      }
     }
     
     // Apply physics to AI players (host only)

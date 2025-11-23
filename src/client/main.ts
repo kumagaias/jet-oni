@@ -108,6 +108,18 @@ async function initGame(): Promise<void> {
       const uiMenu = new UIMenu(uiManager, i18n, data.username || playerId, gameApiClient, gameEngine);
       const uiCountdown = new UICountdown(i18n);
       
+      // Initialize game UI components
+      const { UIHud } = await import('./ui/ui-hud');
+      const { UIControls } = await import('./ui/ui-controls');
+      const { UIResults } = await import('./ui/ui-results');
+      
+      const uiHud = new UIHud(i18n);
+      const uiControls = new UIControls();
+      const uiResults = new UIResults(i18n);
+      
+      uiHud.init();
+      uiControls.init();
+      
       // Setup debug mode
       const debugInfo = createDebugInfo();
       const debugMode = setupDebugMode(debugInfo);
@@ -141,6 +153,19 @@ async function initGame(): Promise<void> {
               });
             }
           },
+          onTag: (taggerId: string, taggedId: string) => {
+            // Record tag time for host
+            if (gameLoopState.isHost) {
+              gameLoopState.taggedTimeMap.set(taggedId, Date.now());
+            }
+            
+            // Show toast notification
+            const tagger = gameState.getPlayer(taggerId);
+            const tagged = gameState.getPlayer(taggedId);
+            if (tagger && tagged) {
+              toast.show(`${tagged.username} was tagged by ${tagger.username}!`, 'info', 2000);
+            }
+          },
         }
       );
       
@@ -163,17 +188,56 @@ async function initGame(): Promise<void> {
       setupLobbyHandler(eventDeps, cityState);
       setupCountdownHandler(eventDeps, cityState);
       
+      // Show controls when countdown starts
+      window.addEventListener('gameStartCountdown', (() => {
+        uiControls.show();
+      }) as EventListener);
+      
       // Setup game start handler (temporary - should be in event-handlers.ts)
       window.addEventListener('gameStart', (() => {
         gameLoopState.gameStarted = true;
         gameLoopState.gameHasStarted = true;
         gameState.setGamePhase('playing');
+        
+        // Show game UI
+        uiHud.show();
+        uiControls.show();
+        
+        // Set game start time
+        gameLoopState.gameStartTime = Date.now();
       }) as EventListener);
       
       // Setup game end handler
-      window.addEventListener('gameEnd', (() => {
+      window.addEventListener('gameEnd', (async () => {
         gameState.setGamePhase('ended');
         gameLoopState.gameStarted = false;
+        
+        // Hide HUD and controls
+        uiHud.hide();
+        uiControls.hide();
+        
+        // Fetch game results from server
+        if (gameLoopState.currentGameId) {
+          try {
+            const results = await gameApiClient.getGameResults(gameLoopState.currentGameId);
+            if (results) {
+              // Show results screen
+              uiResults.show(results);
+              
+              // Setup back to menu button
+              uiResults.setOnBackToMenu(() => {
+                uiResults.hide();
+                window.dispatchEvent(new Event('returnToMenu'));
+              });
+            }
+          } catch (error) {
+            console.error('[Game End] Failed to fetch results:', error);
+            // Show menu anyway
+            setTimeout(() => {
+              window.dispatchEvent(new Event('returnToMenu'));
+            }, 3000);
+          }
+        }
       }) as EventListener);
       
       // Setup return to menu handler

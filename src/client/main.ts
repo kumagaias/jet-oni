@@ -170,6 +170,96 @@ async function initGame(): Promise<void> {
         gameState.setGamePhase('playing');
       }) as EventListener);
       
+      // Setup game end handler
+      window.addEventListener('gameEnd', (() => {
+        gameState.setGamePhase('ended');
+        gameLoopState.gameStarted = false;
+      }) as EventListener);
+      
+      // Setup return to menu handler
+      window.addEventListener('returnToMenu', (() => {
+        // Clean up and return to title screen
+        gameState.setGamePhase('lobby');
+        gameLoopState.gameStarted = false;
+        gameLoopState.gameHasStarted = false;
+        
+        // Disconnect from Realtime
+        if (gameLoopState.currentGameId) {
+          void realtimeSyncManager.disconnect();
+          gameLoopState.currentGameId = null;
+        }
+        
+        // Show title screen
+        uiMenu.showTitleScreen();
+      }) as EventListener);
+      
+      // Setup Realtime event handlers
+      realtimeSyncManager.onPlayerUpdate(async (update) => {
+        // Update remote player in game state
+        gameState.updateRemotePlayer({
+          id: update.playerId,
+          username: update.playerId,
+          isOni: update.isOni,
+          isAI: false,
+          position: update.position,
+          velocity: update.velocity,
+          rotation: update.rotation,
+          fuel: update.fuel,
+          survivedTime: 0,
+          wasTagged: false,
+          tagCount: 0,
+          isOnSurface: update.isOnSurface,
+          isDashing: update.isDashing,
+          isJetpacking: update.isJetpacking,
+          beaconCooldown: 0,
+        });
+        
+        // Create or update player model
+        if (!collections.remotePlayerModels.has(update.playerId)) {
+          const { PlayerModel } = await import('./player/player-model');
+          const model = new PlayerModel(gameEngine.getScene(), update.playerId, false);
+          model.setPosition(update.position);
+          model.setRotation(update.rotation.yaw);
+          model.setOniState(update.isOni);
+          gameEngine.addToScene(model.getModel());
+          collections.remotePlayerModels.set(update.playerId, model);
+        }
+      });
+      
+      realtimeSyncManager.onPlayerDisconnect((playerId) => {
+        // Remove player model
+        const model = collections.remotePlayerModels.get(playerId);
+        if (model) {
+          gameEngine.removeFromScene(model.getModel());
+          collections.remotePlayerModels.delete(playerId);
+        }
+        
+        // Remove from game state
+        gameState.removePlayer(playerId);
+      });
+      
+      realtimeSyncManager.onGameEnd(() => {
+        window.dispatchEvent(new Event('gameEnd'));
+      });
+      
+      // Send local player updates to Realtime (every 50ms)
+      setInterval(() => {
+        if (gameState.isPlaying() && realtimeSyncManager.isConnected()) {
+          const localPlayer = gameState.getLocalPlayer();
+          realtimeSyncManager.sendPlayerUpdate({
+            playerId: localPlayer.id,
+            position: localPlayer.position,
+            velocity: localPlayer.velocity,
+            rotation: localPlayer.rotation,
+            fuel: localPlayer.fuel,
+            isOni: localPlayer.isOni,
+            isDashing: localPlayer.isDashing,
+            isJetpacking: localPlayer.isJetpacking,
+            isOnSurface: localPlayer.isOnSurface,
+          });
+        }
+      }, 50);
+      
       // Start game engine with game loop
       gameEngine.start(gameLoop);
       

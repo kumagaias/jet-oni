@@ -111,13 +111,13 @@ export function setupLobbyHandler(
           if (riverData) {
             deps.systems.playerPhysics.registerWaterAreas([riverData]);
           }
-          deps.systems.playerPhysics.registerBridges(cityState.cityGenerator.getBridgeData());
+          const bridgeData = cityState.cityGenerator.getBridgeData();
+          if (bridgeData && bridgeData.length > 0) {
+            deps.systems.playerPhysics.registerBridges(bridgeData);
+          }
           
-          // Register ladders
-          deps.systems.ladderSystem.registerLadders(cityState.cityGenerator.getLadders());
-          
-          // Start car system
-          deps.systems.carSystem.start(cityState.cityGenerator.getRoadSegments());
+          // Note: Ladders and road segments are not yet implemented in CityGenerator
+          // TODO: Add getLadders() and getRoadSegments() methods to CityGenerator
         } catch (error) {
           console.error('[Lobby] Failed to generate city:', error);
         }
@@ -244,13 +244,13 @@ export function setupCountdownHandler(
       if (riverData) {
         deps.systems.playerPhysics.registerWaterAreas([riverData]);
       }
-      deps.systems.playerPhysics.registerBridges(cityState.cityGenerator.getBridgeData());
+      const bridgeData = cityState.cityGenerator.getBridgeData();
+      if (bridgeData && bridgeData.length > 0) {
+        deps.systems.playerPhysics.registerBridges(bridgeData);
+      }
       
-      // Register ladders
-      deps.systems.ladderSystem.registerLadders(cityState.cityGenerator.getLadders());
-      
-      // Start car system
-      deps.systems.carSystem.start(cityState.cityGenerator.getRoadSegments());
+      // Note: Ladders and road segments are not yet implemented in CityGenerator
+      // TODO: Add getLadders() and getRoadSegments() methods to CityGenerator
     }
     
     // Start countdown

@@ -163,6 +163,13 @@ async function initGame(): Promise<void> {
       setupLobbyHandler(eventDeps, cityState);
       setupCountdownHandler(eventDeps, cityState);
       
+      // Setup game start handler (temporary - should be in event-handlers.ts)
+      window.addEventListener('gameStart', (() => {
+        gameLoopState.gameStarted = true;
+        gameLoopState.gameHasStarted = true;
+        gameState.setGamePhase('playing');
+      }) as EventListener);
+      
       // Start game engine with game loop
       gameEngine.start(gameLoop);
       

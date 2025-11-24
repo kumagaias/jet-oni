@@ -113,7 +113,7 @@ async function initGame(): Promise<void> {
       const { UIControls } = await import('./ui/ui-controls');
       const { UIResults } = await import('./ui/ui-results');
       
-      const uiHud = new UIHud(i18n);
+      const uiHud = new UIHud(gameState, i18n);
       const uiControls = new UIControls();
       const uiResults = new UIResults(i18n);
       

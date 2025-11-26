@@ -173,6 +173,7 @@ export function setupCountdownHandler(
   cityState: CityState
 ): void {
   window.addEventListener('gameStartCountdown', ((e: Event) => {
+    console.log('[Countdown Handler] gameStartCountdown event received');
     const customEvent = e as CustomEvent;
     
     // Reset game state for new game
@@ -258,13 +259,19 @@ export function setupCountdownHandler(
     
     // Start countdown
     const startTimestamp = customEvent.detail?.startTimestamp || Date.now();
-    deps.uiCountdown.start(10, async () => {
-      window.dispatchEvent(new CustomEvent('gameStart', {
-        detail: {
-          config: deps.gameState.getGameConfig(),
-          gameId: deps.state.currentGameId,
-        },
-      }));
+    deps.uiCountdown.start(10, () => {
+      console.log('[Countdown Handler] Dispatching gameStart event');
+      try {
+        window.dispatchEvent(new CustomEvent('gameStart', {
+          detail: {
+            config: deps.gameState.getGameConfig(),
+            gameId: deps.state.currentGameId,
+          },
+        }));
+        console.log('[Countdown Handler] gameStart event dispatched');
+      } catch (error) {
+        console.error('[Countdown Handler] Error dispatching gameStart:', error);
+      }
     }, startTimestamp);
   }) as EventListener);
 }

@@ -89,6 +89,15 @@ export class TagRangeVisual {
   }
 
   /**
+   * Hide all tag range visuals
+   */
+  public hide(): void {
+    for (const [, sphere] of this.rangeSpheres) {
+      sphere.visible = false;
+    }
+  }
+
+  /**
    * Clean up all visuals
    */
   public dispose(): void {

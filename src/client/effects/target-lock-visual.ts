@@ -469,6 +469,14 @@ export class TargetLockVisual {
   }
 
   /**
+   * Public method to clear all indicators (called from game loop)
+   */
+  public clear(): void {
+    this.clearAll();
+    this.lockedTargetIds.clear();
+  }
+
+  /**
    * Reset cooldown (useful when game restarts)
    */
   public resetCooldown(): void {

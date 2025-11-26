@@ -1,5 +1,7 @@
 # JetOni - 3D Multiplayer Tag Game on Reddit
 
+> **🏆 Hackathon Submission**: This project was submitted to the [Reddit Devvit Hackathon](https://devpost.com/software/jetoni)
+
 A 3D multiplayer tag game built with Three.js and Devvit, running directly within Reddit posts.
 
 ## Overview

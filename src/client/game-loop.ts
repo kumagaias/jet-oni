@@ -8,6 +8,7 @@ import { GameEngine } from './game/game-engine';
 import { GameState } from './game/game-state';
 import { PlayerPhysics } from './player/player-physics';
 import { CollisionSystem } from './environment/collision-system';
+import { Player } from '../shared/types/game';
 import { PlayerModel } from './player/player-model';
 import { GameSystems, GameCollections } from './game-initializer';
 
@@ -26,8 +27,9 @@ export interface GameLoopState {
 
 export interface GameLoopCallbacks {
   onGameEnd: () => void;
-  onAISync: (aiId: string, aiPlayer: any) => void;
+  onAISync: (aiId: string, aiPlayer: Player) => void;
   onTag?: (taggerId: string, taggedId: string) => void;
+  onUIUpdate?: (deltaTime: number) => void;
 }
 
 /**
@@ -45,9 +47,75 @@ export function createGameLoop(
   const CLOAK_DURATION = 60; // seconds
   const AI_SYNC_INTERVAL = 200; // Send AI updates every 200ms
   
+  let frameCount = 0;
+  
   return (deltaTime: number) => {
+    frameCount++;
+    
+    // Log every 300 frames (5 seconds at 60fps)
+    if (frameCount % 300 === 0) {
+      console.log('[Game Loop]', {
+        frame: frameCount,
+        gameStarted: state.gameStarted,
+        phase: gameState.getGamePhase(),
+        isPlaying: gameState.isPlaying()
+      });
+    }
+    
+    // Apply UI controls button state to player controller (for mobile/touch controls)
+    if (collections.uiControls) {
+      const buttonState = collections.uiControls.getButtonState();
+      systems.playerController.setMobileInputState({
+        forward: buttonState.moveForward,
+        backward: buttonState.moveBackward,
+        left: buttonState.moveLeft,
+        right: buttonState.moveRight,
+        jump: buttonState.jump,
+        dash: buttonState.dash,
+        jetpack: buttonState.jetpack,
+        beacon: buttonState.beacon,
+      });
+    }
+    
     // Update player controller
     systems.playerController.update(deltaTime);
+    
+    // Apply physics to local player
+    const localPlayer = gameState.getLocalPlayer();
+    const physicsResult = systems.playerPhysics.applyPhysics(
+      localPlayer.position,
+      localPlayer.velocity,
+      deltaTime,
+      localPlayer.isJetpacking
+    );
+    
+    // Register car dynamic objects for collision detection
+    const carDynamicObjects = systems.carSystem.getDynamicObjects();
+    systems.collisionSystem.registerDynamicObjects(carDynamicObjects);
+    
+    // Apply collision detection
+    const collisionResult = systems.collisionSystem.checkCollision(
+      localPlayer.position,
+      physicsResult.position,
+      0.5 // Player radius
+    );
+    
+    // If collision occurred, apply sliding movement
+    let finalVelocity = physicsResult.velocity;
+    const finalPosition = collisionResult.position;
+    
+    if (collisionResult.collided && collisionResult.normal) {
+      // Apply sliding movement along the wall
+      finalVelocity = systems.collisionSystem.applySlidingMovement(
+        physicsResult.velocity,
+        collisionResult.normal
+      );
+    }
+    
+    // Update local player state
+    gameState.setLocalPlayerPosition(finalPosition);
+    gameState.setLocalPlayerVelocity(finalVelocity);
+    gameState.setLocalPlayerOnSurface(physicsResult.isOnSurface);
     
     // Update player camera
     systems.playerCamera.update();
@@ -96,16 +164,32 @@ export function createGameLoop(
     // Update remote player models
     updateRemotePlayerModels(collections.remotePlayerModels, gameState);
     
-    // Update visual effects
-    updateVisualEffects(systems, gameState, collections);
+    // Update car system
+    systems.carSystem.update(deltaTime);
     
-    // Check if game should end (host only, once per second)
-    if (state.isHost && gameState.isPlaying()) {
+    // Update visual effects
+    updateVisualEffects(systems, gameState, collections, deltaTime);
+    
+    // Update UI
+    if (callbacks.onUIUpdate) {
+      callbacks.onUIUpdate(deltaTime);
+    }
+    
+    // Check if game should end (once per second)
+    // Note: In multiplayer, only host checks. In solo play, always check.
+    if (gameState.isPlaying()) {
       const now = Date.now();
       if (now - state.lastGameEndCheck > 1000) {
         state.lastGameEndCheck = now;
         if (gameState.shouldGameEnd()) {
-          callbacks.onGameEnd();
+          console.log('[Game Loop] Game should end. isHost:', state.isHost, 'currentGameId:', state.currentGameId);
+          // Only trigger game end if host or solo play
+          if (state.isHost || !state.currentGameId) {
+            console.log('[Game Loop] Calling onGameEnd callback');
+            callbacks.onGameEnd();
+          } else {
+            console.log('[Game Loop] Not calling onGameEnd (not host and has gameId)');
+          }
         }
       }
     }
@@ -175,7 +259,7 @@ function syncAIPlayers(
   aiPlayerModels: Map<string, PlayerModel>,
   gameState: GameState,
   aiLastSyncTime: Map<string, number>,
-  onAISync: (aiId: string, aiPlayer: any) => void,
+  onAISync: (aiId: string, aiPlayer: Player) => void,
   syncInterval: number
 ): void {
   const now = Date.now();
@@ -216,20 +300,21 @@ function updateRemotePlayerModels(
 function updateVisualEffects(
   systems: GameSystems,
   gameState: GameState,
-  collections: GameCollections
+  collections: GameCollections,
+  deltaTime: number = 0.016
 ): void {
   const localPlayer = gameState.getLocalPlayer();
   
   // Update particle system
-  systems.particleSystem.update();
+  const allPlayers = gameState.getAllPlayers();
+  systems.particleSystem.update(deltaTime, allPlayers);
   
   // Update visual indicators
-  const allPlayers = gameState.getAllPlayers();
   systems.visualIndicators.update(allPlayers, localPlayer.id);
   
   // Update tag range visual (ONI only)
   if (localPlayer.isOni) {
-    systems.tagRangeVisual.update(localPlayer.position);
+    systems.tagRangeVisual.update(allPlayers);
   } else {
     systems.tagRangeVisual.hide();
   }
@@ -249,8 +334,5 @@ function updateVisualEffects(
     systems.jetpackEffect.hide();
   }
   
-  // Emit particles for all players
-  for (const player of allPlayers) {
-    systems.particleSystem.emitPlayerParticles(player);
-  }
+  // Particle emission is handled in update() method
 }

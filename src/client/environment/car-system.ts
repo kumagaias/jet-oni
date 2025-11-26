@@ -185,10 +185,22 @@ export class CarSystem {
     };
   }
 
+  private lastLogTime = 0;
+  
   /**
    * Update all cars
    */
   public update(deltaTime: number): void {
+    // Debug log (throttled to once per 5 seconds)
+    const now = Date.now();
+    if (now - this.lastLogTime > 5000 && this.cars.length > 0) {
+      const firstCar = this.cars[0];
+      if (firstCar) {
+        console.log('[CarSystem] deltaTime:', deltaTime.toFixed(4), 'speed:', firstCar.speed.toFixed(2), 'movement:', (firstCar.speed * deltaTime).toFixed(4));
+      }
+      this.lastLogTime = now;
+    }
+    
     const carsToRespawn: CarData[] = [];
     
     for (const car of this.cars) {

@@ -19,6 +19,7 @@ import { en } from './i18n/translations/en';
 import { jp } from './i18n/translations/jp';
 import { InitResponse } from '../shared/types/api';
 import { MAX_FUEL } from '../shared/constants';
+import { Player } from '../shared/types/game';
 import {
   initializeGameSystems,
   initializeCollections,
@@ -28,11 +29,13 @@ import {
 import { createGameLoop, GameLoopState } from './game-loop';
 import { setupLobbyHandler, setupCountdownHandler, CityState } from './event-handlers';
 
-// Initialize i18n system
+// Initialize i18n system with translations
 const translations = { en, jp };
 const i18n = new I18n(translations);
 
-// Initialize UI manager
+
+
+// Initialize UI manager for game interface
 const uiManager = new UIManager();
 
 // Get canvas element
@@ -71,10 +74,33 @@ async function initGame(): Promise<void> {
       gameState.setGamePhase('lobby');
       gameState.setLocalPlayerFuel(MAX_FUEL);
       
-      // Initialize systems
-      const toast = new ToastNotification();
+      // Initialize toast notification system for game messages
+      const toast = new ToastNotification(i18n);
+      if (!toast.init) {
+        throw new Error('ToastNotification.init is not defined');
+      }
+      toast.init();
+      
+      // Initialize game systems
       const systems = await initializeGameSystems(gameEngine, gameState, toast);
       const collections = initializeCollections();
+      
+      // Initialize UI components first (before collections)
+      const { UIHud } = await import('./ui/ui-hud');
+      const { UIControls } = await import('./ui/ui-controls');
+      const { UIResults } = await import('./ui/ui-results');
+      const { UIMinimap } = await import('./ui/ui-minimap');
+      
+      const uiHud = new UIHud(gameState, i18n);
+      const uiControls = new UIControls(gameState, i18n);
+      const uiResults = new UIResults(i18n);
+      const uiMinimap = new UIMinimap(gameState);
+      
+      uiHud.init();
+      uiControls.init();
+      
+      // Add uiControls to collections
+      collections.uiControls = uiControls;
       
       // Initialize city state
       const cityState: CityState = {
@@ -108,18 +134,6 @@ async function initGame(): Promise<void> {
       const uiMenu = new UIMenu(uiManager, i18n, data.username || playerId, gameApiClient, gameEngine);
       const uiCountdown = new UICountdown(i18n);
       
-      // Initialize game UI components
-      const { UIHud } = await import('./ui/ui-hud');
-      const { UIControls } = await import('./ui/ui-controls');
-      const { UIResults } = await import('./ui/ui-results');
-      
-      const uiHud = new UIHud(gameState, i18n);
-      const uiControls = new UIControls();
-      const uiResults = new UIResults(i18n);
-      
-      uiHud.init();
-      uiControls.init();
-      
       // Setup debug mode
       const debugInfo = createDebugInfo();
       const debugMode = setupDebugMode(debugInfo);
@@ -138,7 +152,7 @@ async function initGame(): Promise<void> {
             }
             window.dispatchEvent(new Event('gameEnd'));
           },
-          onAISync: (aiId: string, aiPlayer: any) => {
+          onAISync: (aiId: string, aiPlayer: Player) => {
             if (realtimeSyncManager.isConnected()) {
               realtimeSyncManager.sendPlayerUpdate({
                 playerId: aiId,
@@ -164,6 +178,42 @@ async function initGame(): Promise<void> {
             const tagged = gameState.getPlayer(taggedId);
             if (tagger && tagged) {
               toast.show(`${tagged.username} was tagged by ${tagger.username}!`, 'info', 2000);
+            }
+          },
+          onUIUpdate: (deltaTime: number) => {
+            // Update HUD with beacon cooldown and cloak timer
+            const localPlayer = gameState.getLocalPlayer();
+            uiHud.update(localPlayer.beaconCooldown, 0);
+            
+            // Update controls (shows/hides buttons based on role)
+            uiControls.update();
+            
+            // Update minimap (F1)
+            uiMinimap.update();
+            
+            // Update F2 debug info
+            if (debugMode.isDebugMode()) {
+              const allPlayers = gameState.getAllPlayers();
+              const oniPlayers = allPlayers.filter(p => p.isOni);
+              const aiPlayers = allPlayers.filter(p => p.isAI);
+              
+              const debugText = [
+                `Position: (${localPlayer.position.x.toFixed(1)}, ${localPlayer.position.y.toFixed(1)}, ${localPlayer.position.z.toFixed(1)})`,
+                `Velocity: (${localPlayer.velocity.x.toFixed(2)}, ${localPlayer.velocity.y.toFixed(2)}, ${localPlayer.velocity.z.toFixed(2)})`,
+                `Fuel: ${Math.round(localPlayer.fuel)}`,
+                `ONI: ${localPlayer.isOni}`,
+                `Players: ${allPlayers.length} (ONI: ${oniPlayers.length}, AI: ${aiPlayers.length})`,
+                `Phase: ${gameState.getGamePhase()}`,
+              ];
+              
+              if (gameState.isPlaying()) {
+                const remaining = gameState.getRemainingTime();
+                const minutes = Math.floor(remaining / 60);
+                const seconds = Math.floor(remaining % 60);
+                debugText.push(`Time: ${minutes}:${seconds.toString().padStart(2, '0')}`);
+              }
+              
+              debugInfo.innerHTML = debugText.join('<br>');
             }
           },
         }
@@ -195,20 +245,27 @@ async function initGame(): Promise<void> {
       
       // Setup game start handler (temporary - should be in event-handlers.ts)
       window.addEventListener('gameStart', (() => {
+        console.log('[Game Start] Event received');
         gameLoopState.gameStarted = true;
         gameLoopState.gameHasStarted = true;
         gameState.setGamePhase('playing');
+        console.log('[Game Start] Game phase set to playing');
         
         // Show game UI
         uiHud.show();
         uiControls.show();
+        console.log('[Game Start] UI shown');
         
         // Set game start time
-        gameLoopState.gameStartTime = Date.now();
+        const startTime = Date.now();
+        gameLoopState.gameStartTime = startTime;
+        gameState.setGameStartTime(startTime);
+        console.log('[Game Start] Game started at', startTime);
       }) as EventListener);
       
       // Setup game end handler
       window.addEventListener('gameEnd', (async () => {
+        console.log('[Game End] Event received, currentGameId:', gameLoopState.currentGameId);
         gameState.setGamePhase('ended');
         gameLoopState.gameStarted = false;
         
@@ -219,16 +276,21 @@ async function initGame(): Promise<void> {
         // Fetch game results from server
         if (gameLoopState.currentGameId) {
           try {
-            const results = await gameApiClient.getGameResults(gameLoopState.currentGameId);
-            if (results) {
+            console.log('[Game End] Fetching results from server...');
+            const response = await gameApiClient.endGame(gameLoopState.currentGameId);
+            console.log('[Game End] Server response:', response);
+            if (response.success && response.results) {
+              console.log('[Game End] Showing results screen');
               // Show results screen
-              uiResults.show(results);
+              uiResults.show(response.results);
               
               // Setup back to menu button
               uiResults.setOnBackToMenu(() => {
                 uiResults.hide();
                 window.dispatchEvent(new Event('returnToMenu'));
               });
+            } else {
+              console.warn('[Game End] No results in response');
             }
           } catch (error) {
             console.error('[Game End] Failed to fetch results:', error);
@@ -237,6 +299,8 @@ async function initGame(): Promise<void> {
               window.dispatchEvent(new Event('returnToMenu'));
             }, 3000);
           }
+        } else {
+          console.warn('[Game End] No currentGameId, cannot fetch results');
         }
       }) as EventListener);
       
@@ -324,8 +388,11 @@ async function initGame(): Promise<void> {
         }
       }, 50);
       
-      // Start game engine with game loop
-      gameEngine.start(gameLoop);
+      // Register game loop callback
+      gameEngine.onUpdate(gameLoop);
+      
+      // Start game engine
+      gameEngine.start();
       
       // Show title screen
       uiMenu.showTitleScreen();

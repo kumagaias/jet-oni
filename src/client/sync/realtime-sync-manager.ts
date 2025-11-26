@@ -379,6 +379,12 @@ export class RealtimeSyncManager {
       if (data.playerId !== this.playerId) {
         window.dispatchEvent(new Event('gameEnd'));
       }
+      // Call registered callbacks
+      if (this.gameEndCallbacks) {
+        for (const callback of this.gameEndCallbacks) {
+          callback();
+        }
+      }
       return;
     }
 
@@ -543,6 +549,55 @@ export class RealtimeSyncManager {
     this.disconnectCallbacks.push(callback);
   }
 
+  private gameEndCallbacks: Array<() => void> = [];
+
+  /**
+   * Register callback for game end
+   */
+  onGameEnd(callback: () => void): void {
+    this.gameEndCallbacks.push(callback);
+  }
+
+  /**
+   * Send player state update
+   */
+  sendPlayerUpdate(update: PlayerStateUpdate & { playerId: string }): void {
+    if (!this.isRunning || this.connectionState !== 'connected') {
+      return;
+    }
+
+    const now = Date.now();
+    
+    // Throttle updates to avoid rate limits
+    if (now - this.lastSendTime < this.throttleInterval) {
+      return;
+    }
+
+    this.lastSendTime = now;
+
+    const message: RealtimeMessage = {
+      type: 'player-update',
+      playerId: update.playerId,
+      position: update.position,
+      velocity: update.velocity,
+      rotation: update.rotation,
+      fuel: update.fuel,
+      isOni: update.isOni,
+      isDashing: update.isDashing,
+      isJetpacking: update.isJetpacking,
+      isOnSurface: update.isOnSurface,
+      beaconCooldown: update.beaconCooldown,
+      survivedTime: update.survivedTime,
+      wasTagged: update.wasTagged,
+      isCloaked: update.isCloaked,
+      isAI: update.isAI,
+      timestamp: now,
+    };
+
+    this.lastSentState = update;
+    this.sendViaServer(message, 'player-update', true);
+  }
+
   /**
    * Register callback for connection established
    */
@@ -651,8 +706,32 @@ export class RealtimeSyncManager {
    */
   private notifyCallbacks(): void {
     const players = this.getRemotePlayers();
+    
+    // Notify array-based callbacks
     for (const callback of this.updateCallbacks) {
       callback(players);
+    }
+    
+    // Notify individual player callbacks
+    for (const player of players) {
+      for (const callback of this.playerUpdateCallbacks) {
+        callback({
+          playerId: player.id,
+          position: player.position,
+          velocity: player.velocity,
+          rotation: player.rotation,
+          fuel: player.fuel,
+          isOni: player.isOni,
+          isDashing: player.isDashing,
+          isJetpacking: player.isJetpacking,
+          isOnSurface: player.isOnSurface,
+          beaconCooldown: player.beaconCooldown,
+          survivedTime: player.survivedTime,
+          wasTagged: player.wasTagged,
+          isCloaked: player.isCloaked,
+          isAI: player.isAI,
+        });
+      }
     }
   }
 
@@ -773,6 +852,15 @@ export class RealtimeSyncManager {
 
     // Send via server API (silently fail if server is down)
     this.sendViaServer(message, 'items-sync', true);
+  }
+
+  private playerUpdateCallbacks: Array<(update: PlayerStateUpdate & { playerId: string }) => void> = [];
+
+  /**
+   * Register callback for individual player updates
+   */
+  onPlayerUpdate(callback: (update: PlayerStateUpdate & { playerId: string }) => void): void {
+    this.playerUpdateCallbacks.push(callback);
   }
 
   /**

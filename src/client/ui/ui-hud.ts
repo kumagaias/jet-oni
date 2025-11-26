@@ -255,6 +255,9 @@ export class UIHud {
     this.hudContainer.appendChild(this.beaconElement);
     this.hudContainer.appendChild(this.cloakTimerElement);
     document.body.appendChild(this.hudContainer);
+    
+    // Hide HUD initially (will be shown when game starts)
+    this.hudContainer.style.display = 'none';
   }
 
   /**
@@ -725,6 +728,14 @@ export class UIHud {
       this.hudContainer.parentNode.removeChild(this.hudContainer);
     }
     this.createHudElements();
+  }
+
+  /**
+   * Initialize the HUD (no-op, HUD is created in constructor)
+   */
+  public init(): void {
+    // HUD elements are already created in constructor
+    // This method exists for consistency with other UI components
   }
 
   /**

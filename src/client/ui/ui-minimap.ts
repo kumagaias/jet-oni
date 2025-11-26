@@ -1,60 +1,62 @@
 import { GameState } from '../game/game-state';
-import { MAP_SIZE } from '../../shared/constants';
 
 /**
- * UIMinimap displays a minimap showing all player positions
- * (Development mode only)
+ * UIMinimap displays a top-down minimap of the game world
+ * Toggled with F1 key in dev environment
  */
 export class UIMinimap {
-  private container: HTMLElement | null = null;
-  private canvas: HTMLCanvasElement | null = null;
-  private ctx: CanvasRenderingContext2D | null = null;
+  private container: HTMLCanvasElement | null = null;
+  private isVisible = false;
   private gameState: GameState;
-  private isVisible: boolean = false;
-  private mapSize: number = 200; // Minimap size in pixels
+  private ctx: CanvasRenderingContext2D | null = null;
+  private readonly MINIMAP_SIZE = 200; // pixels
+  private readonly WORLD_SIZE = 400; // game units
+  private readonly SCALE = this.MINIMAP_SIZE / this.WORLD_SIZE;
 
   constructor(gameState: GameState) {
     this.gameState = gameState;
+    this.createMinimapCanvas();
+    this.setupKeyListener();
   }
 
   /**
-   * Create minimap UI elements
+   * Create minimap canvas element
    */
-  public create(): void {
-    // Container
-    this.container = document.createElement('div');
-    this.container.id = 'minimap';
+  private createMinimapCanvas(): void {
+    this.container = document.createElement('canvas');
+    this.container.id = 'minimap-canvas';
+    this.container.width = this.MINIMAP_SIZE;
+    this.container.height = this.MINIMAP_SIZE;
     this.container.style.cssText = `
       position: fixed;
-      top: 120px;
+      bottom: 20px;
       right: 20px;
-      width: ${this.mapSize}px;
-      height: ${this.mapSize}px;
-      background: rgba(0, 0, 0, 0.7);
-      border: 2px solid #4a90e2;
-      border-radius: 5px;
+      background-color: rgba(0, 0, 0, 0.7);
+      border: 2px solid #00ff00;
+      border-radius: 8px;
+      z-index: 1000;
       display: none;
-      z-index: 900;
-      padding: 5px;
     `;
-
-    // Canvas
-    this.canvas = document.createElement('canvas');
-    this.canvas.width = this.mapSize;
-    this.canvas.height = this.mapSize;
-    this.canvas.style.cssText = `
-      width: 100%;
-      height: 100%;
-    `;
-
-    this.ctx = this.canvas.getContext('2d');
-    if (!this.ctx) {
-      console.error('Failed to get canvas context for minimap');
-      return;
-    }
-
-    this.container.appendChild(this.canvas);
     document.body.appendChild(this.container);
+    this.ctx = this.container.getContext('2d');
+  }
+
+  /**
+   * Setup F1 key listener to toggle minimap (dev environment only)
+   */
+  private setupKeyListener(): void {
+    window.addEventListener('keydown', (event: KeyboardEvent) => {
+      // Check if in dev environment
+      const url = window.location.href.toLowerCase();
+      const isDevEnvironment = url.includes('jet_oni_dev') || 
+                               url.includes('localhost') ||
+                               url.includes('playtest');
+      
+      if (event.key === 'F1' && isDevEnvironment) {
+        event.preventDefault();
+        this.toggle();
+      }
+    });
   }
 
   /**
@@ -68,119 +70,101 @@ export class UIMinimap {
   }
 
   /**
-   * Show minimap
-   */
-  public show(): void {
-    this.isVisible = true;
-    if (this.container) {
-      this.container.style.display = 'block';
-    }
-  }
-
-  /**
-   * Hide minimap
-   */
-  public hide(): void {
-    this.isVisible = false;
-    if (this.container) {
-      this.container.style.display = 'none';
-    }
-  }
-
-  /**
    * Update minimap display
    */
   public update(): void {
-    if (!this.isVisible || !this.ctx || !this.canvas) {
-      return;
-    }
+    if (!this.isVisible || !this.ctx || !this.container) return;
 
     const ctx = this.ctx;
-    const size = this.mapSize;
+    const size = this.MINIMAP_SIZE;
 
     // Clear canvas
-    ctx.clearRect(0, 0, size, size);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+    ctx.fillRect(0, 0, size, size);
 
-    // Draw background grid
+    // Draw grid
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
     ctx.lineWidth = 1;
-    const gridSize = size / 4;
-    for (let i = 0; i <= 4; i++) {
-      // Vertical lines
+    const gridSize = 60 * this.SCALE; // 60 units grid
+    for (let i = 0; i <= size; i += gridSize) {
       ctx.beginPath();
-      ctx.moveTo(i * gridSize, 0);
-      ctx.lineTo(i * gridSize, size);
+      ctx.moveTo(i, 0);
+      ctx.lineTo(i, size);
       ctx.stroke();
-
-      // Horizontal lines
       ctx.beginPath();
-      ctx.moveTo(0, i * gridSize);
-      ctx.lineTo(size, i * gridSize);
+      ctx.moveTo(0, i);
+      ctx.lineTo(size, i);
       ctx.stroke();
     }
 
-    // Draw center marker
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-    ctx.fillRect(size / 2 - 2, size / 2 - 2, 4, 4);
+    // Draw center crosshair
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(size / 2, 0);
+    ctx.lineTo(size / 2, size);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(0, size / 2);
+    ctx.lineTo(size, size / 2);
+    ctx.stroke();
 
-    // Get all players
-    const players = this.gameState.getAllPlayers();
+    // Draw all players
+    const allPlayers = this.gameState.getAllPlayers();
     const localPlayer = this.gameState.getLocalPlayer();
 
-    // Draw players
-    for (const player of players) {
-      // Skip cloaked players (except local player)
-      if (player.isCloaked && player.id !== localPlayer.id) {
-        continue;
-      }
+    for (const player of allPlayers) {
+      const x = (player.position.x * this.SCALE) + size / 2;
+      const z = (player.position.z * this.SCALE) + size / 2;
 
-      // Convert world position to minimap position
-      const x = ((player.position.x / (MAP_SIZE * 2)) + 0.5) * size;
-      const y = ((player.position.z / (MAP_SIZE * 2)) + 0.5) * size;
-
-      // Determine color
-      let color: string;
-      if (player.id === localPlayer.id) {
-        color = '#ffff00'; // Yellow for local player
-      } else if (player.isOni) {
-        color = '#ff0000'; // Red for ONI
-      } else {
-        color = '#00ff00'; // Green for runners
-      }
+      // Skip if out of bounds
+      if (x < 0 || x > size || z < 0 || z > size) continue;
 
       // Draw player dot
-      ctx.fillStyle = color;
       ctx.beginPath();
-      ctx.arc(x, y, 4, 0, Math.PI * 2);
+      ctx.arc(x, z, player.id === localPlayer.id ? 5 : 3, 0, Math.PI * 2);
+      
+      if (player.id === localPlayer.id) {
+        // Local player - bright green
+        ctx.fillStyle = '#00ff00';
+      } else if (player.isOni) {
+        // ONI - red
+        ctx.fillStyle = '#ff0000';
+      } else {
+        // Runner - blue
+        ctx.fillStyle = '#0088ff';
+      }
+      
       ctx.fill();
 
-      // Draw player name (small)
-      ctx.fillStyle = 'white';
-      ctx.font = '8px Arial';
-      ctx.textAlign = 'center';
-      ctx.fillText(player.username.substring(0, 8), x, y - 8);
+      // Draw player name (for local player only)
+      if (player.id === localPlayer.id) {
+        ctx.fillStyle = '#00ff00';
+        ctx.font = '10px monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('YOU', x, z - 8);
+      }
     }
 
     // Draw legend
-    ctx.font = '10px Arial';
+    ctx.font = '10px monospace';
     ctx.textAlign = 'left';
-    ctx.fillStyle = '#ffff00';
-    ctx.fillText('● You', 5, size - 35);
-    ctx.fillStyle = '#ff0000';
-    ctx.fillText('● ONI', 5, size - 22);
     ctx.fillStyle = '#00ff00';
-    ctx.fillText('● Runner', 5, size - 9);
+    ctx.fillText('YOU', 10, 15);
+    ctx.fillStyle = '#ff0000';
+    ctx.fillText('ONI', 10, 30);
+    ctx.fillStyle = '#0088ff';
+    ctx.fillText('RUNNER', 10, 45);
   }
 
   /**
-   * Destroy minimap
+   * Remove minimap from DOM
    */
-  public destroy(): void {
+  public dispose(): void {
     if (this.container && this.container.parentNode) {
       this.container.parentNode.removeChild(this.container);
+      this.container = null;
+      this.ctx = null;
     }
-    this.container = null;
-    this.canvas = null;
-    this.ctx = null;
   }
 }

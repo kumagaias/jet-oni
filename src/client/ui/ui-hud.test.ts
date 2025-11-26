@@ -229,4 +229,34 @@ describe('UIHud', () => {
       expect(newContainer).not.toBe(oldContainer);
     });
   });
+
+  describe('init method', () => {
+    it('should be hidden initially', () => {
+      const container = document.getElementById('hud-container');
+      expect(container?.style.display).toBe('none');
+    });
+
+    it('should have init method', () => {
+      expect(typeof uiHud.init).toBe('function');
+    });
+
+    it('should not throw when init is called', () => {
+      expect(() => uiHud.init()).not.toThrow();
+    });
+  });
+
+  describe('visibility', () => {
+    it('should show HUD when show is called', () => {
+      uiHud.show();
+      const container = document.getElementById('hud-container');
+      expect(container?.style.display).toBe('block');
+    });
+
+    it('should hide HUD when hide is called', () => {
+      uiHud.show();
+      uiHud.hide();
+      const container = document.getElementById('hud-container');
+      expect(container?.style.display).toBe('none');
+    });
+  });
 });

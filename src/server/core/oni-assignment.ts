@@ -3,7 +3,7 @@
  * Handles the logic for assigning ONI roles to players
  */
 
-import { GameState } from '../../shared/types/game';
+import { GameState, Player } from '../../shared/types/game';
 
 /**
  * Assign random ONI to players
@@ -68,7 +68,7 @@ export function assignRandomOni(gameState: GameState): void {
 /**
  * Assign ONI randomly to all players
  */
-function assignRandomOniToAll(players: any[], oniCount: number): void {
+function assignRandomOniToAll(players: Player[], oniCount: number): void {
   // Shuffle all players
   const shuffled = [...players].sort(() => Math.random() - 0.5);
   
@@ -86,8 +86,8 @@ function assignRandomOniToAll(players: any[], oniCount: number): void {
  * Assign ONI with constraints to ensure human representation
  */
 function assignOniWithHumanConstraints(
-  allPlayers: any[],
-  humanPlayers: any[],
+  allPlayers: Player[],
+  humanPlayers: Player[],
   oniCount: number,
   humanCount: number
 ): void {

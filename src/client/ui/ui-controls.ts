@@ -25,8 +25,10 @@ export class UIControls {
   private runnerDashButton: HTMLElement | null = null;
   private buttonState: ControlButtonState;
   private isMobile: boolean;
+  private gameState: GameState;
 
-  constructor(_gameState: GameState, _i18n: I18n) {
+  constructor(gameState: GameState, _i18n: I18n) {
+    this.gameState = gameState;
     this.buttonState = {
       dash: false,
       jetpack: false,
@@ -401,10 +403,10 @@ export class UIControls {
   /**
    * Update controls based on game state
    */
-  public update(gameState: GameState): void {
+  public update(): void {
     if (!this.isMobile || !this.container) return;
 
-    const localPlayer = gameState.getLocalPlayer();
+    const localPlayer = this.gameState.getLocalPlayer();
     if (!localPlayer) return;
 
     // Update buttons based on role

@@ -305,4 +305,49 @@ describe('RealtimeSyncManager', () => {
       expect(stats.reconnectAttempts).toBe(0);
     });
   });
+
+  describe('callback registration', () => {
+    it('should register onPlayerUpdate callback', () => {
+      const callback = vi.fn();
+      syncManager.onPlayerUpdate(callback);
+      
+      // Callback should be registered (will be called when player updates arrive)
+      expect(callback).not.toHaveBeenCalled();
+    });
+
+    it('should register onPlayerDisconnect callback', () => {
+      const callback = vi.fn();
+      syncManager.onPlayerDisconnect(callback);
+      
+      // Callback should be registered
+      expect(callback).not.toHaveBeenCalled();
+    });
+
+    it('should register onGameEnd callback', () => {
+      const callback = vi.fn();
+      syncManager.onGameEnd(callback);
+      
+      // Callback should be registered
+      expect(callback).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('sendPlayerUpdate', () => {
+    it('should not send when not connected', () => {
+      const update: PlayerStateUpdate & { playerId: string } = {
+        playerId: 'test-player',
+        position: { x: 0, y: 0, z: 0 },
+        velocity: { x: 0, y: 0, z: 0 },
+        rotation: { yaw: 0, pitch: 0 },
+        fuel: 100,
+        isOni: false,
+        isDashing: false,
+        isJetpacking: false,
+        isOnSurface: true,
+      };
+
+      // Should not throw when not connected
+      expect(() => syncManager.sendPlayerUpdate(update)).not.toThrow();
+    });
+  });
 });

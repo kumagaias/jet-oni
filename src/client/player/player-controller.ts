@@ -350,6 +350,13 @@ export class PlayerController {
   }
 
   /**
+   * Get mobile controls reference
+   */
+  public getMobileControls(): MobileControls | null {
+    return this.mobileControls;
+  }
+
+  /**
    * Update player movement based on input
    */
   public update(deltaTime: number): void {

@@ -34,9 +34,11 @@ export class UIDebug {
       background-color: rgba(0, 0, 0, 0.8);
       color: #00ff00;
       font-family: 'Courier New', monospace;
-      font-size: 12px;
-      padding: 10px;
-      border-radius: 5px;
+      font-size: 20px;
+      line-height: 1.6;
+      padding: 15px;
+      border-radius: 8px;
+      min-width: 300px;
       z-index: 1000;
       pointer-events: none;
       display: none;
@@ -47,11 +49,17 @@ export class UIDebug {
   }
 
   /**
-   * Setup F3 key listener to toggle debug display
+   * Setup F3 key listener to toggle debug display (dev environment only)
    */
   private setupKeyListener(): void {
     window.addEventListener('keydown', (event: KeyboardEvent) => {
-      if (event.key === 'F3') {
+      // Check if in dev environment
+      const url = window.location.href.toLowerCase();
+      const isDevEnvironment = url.includes('jet_oni_dev') || 
+                               url.includes('localhost') ||
+                               url.includes('playtest');
+      
+      if (event.key === 'F3' && isDevEnvironment) {
         event.preventDefault();
         this.toggle();
       }

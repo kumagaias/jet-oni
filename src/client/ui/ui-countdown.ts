@@ -9,6 +9,8 @@ export class UICountdown {
   private intervalId: number | null = null;
   private completeTimerId: number | null = null;
   private hideTimerId: number | null = null;
+  private isCompleted: boolean = false;
+  private animationFrameId: number | null = null;
 
   constructor() {
     // No initialization needed
@@ -25,8 +27,15 @@ export class UICountdown {
    * Start countdown with timestamp synchronization
    */
   public start(seconds: number, onComplete: () => void, startTimestamp?: number): void {
+    // Prevent multiple starts
+    if (this.intervalId !== null || this.completeTimerId !== null || this.hideTimerId !== null || this.isCompleted) {
+      console.warn('[Countdown] Already running, ignoring start request');
+      return;
+    }
+
     this.countdownValue = seconds;
     this.onComplete = onComplete;
+    this.isCompleted = false;
 
     // Create container
     this.create();
@@ -42,6 +51,10 @@ export class UICountdown {
       
       // Use requestAnimationFrame for smoother updates
       const updateCountdown = () => {
+        if (this.isCompleted) {
+          return; // Stop if already completed
+        }
+
         const remainingMs = endTime - Date.now();
         const newValue = Math.max(0, Math.floor(remainingMs / 1000));
         
@@ -54,11 +67,11 @@ export class UICountdown {
           console.log('[Countdown] Time reached 0, calling complete()');
           this.complete();
         } else {
-          requestAnimationFrame(updateCountdown);
+          this.animationFrameId = requestAnimationFrame(updateCountdown);
         }
       };
       
-      requestAnimationFrame(updateCountdown);
+      this.animationFrameId = requestAnimationFrame(updateCountdown);
     } else {
       // Fallback to interval-based countdown
       this.updateDisplay();
@@ -183,12 +196,24 @@ export class UICountdown {
    * Complete countdown and show game start message
    */
   private complete(): void {
+    if (this.isCompleted) {
+      console.warn('[Countdown] Already completed, ignoring');
+      return;
+    }
+
     console.log('[Countdown] complete() called');
+    this.isCompleted = true;
     
     // Stop interval
     if (this.intervalId !== null) {
       clearInterval(this.intervalId);
       this.intervalId = null;
+    }
+
+    // Stop animation frame
+    if (this.animationFrameId !== null) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
     }
 
     // Fade to complete black
@@ -268,6 +293,11 @@ export class UICountdown {
       this.intervalId = null;
     }
     
+    if (this.animationFrameId !== null) {
+      cancelAnimationFrame(this.animationFrameId);
+      this.animationFrameId = null;
+    }
+    
     if (this.completeTimerId !== null) {
       clearTimeout(this.completeTimerId);
       this.completeTimerId = null;
@@ -277,6 +307,8 @@ export class UICountdown {
       clearTimeout(this.hideTimerId);
       this.hideTimerId = null;
     }
+
+    this.isCompleted = false;
 
     // Remove container
     if (this.container) {

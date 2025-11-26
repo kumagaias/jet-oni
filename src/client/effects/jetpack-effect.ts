@@ -207,6 +207,15 @@ export class JetpackEffect {
   }
 
   /**
+   * Hide all jetpack effects
+   */
+  public hide(): void {
+    for (const [playerId] of this.particleSystems) {
+      this.removePlayerEffect(playerId);
+    }
+  }
+
+  /**
    * Clean up all effects
    */
   public dispose(): void {

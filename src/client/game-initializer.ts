@@ -21,6 +21,10 @@ import { CarSystem } from './environment/car-system';
 import { AIController } from './ai/ai-controller';
 import { PlayerModel } from './player/player-model';
 import { ToastNotification } from './ui/toast-notification';
+import { TagRangeVisual } from './effects/tag-range-visual';
+import { TargetLockVisual } from './effects/target-lock-visual';
+import { JetpackEffect } from './effects/jetpack-effect';
+import type { UIControls } from './ui/ui-controls';
 
 export interface GameSystems {
   ladderSystem: LadderSystem;
@@ -36,14 +40,15 @@ export interface GameSystems {
   particleSystem: ParticleSystem;
   carSystem: CarSystem;
   aiController: AIController;
-  tagRangeVisual: any;
-  targetLockVisual: any;
-  jetpackEffect: any;
+  tagRangeVisual: TagRangeVisual;
+  targetLockVisual: TargetLockVisual;
+  jetpackEffect: JetpackEffect;
 }
 
 export interface GameCollections {
   aiPlayerModels: Map<string, PlayerModel>;
   remotePlayerModels: Map<string, PlayerModel>;
+  uiControls?: UIControls;
 }
 
 /**
@@ -161,16 +166,18 @@ export function createDebugInfo(): HTMLDivElement {
     position: fixed;
     top: 10px;
     left: 10px;
-    background: rgba(0, 0, 0, 0.7);
+    background: rgba(0, 0, 0, 0.8);
     color: #ff8800;
-    padding: 10px;
+    padding: 15px;
     font-family: monospace;
-    font-size: 12px;
-    border: 1px solid #ff8800;
-    border-radius: 4px;
+    font-size: 20px;
+    line-height: 1.6;
+    border: 2px solid #ff8800;
+    border-radius: 8px;
     z-index: 1000;
     pointer-events: none;
     display: none;
+    min-width: 300px;
   `;
   document.body.appendChild(debugInfo);
   return debugInfo;
